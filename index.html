@@ -189,6 +189,34 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .s-rl{color:#CC7A00;background:var(--ambg);}
 .s-nc{color:var(--red);background:var(--redg);}
 .s-pd{color:var(--txt2);background:var(--sur2);}
+.s-ec{color:#5856D6;background:rgba(88,86,214,.12);}
+
+/* ── KANBAN ── */
+.kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:20px;-webkit-overflow-scrolling:touch;}
+.kanban-board::-webkit-scrollbar{height:6px;}
+.kanban-board::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px;}
+.kb-col{width:256px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;}
+.kb-head{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.kb-head::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kh-c,var(--ind));}
+.kb-head-lbl{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;}
+.kb-count{font-size:11px;font-weight:700;background:var(--bg2);border-radius:20px;padding:2px 8px;color:var(--txt2);}
+.kb-body{display:flex;flex-direction:column;gap:8px;min-height:80px;border-radius:var(--r);padding:4px;transition:.15s;}
+.kb-body.drag-over{background:rgba(0,122,255,.06);outline:2px dashed var(--ind);outline-offset:-2px;}
+.kb-card{background:rgba(255,255,255,.95);border:0.5px solid var(--bdr);border-radius:var(--rs);padding:12px 14px;cursor:grab;transition:.15s;box-shadow:0 1px 4px rgba(0,0,0,.05);position:relative;overflow:hidden;}
+.kb-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--kc,var(--ind));}
+.kb-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.09);transform:translateY(-1px);}
+.kb-card:active{cursor:grabbing;}
+.kb-card.dragging{opacity:.45;transform:rotate(1.5deg);}
+.kc-name{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;margin-bottom:6px;}
+.kc-sub{font-size:11px;color:var(--txt2);display:flex;flex-direction:column;gap:3px;}
+.kc-sub span{display:flex;align-items:center;gap:4px;}
+.kc-sub i{font-size:12px;}
+.kc-acts{display:flex;gap:5px;margin-top:9px;padding-top:9px;border-top:0.5px solid var(--bdr);}
+.kc-btn{flex:1;border:0.5px solid var(--bdr2);background:var(--bg);color:var(--txt2);border-radius:6px;padding:5px 4px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.12s;display:flex;align-items:center;justify-content:center;gap:3px;}
+.kc-btn:hover{background:var(--bg2);color:var(--txt);}
+.kc-btn.p{background:var(--ind);border-color:var(--ind);color:#fff;}
+.kc-btn.p:hover{background:var(--ind2);}
+.kb-empty{text-align:center;padding:20px 12px;color:var(--txt3);font-size:12px;border:1.5px dashed var(--bdr);border-radius:var(--rs);margin:4px 0;}
 
 /* ── CALENDAR ── */
 .cal-wrap{display:grid;grid-template-columns:1fr 340px;gap:16px;}
@@ -365,6 +393,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
   <div class="main">
     <div class="view" id="v-inicio"></div>
+    <div class="view" id="v-crm"></div>
     <div class="view on" id="v-agenda"></div>
     <div class="view" id="v-cal"></div>
     <div class="view" id="v-origem"></div>
@@ -404,7 +433,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     </div>
     <div class="fg"><label>Status</label>
       <select id="a-status">
-        <option value="pendente">Pendente</option>
+        <option value="pendente">Novo Lead</option>
+        <option value="em_contato">Em contato</option>
         <option value="agendado">Agendado</option>
         <option value="confirmado">Confirmado</option>
         <option value="realizado">Realizado</option>
@@ -442,8 +472,12 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <input type="hidden" id="neg-id">
     <div class="fg"><label>Status</label>
       <select id="n-status">
-        <option value="agendado">Agendado</option><option value="confirmado">Confirmado</option>
-        <option value="realizado">Realizado</option><option value="nao_compareceu">Não compareceu</option>
+        <option value="pendente">Novo Lead</option>
+        <option value="em_contato">Em contato</option>
+        <option value="agendado">Agendado</option>
+        <option value="confirmado">Confirmado</option>
+        <option value="realizado">Realizado</option>
+        <option value="nao_compareceu">Não compareceu</option>
       </select>
     </div>
     <div class="frow">
@@ -548,7 +582,8 @@ async function getAppts() {
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const STATUS = {
-  pendente:       { l:'Pendente',       cls:'s-pd', c:'var(--txt2)' },
+  pendente:       { l:'Novo Lead',      cls:'s-pd', c:'var(--txt2)' },
+  em_contato:     { l:'Em contato',     cls:'s-ec', c:'#5856D6'     },
   agendado:       { l:'Agendado',       cls:'s-ag', c:'var(--ind)'  },
   confirmado:     { l:'Confirmado',     cls:'s-cf', c:'var(--grn)'  },
   realizado:      { l:'Realizado',      cls:'s-rl', c:'var(--amb)'  },
@@ -658,6 +693,7 @@ function showApp() {
 function tabs() {
   const base = [
     { id:'inicio', icon:'ti-home',           label:'Início' },
+    { id:'crm',    icon:'ti-layout-kanban', label:'CRM' },
     { id:'agenda', icon:'ti-calendar',       label:'Agenda' },
     { id:'cal',    icon:'ti-calendar-month', label:'Calendário' },
   ];
@@ -685,7 +721,7 @@ function goTab(id) {
   const v = document.getElementById('v-' + id);
   if (v) v.classList.add('on');
   document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === id));
-  const renders = { inicio:renderInicio, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, users:renderUsers };
+  const renders = { inicio:renderInicio, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, users:renderUsers };
   if (renders[id]) renders[id]();
 }
 
@@ -1105,7 +1141,7 @@ async function refreshAll() {
   const active = document.querySelector('.view.on');
   if (!active) return;
   const id = active.id.replace('v-', '');
-  const renders = { inicio:renderInicio, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc };
+  const renders = { inicio:renderInicio, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc };
   if (renders[id]) await renders[id]();
   if (id === 'agenda') _filterAgenda();
 }
@@ -1119,6 +1155,83 @@ function toast(msg, type) {
   document.getElementById('toast-msg').textContent = msg;
   t.style.display = 'flex';
   clearTimeout(t._t); t._t = setTimeout(() => t.style.display='none', 2800);
+}
+
+// ─── KANBAN CRM ───────────────────────────────────────────────────────────────
+const KB_COLS = [
+  { id:'pendente',       label:'Novo Lead',      color:'var(--txt2)' },
+  { id:'em_contato',     label:'Em contato',     color:'#5856D6'     },
+  { id:'agendado',       label:'Agendado',       color:'var(--ind)'  },
+  { id:'confirmado',     label:'Confirmado',     color:'var(--grn)'  },
+  { id:'realizado',      label:'Realizado',      color:'var(--amb)'  },
+  { id:'nao_compareceu', label:'Não compareceu', color:'var(--red)'  },
+];
+
+async function renderCrm() {
+  const el = document.getElementById('v-crm');
+  loading(el);
+  const appts = await getAppts();
+  const myAppts = CU.role === 'vendedor' ? appts.filter(a => a.vnd === CU.nome) : appts;
+  el.innerHTML = `<div class="kanban-board">${KB_COLS.map(col => {
+    const cards = myAppts.filter(a => a.status === col.id);
+    return `<div class="kb-col">
+      <div class="kb-head" style="--kh-c:${col.color}">
+        <span class="kb-head-lbl">${col.label}</span>
+        <span class="kb-count">${cards.length}</span>
+      </div>
+      <div class="kb-body"
+        ondragover="kbDragOver(event)"
+        ondragleave="kbDragLeave(event)"
+        ondrop="kbDrop(event,'${col.id}')">
+        ${cards.length
+          ? cards.map(a => kbCard(a, col.color)).join('')
+          : '<div class="kb-empty">Sem leads aqui</div>'}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function kbCard(a, colColor) {
+  const ac = userColor(a.vnd);
+  return `<div class="kb-card" draggable="true" style="--kc:${colColor}"
+    ondragstart="kbDragStart(event,'${a.id}')"
+    ondragend="kbDragEnd(event)">
+    <div class="kc-name">${a.cli}</div>
+    <div class="kc-sub">
+      ${a.tel    ? `<span><i class="ti ti-phone"></i>${a.tel}</span>` : ''}
+      ${a.data   ? `<span><i class="ti ti-calendar"></i>${fmtDate(a.data)}${a.hora?' · '+a.hora:''}</span>` : ''}
+      ${a.vnd    ? `<span><i class="ti ti-user" style="color:${ac}"></i><b style="color:${ac}">${a.vnd}</b></span>` : ''}
+      ${a.modelo ? `<span><i class="ti ti-car"></i>${a.modelo}</span>` : ''}
+    </div>
+    ${canEdit(a) ? `<div class="kc-acts">
+      <button class="kc-btn p" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i>Negoc.</button>
+      ${CU.role !== 'vendedor' ? `<button class="kc-btn" onclick="openAppt('${a.id}')"><i class="ti ti-edit"></i>Editar</button>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+let _kbDragId = null;
+
+function kbDragStart(e, id) {
+  _kbDragId = id;
+  setTimeout(() => e.target.classList.add('dragging'), 0);
+  e.dataTransfer.effectAllowed = 'move';
+}
+function kbDragEnd(e)   { e.target.classList.remove('dragging'); }
+function kbDragOver(e)  { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function kbDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+
+async function kbDrop(e, newStatus) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!_kbDragId) return;
+  const a = _apptsCache.find(x => x.id === _kbDragId);
+  _kbDragId = null;
+  if (!a || a.status === newStatus) return;
+  const { error } = await sb.from('eye_appts').update({ status: newStatus }).eq('id', a.id);
+  if (error) { toast('Erro ao mover card', 'err'); return; }
+  toast('Status atualizado');
+  await refreshAll();
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
