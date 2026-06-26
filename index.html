@@ -190,6 +190,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .s-nc{color:var(--red);background:var(--redg);}
 .s-pd{color:var(--txt2);background:var(--sur2);}
 .s-ec{color:#5856D6;background:rgba(88,86,214,.12);}
+.s-lf{color:#6e6e73;background:rgba(142,142,147,.12);}
 
 /* ── KANBAN ── */
 .kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:20px;-webkit-overflow-scrolling:touch;}
@@ -424,7 +425,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     </div>
     <div class="top-right">
       <span class="top-username" id="top-username"></span>
-      <button class="btn-new" onclick="openAppt()"><i class="ti ti-plus"></i>Novo lead</button>
+      <button class="btn-new" onclick="openLead()" style="background:var(--grn);box-shadow:0 2px 8px rgba(52,199,89,.3)"><i class="ti ti-user-plus"></i>Novo lead</button>
+      <button class="btn-new" onclick="openAppt()"><i class="ti ti-calendar-plus"></i>Novo agendamento</button>
       <button class="btn-logout" onclick="doLogout()"><i class="ti ti-logout"></i>Sair</button>
     </div>
   </div>
@@ -480,6 +482,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
         <option value="confirmado">Confirmado</option>
         <option value="realizado">Realizado</option>
         <option value="nao_compareceu">Não compareceu</option>
+        <option value="lead_frio">Lead Frio</option>
       </select>
     </div>
     <div class="sec-divider">Negociação</div>
@@ -519,6 +522,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
         <option value="confirmado">Confirmado</option>
         <option value="realizado">Realizado</option>
         <option value="nao_compareceu">Não compareceu</option>
+        <option value="lead_frio">Lead Frio</option>
       </select>
     </div>
     <div class="frow">
@@ -576,6 +580,30 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   </div>
 </div>
 
+<!-- ─── MODAL: NOVO LEAD (rápido) ─── -->
+<div class="overlay" id="ov-lead" onclick="if(event.target===this)closeLead()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hd">
+      <h3>Novo lead</h3>
+      <button class="mc" onclick="closeLead()">✕</button>
+    </div>
+    <div class="fg"><label>Telefone *</label><input class="finput" id="l-tel" placeholder="(81) 9 9999-0000" type="tel"></div>
+    <div class="fg"><label>Nome do cliente</label><input class="finput" id="l-cli" placeholder="Opcional — preencher depois"></div>
+    <div class="fg"><label>Origem *</label>
+      <select id="l-orig">
+        <option value="">Selecione…</option>
+        <option>Meta Ads</option><option>Instagram Orgânico</option>
+        <option>WhatsApp Direto</option><option>Indicação</option>
+        <option>Walk-in</option><option>Outros</option>
+      </select>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeLead()">Cancelar</button>
+      <button class="btn-prim" onclick="saveLead()">Criar lead</button>
+    </div>
+  </div>
+</div>
+
 <!-- HOT LEAD NOTIFICATION -->
 <div class="hotlead-notif" id="hl-notif" onclick="closeHotLead()">
   <div class="hn-body">
@@ -629,6 +657,7 @@ const STATUS = {
   confirmado:     { l:'Confirmado',     cls:'s-cf', c:'var(--grn)'  },
   realizado:      { l:'Realizado',      cls:'s-rl', c:'var(--amb)'  },
   nao_compareceu: { l:'Não compareceu', cls:'s-nc', c:'var(--red)'  },
+  lead_frio:      { l:'Lead Frio',      cls:'s-lf', c:'#8E8E93'     },
 };
 const ORIGINS = {
   'Meta Ads':           '📊',
@@ -1010,6 +1039,35 @@ async function renderUsers() {
     </div>`;
 }
 
+// ─── MODAL NOVO LEAD (rápido) ─────────────────────────────────────────────────
+function openLead() {
+  ['l-tel','l-cli'].forEach(i => { document.getElementById(i).value = ''; });
+  document.getElementById('l-orig').value = '';
+  document.getElementById('ov-lead').classList.add('on');
+  setTimeout(() => document.getElementById('l-tel').focus(), 100);
+}
+function closeLead() { document.getElementById('ov-lead').classList.remove('on'); }
+
+async function saveLead() {
+  const tel  = document.getElementById('l-tel').value.trim();
+  const orig = document.getElementById('l-orig').value;
+  if (!tel || !orig) { toast('Preencha telefone e origem', 'err'); return; }
+  const cli = document.getElementById('l-cli').value.trim() || tel;
+  const today = new Date().toISOString().split('T')[0];
+  const obj = {
+    id: uid(), cli, tel, orig,
+    status: 'pendente',
+    data: today,
+    criado_por: CU.login,
+    em: new Date().toISOString(),
+  };
+  const { error } = await sb.from('eye_appts').insert(obj);
+  if (error) { toast('Erro ao criar lead: ' + error.message, 'err'); return; }
+  closeLead();
+  toast('Lead criado!');
+  await refreshAll();
+}
+
 // ─── MODAL AGENDAMENTO ────────────────────────────────────────────────────────
 async function openAppt(id) {
   await getUsers();
@@ -1097,8 +1155,21 @@ function closeNeg() { document.getElementById('ov-neg').classList.remove('on'); 
 
 async function saveNeg() {
   const id = document.getElementById('neg-id').value;
+  const newStatus = document.getElementById('n-status').value;
+  const a = _apptsCache.find(x => x.id === id);
+  if (a) {
+    const merged = { ...a, status: newStatus,
+      modelo: document.getElementById('n-modelo').value.trim() || a.modelo,
+      valor:  document.getElementById('n-valor').value.trim()  || a.valor,
+    };
+    const missing = checkGate(merged, newStatus);
+    if (missing) {
+      toast(`Preencha antes de agendar: ${missing.join(', ')}`, 'err');
+      return;
+    }
+  }
   const upd = {
-    status: document.getElementById('n-status').value,
+    status: newStatus,
     modelo: document.getElementById('n-modelo').value.trim(),
     valor:  document.getElementById('n-valor').value.trim(),
     pgto:   document.getElementById('n-pgto').value,
@@ -1422,11 +1493,25 @@ function startRealtimeConv() {
 const KB_COLS = [
   { id:'pendente',       label:'Novo Lead',      color:'var(--txt2)' },
   { id:'em_contato',     label:'Em contato',     color:'#5856D6'     },
+  { id:'lead_frio',      label:'Lead Frio',      color:'#8E8E93'     },
   { id:'agendado',       label:'Agendado',       color:'var(--ind)'  },
   { id:'confirmado',     label:'Confirmado',     color:'var(--grn)'  },
   { id:'realizado',      label:'Realizado',      color:'var(--amb)'  },
   { id:'nao_compareceu', label:'Não compareceu', color:'var(--red)'  },
 ];
+
+const GATE_FIELDS = [
+  { key:'data',  label:'Data' },
+  { key:'hora',  label:'Horário' },
+  { key:'vnd',   label:'Vendedor' },
+  { key:'orig',  label:'Origem' },
+];
+
+function checkGate(a, newStatus) {
+  if (!['agendado','confirmado','realizado'].includes(newStatus)) return null;
+  const missing = GATE_FIELDS.filter(f => !a[f.key]).map(f => f.label);
+  return missing.length ? missing : null;
+}
 
 async function renderCrm() {
   const el = document.getElementById('v-crm');
@@ -1489,6 +1574,12 @@ async function kbDrop(e, newStatus) {
   const a = _apptsCache.find(x => x.id === _kbDragId);
   _kbDragId = null;
   if (!a || a.status === newStatus) return;
+  const missing = checkGate(a, newStatus);
+  if (missing) {
+    toast(`Preencha antes de agendar: ${missing.join(', ')}`, 'err');
+    openAppt(a.id);
+    return;
+  }
   const { error } = await sb.from('eye_appts').update({ status: newStatus }).eq('id', a.id);
   if (error) { toast('Erro ao mover card', 'err'); return; }
   toast('Status atualizado');
