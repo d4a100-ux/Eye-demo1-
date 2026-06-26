@@ -275,12 +275,12 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .cal-day.empty{cursor:default;pointer-events:none;}
 .cal-day.today{background:var(--indg);border-color:rgba(0,122,255,.25);font-weight:700;color:var(--ind);}
 .cal-day.sel{background:var(--ind);color:#fff;border-color:var(--ind);}
-.cal-day.has-ap::after{content:'';position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;background:var(--grn);}
-.cal-day.today.has-ap::after{background:var(--ind);}
-.cal-day.sel.has-ap::after{background:#fff;}
-.cal-badge{display:block;font-size:9px;font-weight:700;line-height:1;margin-top:2px;color:var(--ind);background:var(--indg);border-radius:20px;padding:1px 5px;min-width:16px;text-align:center;}
-.cal-badge-today{color:var(--ind);background:rgba(0,122,255,.18);}
-.cal-badge-sel{color:#fff;background:rgba(255,255,255,.3);}
+.cal-badges{display:flex;gap:2px;justify-content:center;margin-top:2px;flex-wrap:wrap;}
+.cal-badge{font-size:9px;font-weight:700;line-height:1;border-radius:10px;padding:1px 4px;min-width:14px;text-align:center;}
+.cb-ag{color:var(--ind);background:var(--indg);}
+.cb-ld{color:#CC7A00;background:var(--ambg);}
+.cb-ag-sel{color:#fff;background:rgba(255,255,255,.35);}
+.cb-ld-sel{color:rgba(255,255,255,.9);background:rgba(255,255,255,.2);}
 .cal-detail{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.05);}
 .cal-detail-head{padding:14px 16px;border-bottom:0.5px solid var(--bdr);font-family:'Inter',sans-serif;font-weight:700;font-size:14px;}
 .cal-detail-body{padding:12px;}
@@ -918,8 +918,13 @@ async function renderCal() {
 
 function drawCalGrid() {
   const filtered = CU.role === 'vendedor' ? _apptsCache.filter(a => a.vnd === CU.nome) : _apptsCache;
-  const countByDay = {};
-  filtered.forEach(a => { countByDay[a.data] = (countByDay[a.data] || 0) + 1; });
+  const agendByDay = {}, leadsDay = {};
+  const agendStatus = ['agendado','confirmado','realizado','nao_compareceu'];
+  const leadStatus  = ['pendente','em_contato','lead_frio'];
+  filtered.forEach(a => {
+    if (agendStatus.includes(a.status)) agendByDay[a.data] = (agendByDay[a.data] || 0) + 1;
+    if (leadStatus.includes(a.status))  leadsDay[a.data]   = (leadsDay[a.data]   || 0) + 1;
+  });
   const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const firstDay    = new Date(calYear, calMonth, 1).getDay();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -928,12 +933,17 @@ function drawCalGrid() {
   let cells = '';
   for (let i = 0; i < firstDay; i++) cells += `<div class="cal-day empty"></div>`;
   for (let d = 1; d <= daysInMonth; d++) {
-    const ds     = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const ds      = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday = ds === todayStr;
     const isSel   = ds === calSelDay;
-    const cnt     = countByDay[ds] || 0;
-    const badge   = cnt > 0 ? `<span class="cal-badge${isSel?' cal-badge-sel':isToday?' cal-badge-today':''}">${cnt}</span>` : '';
-    cells += `<div class="cal-day${isToday?' today':''}${isSel?' sel':''}${cnt>0?' has-ap':''}" onclick="selectCalDay('${ds}')">${d}${badge}</div>`;
+    const agCnt   = agendByDay[ds] || 0;
+    const ldCnt   = leadsDay[ds]   || 0;
+    const hasAny  = agCnt > 0 || ldCnt > 0;
+    const badges  = hasAny ? `<div class="cal-badges">
+      ${agCnt > 0 ? `<span class="cal-badge ${isSel?'cb-ag-sel':'cb-ag'}" title="Agendamentos">${agCnt}</span>` : ''}
+      ${ldCnt > 0 ? `<span class="cal-badge ${isSel?'cb-ld-sel':'cb-ld'}" title="Leads recebidos">${ldCnt}</span>` : ''}
+    </div>` : '';
+    cells += `<div class="cal-day${isToday?' today':''}${isSel?' sel':''}" onclick="selectCalDay('${ds}')">${d}${badges}</div>`;
   }
   document.getElementById('cal-grid-box').innerHTML = `
     <div class="cal-header">
