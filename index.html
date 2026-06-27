@@ -712,6 +712,7 @@ async function doLogin() {
 
   if (loginVal === 'eye' && senhaVal === 'eye@master2025') {
     CU = { id:'master', nome:'Master', login:'eye', role:'gerencia', cor:'#5B6EFF' };
+    localStorage.setItem('eye_cu', JSON.stringify(CU));
     showApp(); return;
   }
   const users = await getUsers();
@@ -724,6 +725,7 @@ async function doLogin() {
   }
   document.getElementById('li-err').style.display = 'none';
   CU = u;
+  localStorage.setItem('eye_cu', JSON.stringify(CU));
   showApp();
 }
 
@@ -733,6 +735,7 @@ function doLogout() {
   CU = null;
   _usersCache = null;
   _apptsCache = [];
+  localStorage.removeItem('eye_cu');
   document.getElementById('li-user').value = '';
   document.getElementById('li-pass').value = '';
   const btn = document.getElementById('btn-login');
@@ -1733,6 +1736,15 @@ function closeHotLead() {
 (async () => {
   await initUsers();
   await seedAppts();
+  const saved = localStorage.getItem('eye_cu');
+  if (saved) {
+    try {
+      CU = JSON.parse(saved);
+      showApp();
+    } catch(e) {
+      localStorage.removeItem('eye_cu');
+    }
+  }
 })();
 </script>
 </body>
