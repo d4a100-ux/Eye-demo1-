@@ -470,7 +470,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
           <option value="">Selecione…</option>
           <option>Meta Ads</option><option>Instagram Orgânico</option>
           <option>WhatsApp Direto</option><option>Indicação</option>
-          <option>Walk-in</option><option>Outros</option>
+          <option>Walk-in</option><option>OLX</option><option>Outros</option>
         </select>
       </div>
     </div>
@@ -506,6 +506,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
       <button class="btn-cancel" onclick="closeAppt()">Cancelar</button>
       <button class="btn-prim" onclick="saveAppt()">Salvar</button>
     </div>
+    <div id="appt-history"></div>
   </div>
 </div>
 
@@ -594,7 +595,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
         <option value="">Selecione…</option>
         <option>Meta Ads</option><option>Instagram Orgânico</option>
         <option>WhatsApp Direto</option><option>Indicação</option>
-        <option>Walk-in</option><option>Outros</option>
+        <option>Walk-in</option><option>OLX</option><option>Outros</option>
       </select>
     </div>
     <div class="modal-acts">
@@ -665,6 +666,7 @@ const ORIGINS = {
   'WhatsApp Direto':    '💬',
   'Indicação':          '🤝',
   'Walk-in':            '🚶',
+  'OLX':                '🛒',
   'Outros':             '📌',
 };
 const ROLE_LABELS = { gerencia:'Gerência', sdr:'SDR', vendedor:'Vendedor' };
@@ -760,6 +762,20 @@ function showApp() {
   buildNav();
   goTab('inicio');
   setTimeout(showHotLeadNotif, 8000);
+  requestNotifPerm();
+  startRealtimeLeads();
+}
+
+function requestNotifPerm() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function pushNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '' });
+  }
 }
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
@@ -1065,6 +1081,9 @@ async function saveLead() {
   const tel  = document.getElementById('l-tel').value.trim();
   const orig = document.getElementById('l-orig').value;
   if (!tel || !orig) { toast('Preencha telefone e origem', 'err'); return; }
+  const telNum = tel.replace(/\D/g,'');
+  const dup = _apptsCache.find(a => a.tel && a.tel.replace(/\D/g,'') === telNum);
+  if (dup && !confirm(`⚠️ Telefone já existe na base (${dup.cli}). Criar mesmo assim?`)) return;
   const cli = document.getElementById('l-cli').value.trim() || tel;
   const today = new Date().toISOString().split('T')[0];
   const obj = {
@@ -1103,6 +1122,18 @@ async function openAppt(id) {
     document.getElementById('a-pgto').value    = a.pgto   || '';
     document.getElementById('a-obs').value     = a.obs    || '';
     document.getElementById('a-prox').value    = a.prox   || '';
+    const logs = await loadApptLogs(a.id);
+    const histEl = document.getElementById('appt-history');
+    if (histEl) histEl.innerHTML = logs.length ? `
+      <div class="sec-divider">Histórico</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        ${logs.map(l => `<div style="font-size:12px;color:var(--txt2);display:flex;gap:8px;align-items:center">
+          <span style="color:var(--txt3);font-size:11px;flex:none">${fmtLogTime(l.created_at)}</span>
+          <span style="font-weight:600;color:var(--txt)">${l.user_nome}</span>
+          <span>→</span>
+          <span class="tag ${fmtStatus(l.para_status).cls}">${fmtStatus(l.para_status).l}</span>
+        </div>`).join('')}
+      </div>` : '';
   } else {
     document.getElementById('appt-modal-title').textContent = 'Novo lead / agendamento';
     document.getElementById('appt-id').value  = '';
@@ -1112,6 +1143,8 @@ async function openAppt(id) {
     document.getElementById('a-orig').value   = '';
     document.getElementById('a-status').value = 'agendado';
     document.getElementById('a-pgto').value   = '';
+    const histEl = document.getElementById('appt-history');
+    if (histEl) histEl.innerHTML = '';
   }
   document.getElementById('ov-appt').classList.add('on');
 }
@@ -1124,6 +1157,14 @@ async function saveAppt() {
   const orig = document.getElementById('a-orig').value;
   if (!cli || !data || !vnd || !orig) { toast('Preencha: cliente, data, vendedor e origem','err'); return; }
   const eid = document.getElementById('appt-id').value;
+  if (!eid) {
+    const telV = document.getElementById('a-tel').value.trim();
+    if (telV) {
+      const telNum = telV.replace(/\D/g,'');
+      const dup = _apptsCache.find(a => a.tel && a.tel.replace(/\D/g,'') === telNum);
+      if (dup && !confirm(`⚠️ Telefone já existe na base (${dup.cli}). Criar mesmo assim?`)) return;
+    }
+  }
   const obj = {
     id:         eid || uid(),
     cli, data,
@@ -1189,8 +1230,10 @@ async function saveNeg() {
     obs:    document.getElementById('n-obs').value.trim(),
     prox:   document.getElementById('n-prox').value.trim(),
   };
+  const oldStatus = a?.status;
   const { error } = await sb.from('eye_appts').update(upd).eq('id', id);
   if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+  if (oldStatus && oldStatus !== newStatus) await logStatus(id, oldStatus, newStatus);
   closeNeg();
   toast('Negociação atualizada');
   await refreshAll();
@@ -1267,8 +1310,9 @@ async function refreshAll() {
   const active = document.querySelector('.view.on');
   if (!active) return;
   const id = active.id.replace('v-', '');
-  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc };
-  if (renders[id]) await renders[id]();
+  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc };
+  if (id === 'crm') _drawKanban();
+  else if (renders[id]) await renders[id]();
   if (id === 'agenda') _filterAgenda();
 }
 
@@ -1502,6 +1546,45 @@ function startRealtimeConv() {
     .subscribe();
 }
 
+let _leadNotifSub = null;
+function startRealtimeLeads() {
+  if (_leadNotifSub) { try { sb.removeChannel(_leadNotifSub); } catch(e){} }
+  _leadNotifSub = sb.channel('eye-leads-rt')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'eye_appts'}, payload => {
+      const a = payload.new;
+      if (CU.role === 'vendedor') return;
+      pushNotif('Novo lead chegou!', `${a.cli || a.tel} · ${a.orig || ''}`);
+      toast(`Novo lead: ${a.cli || a.tel}`, 'ind');
+    })
+    .subscribe();
+}
+
+// ─── LOG DE ALTERAÇÕES ────────────────────────────────────────────────────────
+async function logStatus(apptId, deStatus, paraStatus) {
+  try {
+    await sb.from('eye_logs').insert({
+      id: uid(), appt_id: apptId,
+      user_nome: CU.nome, acao: 'status',
+      de_status: deStatus, para_status: paraStatus,
+      created_at: new Date().toISOString(),
+    });
+  } catch(e) {}
+}
+
+async function loadApptLogs(apptId) {
+  try {
+    const { data } = await sb.from('eye_logs')
+      .select('*').eq('appt_id', apptId).order('created_at');
+    return data || [];
+  } catch(e) { return []; }
+}
+
+function fmtLogTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
 // ─── KANBAN CRM ───────────────────────────────────────────────────────────────
 const KB_COLS = [
   { id:'pendente',       label:'Novo Lead',      color:'var(--txt2)' },
@@ -1526,28 +1609,51 @@ function checkGate(a, newStatus) {
   return missing.length ? missing : null;
 }
 
+let _kbVndFilter = '';
+
 async function renderCrm() {
   const el = document.getElementById('v-crm');
   loading(el);
-  const appts = await getAppts();
-  const myAppts = CU.role === 'vendedor' ? appts.filter(a => a.vnd === CU.nome) : appts;
-  el.innerHTML = `<div class="kanban-board">${KB_COLS.map(col => {
-    const cards = myAppts.filter(a => a.status === col.id);
-    return `<div class="kb-col">
-      <div class="kb-head" style="--kh-c:${col.color}">
-        <span class="kb-head-lbl">${col.label}</span>
-        <span class="kb-count">${cards.length}</span>
-      </div>
-      <div class="kb-body"
-        ondragover="kbDragOver(event)"
-        ondragleave="kbDragLeave(event)"
-        ondrop="kbDrop(event,'${col.id}')">
-        ${cards.length
-          ? cards.map(a => kbCard(a, col.color)).join('')
-          : '<div class="kb-empty">Sem leads aqui</div>'}
-      </div>
-    </div>`;
-  }).join('')}</div>`;
+  await getAppts();
+  const vndOpts = CU.role !== 'vendedor'
+    ? `<select class="fi fi-sel" id="kb-vnd-f" onchange="_kbVndFilter=this.value;_drawKanban()" style="height:34px">
+        <option value="">Todos os vendedores</option>
+        ${vendedores().map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}
+       </select>` : '';
+  el.innerHTML = `
+    <div class="filters" style="margin-bottom:12px">
+      <input class="fi fi-search" style="height:34px" id="kb-q" placeholder="Buscar cliente…" oninput="_drawKanban()">
+      ${vndOpts}
+    </div>
+    <div id="kb-board"></div>`;
+  _drawKanban();
+}
+
+function _drawKanban() {
+  let appts = [..._apptsCache];
+  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
+  const vf = document.getElementById('kb-vnd-f')?.value || _kbVndFilter;
+  const q  = (document.getElementById('kb-q')?.value || '').toLowerCase();
+  if (vf) appts = appts.filter(a => a.vnd === vf);
+  if (q)  appts = appts.filter(a => (a.cli+' '+(a.tel||'')).toLowerCase().includes(q));
+  document.getElementById('kb-board').innerHTML =
+    `<div class="kanban-board">${KB_COLS.map(col => {
+      const cards = appts.filter(a => a.status === col.id);
+      return `<div class="kb-col">
+        <div class="kb-head" style="--kh-c:${col.color}">
+          <span class="kb-head-lbl">${col.label}</span>
+          <span class="kb-count">${cards.length}</span>
+        </div>
+        <div class="kb-body"
+          ondragover="kbDragOver(event)"
+          ondragleave="kbDragLeave(event)"
+          ondrop="kbDrop(event,'${col.id}')">
+          ${cards.length
+            ? cards.map(a => kbCard(a, col.color)).join('')
+            : '<div class="kb-empty">Sem leads aqui</div>'}
+        </div>
+      </div>`;
+    }).join('')}</div>`;
 }
 
 function kbCard(a, colColor) {
@@ -1593,8 +1699,10 @@ async function kbDrop(e, newStatus) {
     openAppt(a.id);
     return;
   }
+  const oldStatus = a.status;
   const { error } = await sb.from('eye_appts').update({ status: newStatus }).eq('id', a.id);
   if (error) { toast('Erro ao mover card', 'err'); return; }
+  await logStatus(a.id, oldStatus, newStatus);
   toast('Status atualizado');
   await refreshAll();
 }
