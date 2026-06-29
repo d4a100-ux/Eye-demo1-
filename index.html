@@ -1505,6 +1505,16 @@ async function sendConvMsg() {
   const conv = _convsCache.find(c => c.id === _activeConvId);
   if (conv) { conv.last_message = content; conv.last_message_at = msg.created_at; }
   drawConvList();
+
+  if (conv?.phone) {
+    try {
+      await fetch('https://imwlagfvqeexrvtiyasp.supabase.co/functions/v1/wpp-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: conv.phone, message: content }),
+      });
+    } catch(e) { console.warn('WhatsApp send falhou:', e); }
+  }
 }
 
 async function finalizarConv(id) {
