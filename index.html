@@ -479,8 +479,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
         <option value="pendente">Novo Lead</option>
         <option value="em_contato">Em contato</option>
         <option value="agendado">Agendado</option>
-        <option value="confirmado">Confirmado</option>
-        <option value="realizado">Realizado</option>
+        <option value="confirmado">Realizado</option>
+        <option value="realizado">Vendido</option>
         <option value="nao_compareceu">Não compareceu</option>
         <option value="lead_frio">Lead Frio</option>
       </select>
@@ -506,6 +506,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
       <button class="btn-cancel" onclick="closeAppt()">Cancelar</button>
       <button class="btn-prim" onclick="saveAppt()">Salvar</button>
     </div>
+    <div id="appt-comments"></div>
     <div id="appt-history"></div>
   </div>
 </div>
@@ -520,8 +521,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
         <option value="pendente">Novo Lead</option>
         <option value="em_contato">Em contato</option>
         <option value="agendado">Agendado</option>
-        <option value="confirmado">Confirmado</option>
-        <option value="realizado">Realizado</option>
+        <option value="confirmado">Realizado</option>
+        <option value="realizado">Vendido</option>
         <option value="nao_compareceu">Não compareceu</option>
         <option value="lead_frio">Lead Frio</option>
       </select>
@@ -655,8 +656,8 @@ const STATUS = {
   pendente:       { l:'Novo Lead',      cls:'s-pd', c:'var(--txt2)' },
   em_contato:     { l:'Em contato',     cls:'s-ec', c:'#5856D6'     },
   agendado:       { l:'Agendado',       cls:'s-ag', c:'var(--ind)'  },
-  confirmado:     { l:'Confirmado',     cls:'s-cf', c:'var(--grn)'  },
-  realizado:      { l:'Realizado',      cls:'s-rl', c:'var(--amb)'  },
+  confirmado:     { l:'Realizado',      cls:'s-cf', c:'var(--grn)'  },
+  realizado:      { l:'Vendido',        cls:'s-rl', c:'var(--amb)'  },
   nao_compareceu: { l:'Não compareceu', cls:'s-nc', c:'var(--red)'  },
   lead_frio:      { l:'Lead Frio',      cls:'s-lf', c:'#8E8E93'     },
 };
@@ -874,8 +875,8 @@ async function renderAgenda() {
     <div class="stats">
       <div class="stat-c"><div class="sv" style="color:var(--ind2)">${all.length}</div><div class="sl">Total</div></div>
       <div class="stat-c"><div class="sv">${all.filter(a=>a.status==='agendado').length}</div><div class="sl">Agendados</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--grn)">${all.filter(a=>a.status==='confirmado').length}</div><div class="sl">Confirmados</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--amb)">${all.filter(a=>a.status==='realizado').length}</div><div class="sl">Realizados</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--grn)">${all.filter(a=>a.status==='confirmado').length}</div><div class="sl">Realizados</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--amb)">${all.filter(a=>a.status==='realizado').length}</div><div class="sl">Vendidos</div></div>
       <div class="stat-c"><div class="sv" style="color:var(--red)">${all.filter(a=>a.status==='nao_compareceu').length}</div><div class="sl">Não compareceu</div></div>
     </div>
     <div class="filters">
@@ -892,6 +893,7 @@ async function renderAgenda() {
         <option value="">Todas as origens</option>
         ${Object.keys(ORIGINS).map(o => `<option>${o}</option>`).join('')}
       </select>
+      <button class="btn-s" onclick="exportCSV()" style="white-space:nowrap"><i class="ti ti-table-export"></i>Exportar CSV</button>
     </div>
     <div id="ag-list"></div>`;
   _filterAgenda();
@@ -1122,7 +1124,8 @@ async function openAppt(id) {
     document.getElementById('a-pgto').value    = a.pgto   || '';
     document.getElementById('a-obs').value     = a.obs    || '';
     document.getElementById('a-prox').value    = a.prox   || '';
-    const logs = await loadApptLogs(a.id);
+    const [logs, comments] = await Promise.all([loadApptLogs(a.id), loadComments(a.id)]);
+    drawComments(a.id, comments);
     const histEl = document.getElementById('appt-history');
     if (histEl) histEl.innerHTML = logs.length ? `
       <div class="sec-divider">Histórico</div>
@@ -1145,6 +1148,8 @@ async function openAppt(id) {
     document.getElementById('a-pgto').value   = '';
     const histEl = document.getElementById('appt-history');
     if (histEl) histEl.innerHTML = '';
+    const commEl = document.getElementById('appt-comments');
+    if (commEl) commEl.innerHTML = '';
   }
   document.getElementById('ov-appt').classList.add('on');
 }
@@ -1559,6 +1564,55 @@ function startRealtimeLeads() {
     .subscribe();
 }
 
+// ─── COMENTÁRIOS ─────────────────────────────────────────────────────────────
+async function loadComments(apptId) {
+  try {
+    const { data } = await sb.from('eye_comments')
+      .select('*').eq('appt_id', apptId).order('created_at');
+    return data || [];
+  } catch(e) { return []; }
+}
+
+function drawComments(apptId, comments) {
+  const el = document.getElementById('appt-comments');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="sec-divider">Comentários</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px" id="comment-list">
+      ${comments.length ? comments.map(c => `
+        <div style="background:var(--bg);border-radius:var(--rs);padding:9px 12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:12px;font-weight:700;color:${userColor(c.user_nome)}">${c.user_nome}</span>
+            <span style="font-size:10px;color:var(--txt3)">${fmtLogTime(c.created_at)}</span>
+          </div>
+          <div style="font-size:13px;color:var(--txt);line-height:1.45">${c.texto}</div>
+        </div>`).join('')
+      : `<div style="font-size:12px;color:var(--txt3);text-align:center;padding:8px">Nenhum comentário ainda</div>`}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input class="finput" id="comment-input" placeholder="Adicionar comentário…"
+        style="flex:1;margin:0;height:40px"
+        onkeydown="if(event.key==='Enter')addComment('${apptId}')">
+      <button class="btn-s p" style="height:40px;padding:0 14px" onclick="addComment('${apptId}')">
+        <i class="ti ti-send"></i>
+      </button>
+    </div>`;
+}
+
+async function addComment(apptId) {
+  const input = document.getElementById('comment-input');
+  const texto = (input?.value || '').trim();
+  if (!texto || !apptId) return;
+  input.value = '';
+  const { error } = await sb.from('eye_comments').insert({
+    id: uid(), appt_id: apptId, user_nome: CU.nome,
+    texto, created_at: new Date().toISOString(),
+  });
+  if (error) { toast('Erro ao salvar comentário', 'err'); return; }
+  const comments = await loadComments(apptId);
+  drawComments(apptId, comments);
+}
+
 // ─── LOG DE ALTERAÇÕES ────────────────────────────────────────────────────────
 async function logStatus(apptId, deStatus, paraStatus) {
   try {
@@ -1591,8 +1645,8 @@ const KB_COLS = [
   { id:'em_contato',     label:'Em contato',     color:'#5856D6'     },
   { id:'lead_frio',      label:'Lead Frio',      color:'#8E8E93'     },
   { id:'agendado',       label:'Agendado',       color:'var(--ind)'  },
-  { id:'confirmado',     label:'Confirmado',     color:'var(--grn)'  },
-  { id:'realizado',      label:'Realizado',      color:'var(--amb)'  },
+  { id:'confirmado',     label:'Realizado',      color:'var(--grn)'  },
+  { id:'realizado',      label:'Vendido',        color:'var(--amb)'  },
   { id:'nao_compareceu', label:'Não compareceu', color:'var(--red)'  },
 ];
 
@@ -1733,11 +1787,19 @@ async function renderInicio() {
   const pct  = Math.min(100, Math.round(realizedMonth.length / meta * 100));
 
   const funnel = [
-    { l:'Leads',       n:myAppts.length, bg:'#007AFF' },
-    { l:'Agendados',   n:myAppts.filter(a=>['agendado','confirmado','realizado'].includes(a.status)).length, bg:'#5B8FF9' },
-    { l:'Confirmados', n:myAppts.filter(a=>['confirmado','realizado'].includes(a.status)).length, bg:'#34C759' },
-    { l:'Realizados',  n:myAppts.filter(a=>a.status==='realizado').length, bg:'#FF9F0A' },
+    { l:'Leads',      n:myAppts.length, bg:'#007AFF' },
+    { l:'Agendados',  n:myAppts.filter(a=>['agendado','confirmado','realizado'].includes(a.status)).length, bg:'#5B8FF9' },
+    { l:'Realizados', n:myAppts.filter(a=>['confirmado','realizado'].includes(a.status)).length, bg:'#34C759' },
+    { l:'Vendidos',   n:myAppts.filter(a=>a.status==='realizado').length, bg:'#FF9F0A' },
   ];
+
+  const ranking = CU.role !== 'vendedor' ? vendedores().map(v => {
+    const va = appts.filter(a => a.vnd === v.nome);
+    const vendidos = va.filter(a => a.status === 'realizado').length;
+    const realizados = va.filter(a => a.status === 'confirmado').length;
+    return { nome: v.nome, vendidos, realizados, total: va.length,
+      conv: va.length > 0 ? Math.round(vendidos / va.length * 100) : 0 };
+  }).filter(v => v.total > 0).sort((a,b) => b.vendidos - a.vendidos || b.total - a.total) : [];
 
   const h = now.getHours();
   const grt = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
@@ -1754,7 +1816,7 @@ async function renderInicio() {
     <div class="kpi-grid">
       <div class="kpi-c" style="--kc:var(--ind)"><div class="kl">Total de leads</div><div class="kv" style="color:var(--ind)">${myAppts.length}</div></div>
       <div class="kpi-c" style="--kc:var(--amb)"><div class="kl">Agendamentos hoje</div><div class="kv" style="color:var(--amb)">${todayAppts.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Realizados no mês</div><div class="kv" style="color:var(--grn)">${realizedMonth.length}</div></div>
+      <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Vendidos no mês</div><div class="kv" style="color:var(--grn)">${realizedMonth.length}</div></div>
       <div class="kpi-c" style="--kc:#9b59b6"><div class="kl">Potencial R$</div><div class="kv" style="color:#9b59b6;font-size:${potential>=1000?'20':'26'}px">${potFmt}</div></div>
     </div>
 
@@ -1764,7 +1826,7 @@ async function renderInicio() {
         ${hotLeads.length || confirmedToday.length || realizedToday.length ? `
           ${hotLeads.length ? `<div class="alert-item"><div class="alert-dot" style="background:var(--red)"></div><div class="alert-txt">Leads sem resposta</div><div class="alert-count" style="color:var(--red)">${hotLeads.length}</div></div>` : ''}
           ${confirmedToday.length ? `<div class="alert-item"><div class="alert-dot" style="background:var(--grn)"></div><div class="alert-txt">Visitas confirmadas</div><div class="alert-count" style="color:var(--grn)">${confirmedToday.length}</div></div>` : ''}
-          ${realizedToday.length ? `<div class="alert-item"><div class="alert-dot" style="background:var(--amb)"></div><div class="alert-txt">Vendas realizadas hoje</div><div class="alert-count" style="color:var(--amb)">${realizedToday.length}</div></div>` : ''}
+          ${realizedToday.length ? `<div class="alert-item"><div class="alert-dot" style="background:var(--amb)"></div><div class="alert-txt">Vendidos hoje</div><div class="alert-count" style="color:var(--amb)">${realizedToday.length}</div></div>` : ''}
         ` : `<div class="alert-empty">✅ Tudo tranquilo hoje</div>`}
       </div>
 
@@ -1786,6 +1848,30 @@ async function renderInicio() {
       </div>
     </div>
 
+    ${ranking.length ? `<div class="dash-box">
+      <div class="dash-box-title">Ranking de vendedores</div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        ${ranking.map((v,i) => {
+          const barW = ranking[0].vendidos > 0 ? Math.round(v.vendidos/ranking[0].vendidos*100) : 0;
+          const medals = ['🥇','🥈','🥉'];
+          return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:var(--rs)">
+            <div style="font-size:16px;width:22px;text-align:center">${medals[i]||'#'+(i+1)}</div>
+            <div class="ti-av" style="background:${userColor(v.nome)};width:30px;height:30px;font-size:10px">${initials(v.nome)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600">${v.nome}</div>
+              <div style="height:4px;background:var(--bg2);border-radius:2px;margin-top:4px;overflow:hidden">
+                <div style="height:100%;width:${barW}%;background:var(--grn);border-radius:2px;transition:.4s"></div>
+              </div>
+            </div>
+            <div style="text-align:right;flex:none">
+              <div style="font-size:16px;font-weight:800;color:var(--grn)">${v.vendidos}</div>
+              <div style="font-size:10px;color:var(--txt3)">${v.realizados} realiz. · ${v.conv}%</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+
     <div class="dash-box">
       <div class="dash-box-title">Hoje · ${todayAppts.length} agendamento${todayAppts.length!==1?'s':''}</div>
       ${todayAppts.length ? `<div class="today-list">
@@ -1802,6 +1888,24 @@ async function renderInicio() {
         }).join('')}
       </div>` : `<div class="alert-empty" style="padding:16px 0">Nenhum agendamento para hoje</div>`}
     </div>`;
+}
+
+function exportCSV() {
+  const appts = CU.role === 'vendedor' ? _apptsCache.filter(a => a.vnd === CU.nome) : [..._apptsCache];
+  const headers = ['Nome','Telefone','Data','Horário','Vendedor','Origem','Status','Modelo','Valor','Pagamento','Observações','Próximo passo'];
+  const rows = appts.map(a => [
+    a.cli, a.tel, a.data, a.hora, a.vnd, a.orig,
+    fmtStatus(a.status).l, a.modelo, a.valor, a.pgto, a.obs, a.prox
+  ].map(v => `"${(v||'').replace(/"/g,'""')}"`));
+  const csv = [headers.map(h=>`"${h}"`), ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type:'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `eye-leads-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Exportado com sucesso!');
 }
 
 function saveMeta(val) {
