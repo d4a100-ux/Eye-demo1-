@@ -121,6 +121,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .rb-ger{color:#CC7A00;background:var(--ambg);}
 .rb-sdr{color:#1A8C34;background:var(--grng);}
 .rb-vnd{color:var(--ind);background:var(--indg);}
+.rb-mst{color:#fff;background:#1C1C1E;}
 .top-right{display:flex;align-items:center;gap:8px;margin-left:auto;}
 .top-username{font-size:13px;color:var(--txt2);font-weight:500;}
 .btn-logout{background:transparent;border:0.5px solid var(--bdr2);color:var(--txt2);border-radius:var(--rs);padding:6px 11px;font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.15s;}
@@ -342,6 +343,31 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .btn-cancel{height:46px;background:var(--bg2);border:0.5px solid var(--bdr2);color:var(--txt2);border-radius:var(--rs);padding:0 18px;font-family:inherit;font-size:14px;cursor:pointer;font-weight:500;}
 .sec-divider{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin:14px 0 10px;padding-top:14px;border-top:0.5px solid var(--bdr);}
 
+/* ── ORGANOGRAMA (journey stepper) ── */
+.journey{display:flex;align-items:center;gap:0;margin:14px 0 4px;overflow-x:auto;padding:4px 0;}
+.journey-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:70px;}
+.journey-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--bdr2);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:.2s;flex:none;}
+.journey-dot.done{background:var(--grn);border-color:var(--grn);color:#fff;}
+.journey-dot.curr{background:var(--ind);border-color:var(--ind);color:#fff;box-shadow:0 0 0 4px var(--indg);}
+.journey-dot.bad{background:var(--red);border-color:var(--red);color:#fff;}
+.journey-lbl{font-size:9px;font-weight:600;color:var(--txt3);text-align:center;line-height:1.2;}
+.journey-lbl.curr{color:var(--ind);}
+.journey-lbl.done{color:var(--grn);}
+.journey-lbl.bad{color:var(--red);}
+.journey-line{flex:1;height:2px;background:var(--bdr2);min-width:10px;}
+.journey-line.done{background:var(--grn);}
+
+/* ── CONFIG PANEL ── */
+.cfg-section{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:18px 20px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.cfg-section-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt2);margin-bottom:14px;}
+.cfg-origin-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--bdr);}
+.cfg-origin-row:last-child{border:none;}
+.cfg-origin-emoji{font-size:18px;width:30px;text-align:center;}
+.cfg-origin-name{flex:1;font-size:13px;font-weight:600;}
+.cfg-vendor-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--bdr);}
+.cfg-vendor-row:last-child{border:none;}
+.cfg-goal-input{width:64px;height:32px;text-align:center;font-family:'Inter',sans-serif;font-weight:700;font-size:14px;background:var(--bg);border:0.5px solid var(--bdr2);border-radius:var(--rs);color:var(--txt);}
+
 /* ── EMPTY ── */
 .empty-st{text-align:center;padding:50px 20px;color:var(--txt3);}
 .empty-st i{font-size:44px;display:block;margin-bottom:10px;opacity:.35;}
@@ -373,9 +399,24 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   .mob-nav{display:flex;}
   .tab-nav{display:none;}
   .main{padding:14px 13px 82px;}
-  .topbar{padding:0 13px;}
+  .topbar{padding:0 13px;gap:6px;}
   .frow{grid-template-columns:1fr;}
   .top-username{display:none;}
+  .btn-new{padding:7px 10px;font-size:12px;}
+  .btn-new i{font-size:14px;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .dash-row{grid-template-columns:1fr;}
+  .modal{padding:20px 16px 36px;}
+  .conv-wrap{grid-template-columns:1fr;height:calc(100vh - 160px);}
+  .ac-fields{grid-template-columns:1fr 1fr;}
+  .kanban-board{gap:8px;}
+  .kb-col{width:220px;}
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .journey{gap:0;}
+  .journey-step{min-width:52px;}
+  .journey-lbl{font-size:8px;}
+  .journey-dot{width:24px;height:24px;font-size:10px;}
+  .cfg-section{padding:14px 14px;}
 }
 </style>
 </head>
@@ -442,6 +483,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <div class="view" id="v-origem"></div>
     <div class="view" id="v-negoc"></div>
     <div class="view" id="v-users"></div>
+    <div class="view" id="v-config"></div>
   </div>
 
   <nav class="mob-nav" id="mob-nav"></nav>
@@ -506,6 +548,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
       <button class="btn-cancel" onclick="closeAppt()">Cancelar</button>
       <button class="btn-prim" onclick="saveAppt()">Salvar</button>
     </div>
+    <div id="appt-journey"></div>
     <div id="appt-comments"></div>
     <div id="appt-history"></div>
   </div>
@@ -564,6 +607,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
           <option value="vendedor">Vendedor</option>
           <option value="sdr">SDR</option>
           <option value="gerencia">Gerência</option>
+          <option value="master">Master</option>
         </select>
       </div>
     </div>
@@ -670,7 +714,7 @@ const ORIGINS = {
   'OLX':                '🛒',
   'Outros':             '📌',
 };
-const ROLE_LABELS = { gerencia:'Gerência', sdr:'SDR', vendedor:'Vendedor' };
+const ROLE_LABELS = { gerencia:'Gerência', sdr:'SDR', vendedor:'Vendedor', master:'Master' };
 
 // ─── SEED ────────────────────────────────────────────────────────────────────
 async function initUsers() {
@@ -759,7 +803,7 @@ function showApp() {
   document.getElementById('top-username').textContent = CU.nome;
   const rb = document.getElementById('top-role-badge');
   rb.textContent = ROLE_LABELS[CU.role] || CU.role;
-  rb.className = 'top-role-badge ' + (CU.role === 'gerencia' ? 'rb-ger' : CU.role === 'sdr' ? 'rb-sdr' : 'rb-vnd');
+  rb.className = 'top-role-badge ' + (CU.role === 'master' ? 'rb-mst' : CU.role === 'gerencia' ? 'rb-ger' : CU.role === 'sdr' ? 'rb-sdr' : 'rb-vnd');
   buildNav();
   goTab('inicio');
   setTimeout(showHotLeadNotif, 8000);
@@ -788,14 +832,17 @@ function tabs() {
     { id:'agenda', icon:'ti-calendar',       label:'Agenda' },
     { id:'cal',    icon:'ti-calendar-month', label:'Calendário' },
   ];
-  if (CU.role === 'gerencia' || CU.role === 'sdr') {
+  if (CU.role === 'gerencia' || CU.role === 'sdr' || CU.role === 'master') {
     base.push(
       { id:'origem', icon:'ti-chart-pie',  label:'Origens' },
       { id:'negoc',  icon:'ti-handshake',  label:'Negociações' },
     );
   }
-  if (CU.role === 'gerencia') {
+  if (CU.role === 'gerencia' || CU.role === 'master') {
     base.push({ id:'users', icon:'ti-users-group', label:'Usuários' });
+  }
+  if (CU.role === 'master') {
+    base.push({ id:'config', icon:'ti-settings', label:'Config' });
   }
   return base;
 }
@@ -812,7 +859,7 @@ function goTab(id) {
   const v = document.getElementById('v-' + id);
   if (v) v.classList.add('on');
   document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === id));
-  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, users:renderUsers };
+  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, users:renderUsers, config:renderConfig };
   if (renders[id]) renders[id]();
 }
 
@@ -821,7 +868,9 @@ function uid()        { return Date.now() + '-' + Math.random().toString(36).sli
 function fmtDate(d)   { if (!d) return '—'; const [y,m,dd] = d.split('-'); return `${dd}/${m}/${y}`; }
 function initials(n)  { return (n||'?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase(); }
 function userColor(nome) { return (_usersCache||[]).find(x => x.nome === nome)?.cor || '#5B6EFF'; }
-function canEdit(a)   { return CU.role === 'gerencia' || CU.role === 'sdr' || a.vnd === CU.nome; }
+function canEdit(a)   { return CU.role === 'gerencia' || CU.role === 'sdr' || CU.role === 'master' || a.vnd === CU.nome; }
+function isMgr()      { return CU.role === 'gerencia' || CU.role === 'master'; }
+function canDelete()  { return CU.role === 'gerencia' || CU.role === 'sdr' || CU.role === 'master'; }
 function fmtStatus(s) { return STATUS[s] || STATUS.pendente; }
 function vendedores() { return (_usersCache||[]).filter(u => u.role === 'vendedor'); }
 function loading(el)  { el.innerHTML = `<div class="loading-st"><i class="ti ti-loader-2"></i><p>Carregando…</p></div>`; }
@@ -858,7 +907,7 @@ function apptCard(a, opts = {}) {
     ${opts.noActs ? '' : canEdit(a) ? `<div class="ac-acts">
       <button class="btn-s p" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i>${CU.role === 'vendedor' ? 'Atualizar' : 'Negociação'}</button>
       ${CU.role !== 'vendedor' ? `<button class="btn-s" onclick="openAppt('${a.id}')"><i class="ti ti-edit"></i>Editar</button>` : ''}
-      ${CU.role === 'gerencia' ? `<button class="btn-s d" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button>` : ''}
+      ${canDelete() ? `<button class="btn-s d" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button>` : ''}
     </div>` : ''}
   </div>`;
 }
@@ -1060,7 +1109,7 @@ async function renderUsers() {
           <div class="ur-av" style="background:${u.cor}">${initials(u.nome)}</div>
           <div class="ur-info">
             <b>${u.nome}</b>
-            <div class="ur-login">@${u.login} · <span class="tag ${u.role==='gerencia'?'s-rl':u.role==='sdr'?'s-cf':'s-ag'}">${ROLE_LABELS[u.role]}</span></div>
+            <div class="ur-login">@${u.login} · <span class="tag ${u.role==='master'?'s-pd':u.role==='gerencia'?'s-rl':u.role==='sdr'?'s-cf':'s-ag'}">${ROLE_LABELS[u.role]||u.role}</span></div>
           </div>
           <div class="ur-acts">
             ${u.id !== CU.id ? `<button class="btn-s" onclick="openUser('${u.id}')"><i class="ti ti-edit"></i>Editar</button>` : ''}
@@ -1126,6 +1175,7 @@ async function openAppt(id) {
     document.getElementById('a-prox').value    = a.prox   || '';
     const [logs, comments] = await Promise.all([loadApptLogs(a.id), loadComments(a.id)]);
     drawComments(a.id, comments);
+    drawJourney(a.status, logs);
     const histEl = document.getElementById('appt-history');
     if (histEl) histEl.innerHTML = logs.length ? `
       <div class="sec-divider">Histórico</div>
@@ -1150,6 +1200,8 @@ async function openAppt(id) {
     if (histEl) histEl.innerHTML = '';
     const commEl = document.getElementById('appt-comments');
     if (commEl) commEl.innerHTML = '';
+    const journeyEl = document.getElementById('appt-journey');
+    if (journeyEl) journeyEl.innerHTML = '';
   }
   document.getElementById('ov-appt').classList.add('on');
 }
@@ -1700,13 +1752,23 @@ function _drawKanban() {
   const q  = (document.getElementById('kb-q')?.value || '').toLowerCase();
   if (vf) appts = appts.filter(a => a.vnd === vf);
   if (q)  appts = appts.filter(a => (a.cli+' '+(a.tel||'')).toLowerCase().includes(q));
+  const hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
+  const visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
   document.getElementById('kb-board').innerHTML =
-    `<div class="kanban-board">${KB_COLS.map(col => {
+    `<div class="kanban-board">${visibleCols.map(col => {
       const cards = appts.filter(a => a.status === col.id);
+      const totalVal = cards.reduce((s,a) => {
+        const n = parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));
+        return s + (isNaN(n) ? 0 : n);
+      }, 0);
+      const valStr = totalVal > 0 ? (totalVal >= 1000 ? `R$${(totalVal/1000).toFixed(0)}k` : `R$${Math.round(totalVal)}`) : '';
       return `<div class="kb-col">
         <div class="kb-head" style="--kh-c:${col.color}">
           <span class="kb-head-lbl">${col.label}</span>
-          <span class="kb-count">${cards.length}</span>
+          <div style="display:flex;gap:5px;align-items:center">
+            ${valStr ? `<span style="font-size:10px;color:var(--grn);font-weight:700">${valStr}</span>` : ''}
+            <span class="kb-count">${cards.length}</span>
+          </div>
         </div>
         <div class="kb-body"
           ondragover="kbDragOver(event)"
@@ -1952,6 +2014,142 @@ function closeHotLead() {
   clearTimeout(notif._t);
   notif.classList.remove('show');
   notif.classList.add('hide');
+}
+
+// ─── JOURNEY STEPPER ──────────────────────────────────────────────────────────
+function drawJourney(currentStatus, logs) {
+  const el = document.getElementById('appt-journey');
+  if (!el) return;
+  const steps = [
+    { key:'pendente',       icon:'🔔', label:'Novo Lead'  },
+    { key:'em_contato',     icon:'📞', label:'Em contato' },
+    { key:'agendado',       icon:'📅', label:'Agendado'   },
+    { key:'confirmado',     icon:'✅', label:'Realizado'  },
+    { key:'realizado',      icon:'🏆', label:'Vendido'    },
+  ];
+  const badKeys = ['nao_compareceu','lead_frio'];
+  const isBad = badKeys.includes(currentStatus);
+  const currIdx = steps.findIndex(s => s.key === currentStatus);
+  const logMap = {};
+  (logs||[]).forEach(l => { logMap[l.para_status] = l.created_at; });
+
+  let html = '<div class="sec-divider">Jornada do lead</div><div class="journey">';
+  steps.forEach((s, i) => {
+    const isDone = currIdx > i || (!isBad && s.key === currentStatus);
+    const isCurr = !isBad && s.key === currentStatus;
+    const cls = isCurr ? 'curr' : isDone ? 'done' : '';
+    const ts = logMap[s.key] ? `<div style="font-size:8px;color:var(--txt3);margin-top:1px">${fmtLogTime(logMap[s.key]).split(' ')[0]}</div>` : '';
+    html += `<div class="journey-step">
+      <div class="journey-dot ${cls}">${isCurr||isDone ? s.icon : ''}</div>
+      <div class="journey-lbl ${cls}">${s.label}${ts}</div>
+    </div>`;
+    if (i < steps.length - 1) html += `<div class="journey-line ${currIdx > i && !isBad ? 'done' : ''}"></div>`;
+  });
+  if (isBad) {
+    const badLabel = currentStatus === 'nao_compareceu' ? 'Não compareceu' : 'Lead Frio';
+    html += `<div class="journey-line"></div><div class="journey-step">
+      <div class="journey-dot bad">${currentStatus === 'nao_compareceu' ? '❌' : '🥶'}</div>
+      <div class="journey-lbl bad">${badLabel}</div>
+    </div>`;
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ─── CONFIG (master only) ─────────────────────────────────────────────────────
+function getOrigins() {
+  try { return JSON.parse(localStorage.getItem('eye_origins')) || null; } catch(e) { return null; }
+}
+function activeOrigins() { return getOrigins() || ORIGINS; }
+
+function renderConfig() {
+  if (CU.role !== 'master') return;
+  const el = document.getElementById('v-config');
+  const origins = activeOrigins();
+  const vnds = vendedores();
+  const goals = JSON.parse(localStorage.getItem('eye_goals') || '{}');
+
+  el.innerHTML = `
+    <div class="sec-lbl">Configurações do sistema</div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Origens de leads</div>
+      <div id="cfg-origins-list">
+        ${Object.entries(origins).map(([name, emoji]) => `
+          <div class="cfg-origin-row">
+            <span class="cfg-origin-emoji">${emoji}</span>
+            <span class="cfg-origin-name">${name}</span>
+            <button class="btn-s d" onclick="removeOrigin('${name}')"><i class="ti ti-trash"></i></button>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+        <input class="finput" id="cfg-orig-emoji" placeholder="📌" style="width:56px;margin:0;text-align:center">
+        <input class="finput" id="cfg-orig-name" placeholder="Nome da origem" style="flex:1;margin:0">
+        <button class="btn-s p" onclick="addOrigin()"><i class="ti ti-plus"></i>Adicionar</button>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Meta mensal por vendedor</div>
+      ${vnds.length ? vnds.map(v => `
+        <div class="cfg-vendor-row">
+          <div class="ti-av" style="background:${v.cor};width:30px;height:30px;font-size:10px">${initials(v.nome)}</div>
+          <div style="flex:1;font-size:13px;font-weight:600">${v.nome}</div>
+          <span style="font-size:12px;color:var(--txt2);margin-right:6px">Meta:</span>
+          <input class="cfg-goal-input" type="number" min="1" value="${goals[v.nome]||10}"
+            onchange="saveGoal('${v.nome}',this.value)">
+        </div>`).join('')
+      : '<div style="color:var(--txt3);font-size:13px">Nenhum vendedor cadastrado</div>'}
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Colunas do Kanban</div>
+      ${KB_COLS.map(col => {
+        const hidden = (JSON.parse(localStorage.getItem('eye_kb_hidden')||'[]')).includes(col.id);
+        return `<div class="cfg-vendor-row">
+          <div style="width:10px;height:10px;border-radius:50%;background:${col.color};flex:none"></div>
+          <div style="flex:1;font-size:13px;font-weight:600;margin-left:8px">${col.label}</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);cursor:pointer">
+            <input type="checkbox" ${!hidden?'checked':''} onchange="toggleKbCol('${col.id}',this.checked)">
+            Visível
+          </label>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function addOrigin() {
+  const emoji = document.getElementById('cfg-orig-emoji').value.trim() || '📌';
+  const name  = document.getElementById('cfg-orig-name').value.trim();
+  if (!name) { toast('Digite o nome da origem','err'); return; }
+  const origins = { ...activeOrigins(), [name]: emoji };
+  localStorage.setItem('eye_origins', JSON.stringify(origins));
+  toast('Origem adicionada');
+  renderConfig();
+}
+
+function removeOrigin(name) {
+  if (!confirm(`Remover origem "${name}"?`)) return;
+  const origins = { ...activeOrigins() };
+  delete origins[name];
+  localStorage.setItem('eye_origins', JSON.stringify(origins));
+  toast('Origem removida','warn');
+  renderConfig();
+}
+
+function saveGoal(nome, val) {
+  const goals = JSON.parse(localStorage.getItem('eye_goals') || '{}');
+  goals[nome] = Math.max(1, parseInt(val) || 10);
+  localStorage.setItem('eye_goals', JSON.stringify(goals));
+  toast('Meta salva');
+}
+
+function toggleKbCol(id, visible) {
+  let hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
+  if (visible) hidden = hidden.filter(x => x !== id);
+  else if (!hidden.includes(id)) hidden.push(id);
+  localStorage.setItem('eye_kb_hidden', JSON.stringify(hidden));
+  toast('Kanban atualizado');
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
