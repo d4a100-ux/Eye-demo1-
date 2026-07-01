@@ -45,6 +45,7 @@
     <div id="unit-selector-wrap" style="display:none;align-items:center"></div>
     <div class="top-right">
       <button class="btn-new" onclick="openLead()"><i class="ti ti-plus"></i>Novo Lead</button>
+      <button class="btn-new" style="background:var(--grn);box-shadow:0 2px 8px rgba(52,199,89,.25)" onclick="openAppt()"><i class="ti ti-calendar-plus"></i>Agendamento</button>
       <span class="top-username" id="top-username"></span>
       <button class="btn-logout" onclick="doLogout()"><i class="ti ti-logout"></i>Sair</button>
     </div>
@@ -63,6 +64,7 @@
     <div class="view" id="v-origem"></div>
     <div class="view" id="v-negoc"></div>
     <div class="view" id="v-users"></div>
+    <div class="view" id="v-base"></div>
     <div class="view" id="v-config"></div>
   </div>
 
@@ -291,15 +293,52 @@
         </select>
       </div>
       <div class="fg">
-        <label for="u-unidade">Unidade</label>
+        <label for="u-unidade">Unidade principal (login)</label>
         <select class="finput fi-sel" id="u-unidade">
-          <option value="">Sem unidade específica</option>
+          <option value="">Sem unidade principal</option>
         </select>
       </div>
+    </div>
+    <div class="fg">
+      <label>Unidades adicionais <span style="font-size:11px;color:var(--txt3);font-weight:400">(aparece no dropdown dessas unidades)</span></label>
+      <div id="u-unidades-extra" style="display:flex;flex-direction:column;gap:2px;padding:10px 12px;background:var(--bg);border-radius:var(--rs);border:0.5px solid var(--bdr)"></div>
     </div>
     <div class="modal-acts">
       <button class="btn-cancel" onclick="closeUser()">Cancelar</button>
       <button class="btn-prim" onclick="saveUser()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ MODAL: TIMELINE -->
+<div class="overlay" id="ov-timeline">
+  <div class="modal">
+    <div class="modal-hd">
+      <div>
+        <h3 id="tl-title"></h3>
+        <div id="tl-status" style="margin-top:4px"></div>
+      </div>
+      <button class="mc" onclick="closeTimeline()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="tl-appt-id">
+    <div id="tl-info"></div>
+    <div id="tl-journey"></div>
+    <div class="sec-divider">Linha do tempo</div>
+    <div id="tl-timeline" style="max-height:280px;overflow-y:auto"></div>
+    <div class="sec-divider">Comentários</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <input class="finput" id="tl-comment-input" placeholder="Adicionar comentário…"
+        style="flex:1;margin:0;height:40px"
+        onkeydown="if(event.key==='Enter')addTlComment()">
+      <button class="btn-s p" style="height:40px;padding:0 14px" onclick="addTlComment()">
+        <i class="ti ti-send"></i>
+      </button>
+    </div>
+    <div class="modal-acts" style="margin-top:14px">
+      <button class="btn-cancel" onclick="closeTimeline()">Fechar</button>
+      <button class="btn-prim" onclick="closeTimeline();openNeg(document.getElementById('tl-appt-id').value)">
+        <i class="ti ti-pencil"></i> Atualizar lead
+      </button>
     </div>
   </div>
 </div>
@@ -337,6 +376,7 @@
 <script src="dashboard.js"></script>
 <script src="users.js"></script>
 <script src="config-tab.js"></script>
+<script src="base.js"></script>
 <script src="main.js"></script>
 
 <script>

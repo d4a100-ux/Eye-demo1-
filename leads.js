@@ -182,22 +182,135 @@ async function renderOrigem() {
     <div class="appt-list">${arr.map(a=>apptCard(a,{noActs:true})).join('')}</div>`).join('')}`;
 }
 
-// ─── NEGOCIAÇÕES ──────────────────────────────────────────────────────────────
+// ─── PIPELINE (negociações) ───────────────────────────────────────────────────
 async function renderNegoc() {
-  const el=document.getElementById('v-negoc');
+  const el = document.getElementById('v-negoc');
   loading(el);
-  let appts=(await getAppts()).filter(a=>a.modelo||a.valor||a.pgto||a.obs);
-  if(CU.role==='vendedor') appts=appts.filter(a=>a.vnd===CU.nome);
-  const totalVal=appts.reduce((s,a)=>{const n=parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));return s+(isNaN(n)?0:n);},0);
-  el.innerHTML=`
+  let appts = await getAppts();
+  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
+  const active = appts.filter(a => ['pendente','em_contato','agendado','confirmado'].includes(a.status));
+  const totalVal = active.reduce((s,a)=>{const n=parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));return s+(isNaN(n)?0:n);},0);
+  el.innerHTML = `
     <div class="stats">
-      <div class="stat-c"><div class="sv">${appts.length}</div><div class="sl">Negociações</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--grn)">R$ ${Math.round(totalVal).toLocaleString('pt-BR')}</div><div class="sl">Potencial total</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--amb)">${appts.filter(a=>a.pgto==='À vista').length}</div><div class="sl">À vista</div></div>
-      <div class="stat-c"><div class="sv">${appts.filter(a=>(a.pgto||'').toLowerCase().includes('financ')).length}</div><div class="sl">Financiamento</div></div>
+      <div class="stat-c"><div class="sv">${active.length}</div><div class="sl">Leads ativos</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--grn)">R$${Math.round(totalVal).toLocaleString('pt-BR')}</div><div class="sl">Potencial</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--amb)">${active.filter(a=>a.pgto==='À vista').length}</div><div class="sl">À vista</div></div>
+      <div class="stat-c"><div class="sv">${active.filter(a=>(a.pgto||'').toLowerCase().includes('financ')).length}</div><div class="sl">Financiamento</div></div>
     </div>
-    <div class="sec-lbl">Em andamento</div>
-    ${appts.length?`<div class="appt-list">${appts.map(a=>apptCard(a)).join('')}</div>`:`<div class="empty-st"><i class="ti ti-handshake"></i><p>Nenhuma negociação registrada.</p></div>`}`;
+    <div class="sec-lbl">Leads em andamento<span>Clique em "Histórico" para ver todos os movimentos</span></div>
+    ${active.length
+      ? `<div class="appt-list">${active.sort((a,b)=>(a.em||'')<(b.em||'')?1:-1).map(pipelineCard).join('')}</div>`
+      : `<div class="empty-st"><i class="ti ti-handshake"></i><p>Nenhum lead ativo no pipeline.</p></div>`}`;
+}
+
+function pipelineCard(a) {
+  const sm = fmtStatus(a.status);
+  const ac = userColor(a.vnd);
+  const lastUpd = a.em ? fmtLogTime(a.em) : '—';
+  return `<div class="ac" style="--c:${sm.c}">
+    <div class="ac-head">
+      <div class="ac-av" style="background:${ac}">${initials(a.vnd)}</div>
+      <div class="ac-info">
+        <div class="ac-name">${a.cli}<span class="tag ${sm.cls}">${sm.l}</span></div>
+        <div class="ac-sub">
+          <span><i class="ti ti-user"></i>${a.vnd}</span>
+          ${a.tel?`<span><i class="ti ti-phone"></i>${a.tel}</span>`:''}
+          ${a.orig?`<span><i class="ti ti-map-pin"></i>${a.orig}</span>`:''}
+        </div>
+      </div>
+    </div>
+    ${a.modelo||a.valor?`<div class="ac-fields">
+      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${a.modelo}</div></div>`:''}
+      ${a.valor?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${a.valor}</div></div>`:''}
+      ${a.pgto?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${a.pgto}</div></div>`:''}
+    </div>`:''}
+    ${a.obs?`<div class="ac-neg"><div class="neg-lbl">Negociação</div><div>${a.obs}</div>${a.prox?`<div class="next"><i class="ti ti-arrow-right" style="font-size:12px;vertical-align:-1px"></i> ${a.prox}</div>`:''}</div>`:''}
+    <div class="ac-acts" style="justify-content:space-between;align-items:center;flex-wrap:wrap">
+      <span style="font-size:11px;color:var(--txt3)"><i class="ti ti-clock" style="vertical-align:-1px"></i> ${lastUpd}</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn-s" onclick="openLeadTimeline('${a.id}')"><i class="ti ti-timeline"></i>Histórico</button>
+        <button class="btn-s p" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i>Atualizar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── TIMELINE DE LEAD ─────────────────────────────────────────────────────────
+async function openLeadTimeline(id) {
+  const a = _apptsCache.find(x => x.id === id);
+  if (!a) return;
+  const [logs, comments] = await Promise.all([loadApptLogs(id), loadComments(id)]);
+  const sm = fmtStatus(a.status);
+  const ac = userColor(a.vnd);
+
+  const events = [
+    ...logs.map(l => ({ type:'status', ts:l.created_at, user:l.user_nome, de:l.de_status, para:l.para_status })),
+    ...comments.map(c => ({ type:'comment', ts:c.created_at, user:c.user_nome, texto:c.texto }))
+  ].sort((a,b) => a.ts < b.ts ? -1 : 1);
+
+  document.getElementById('tl-title').textContent = a.cli;
+  document.getElementById('tl-status').innerHTML = `<span class="tag ${sm.cls}">${sm.l}</span>`;
+  document.getElementById('tl-info').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:0.5px solid var(--bdr);margin-bottom:14px">
+      <div class="ac-av" style="background:${ac};width:40px;height:40px;font-size:14px">${initials(a.vnd)}</div>
+      <div>
+        <div style="font-weight:700;font-size:15px">${a.cli}</div>
+        <div style="font-size:12px;color:var(--txt2);margin-top:3px">${[a.vnd,a.tel,a.orig].filter(Boolean).join(' · ')}</div>
+      </div>
+    </div>
+    ${a.modelo||a.valor?`<div class="ac-fields" style="margin-bottom:14px">
+      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${a.modelo}</div></div>`:''}
+      ${a.valor?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${a.valor}</div></div>`:''}
+      ${a.pgto?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${a.pgto}</div></div>`:''}
+    </div>`:''}`;
+
+  drawJourney(a.status, logs, document.getElementById('tl-journey'));
+
+  document.getElementById('tl-timeline').innerHTML = events.length
+    ? events.map(ev => {
+        if (ev.type === 'status') {
+          const from = fmtStatus(ev.de), to = fmtStatus(ev.para);
+          return `<div class="tl-item">
+            <div class="tl-dot" style="background:${to.c}"><i class="ti ti-arrow-right" style="font-size:10px;color:#fff"></i></div>
+            <div class="tl-body">
+              <div class="tl-user">${ev.user}</div>
+              <div class="tl-action">
+                <span class="tag ${from.cls}" style="font-size:10px">${from.l}</span>
+                <i class="ti ti-chevron-right" style="font-size:11px;color:var(--txt3)"></i>
+                <span class="tag ${to.cls}" style="font-size:10px">${to.l}</span>
+              </div>
+              <div class="tl-time">${fmtLogTime(ev.ts)}</div>
+            </div>
+          </div>`;
+        } else {
+          return `<div class="tl-item">
+            <div class="tl-dot" style="background:var(--ind)"><i class="ti ti-message" style="font-size:10px;color:#fff"></i></div>
+            <div class="tl-body">
+              <div class="tl-user">${ev.user}</div>
+              <div class="tl-text">${ev.texto}</div>
+              <div class="tl-time">${fmtLogTime(ev.ts)}</div>
+            </div>
+          </div>`;
+        }
+      }).join('')
+    : `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:13px">Nenhuma movimentação registrada ainda.</div>`;
+
+  document.getElementById('tl-appt-id').value = id;
+  document.getElementById('ov-timeline').classList.add('on');
+}
+
+function closeTimeline() { document.getElementById('ov-timeline').classList.remove('on'); }
+
+async function addTlComment() {
+  const id = document.getElementById('tl-appt-id').value;
+  const input = document.getElementById('tl-comment-input');
+  const texto = (input?.value || '').trim();
+  if (!texto || !id) return;
+  input.value = '';
+  const { error } = await sb.from('eye_comments').insert({ id:uid(), appt_id:id, user_nome:CU.nome, texto, created_at:new Date().toISOString() });
+  if (error) { toast('Erro ao salvar', 'err'); return; }
+  toast('Comentário adicionado');
+  await openLeadTimeline(id);
 }
 
 // ─── MODAL NOVO LEAD ──────────────────────────────────────────────────────────
@@ -387,8 +500,8 @@ async function loadApptLogs(apptId){
 }
 
 // ─── JOURNEY STEPPER ──────────────────────────────────────────────────────────
-function drawJourney(currentStatus,logs){
-  const el=document.getElementById('appt-journey');if(!el)return;
+function drawJourney(currentStatus, logs, targetEl) {
+  const el = targetEl || document.getElementById('appt-journey'); if (!el) return;
   const steps=[
     {key:'pendente',  icon:'🔔',label:'Novo Lead'},
     {key:'em_contato',icon:'📞',label:'Em negoc.' },

@@ -1,4 +1,5 @@
 let _kbVndFilter = '';
+let _kbDragId = null;
 
 async function renderCrm() {
   const el = document.getElementById('v-crm');
@@ -14,7 +15,7 @@ async function renderCrm() {
       <input class="fi fi-search" style="height:34px" id="kb-q" placeholder="Buscar cliente…" oninput="_drawKanban()">
       ${vndOpts}
     </div>
-    <div id="kb-board"></div>`;
+    <div class="kb-board-wrap"><div id="kb-board"></div></div>`;
   _drawKanban();
 }
 
@@ -24,66 +25,77 @@ function _drawKanban() {
   const vf = document.getElementById('kb-vnd-f')?.value || _kbVndFilter;
   const q  = (document.getElementById('kb-q')?.value || '').toLowerCase();
   if (vf) appts = appts.filter(a => a.vnd === vf);
-  if (q)  appts = appts.filter(a => (a.cli+' '+(a.tel||'')).toLowerCase().includes(q));
-  const hidden    = JSON.parse(localStorage.getItem('eye_kb_hidden')    || '[]');
-  const collapsed = JSON.parse(localStorage.getItem('eye_kb_collapsed') || '[]');
+  if (q)  appts = appts.filter(a => (a.cli + ' ' + (a.tel||'')).toLowerCase().includes(q));
+  const hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
   const visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
 
-  let html = '<div class="kb-list-board">';
+  let html = '<div class="kb-board">';
   visibleCols.forEach(col => {
     const cards = appts.filter(a => a.status === col.id);
-    const totalVal = cards.reduce((s,a) => {
+    const totalVal = cards.reduce((s, a) => {
       const n = parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));
-      return s + (isNaN(n)?0:n);
+      return s + (isNaN(n) ? 0 : n);
     }, 0);
-    const valStr = totalVal > 0
-      ? (totalVal >= 1000 ? `R$${(totalVal/1000).toFixed(0)}k` : `R$${Math.round(totalVal)}`)
-      : '';
-    const isCollapsed = collapsed.includes(col.id);
-    html += `<div class="kb-list-section">
-      <div class="kb-list-header" onclick="toggleKbSection('${col.id}')" style="--kh-c:${col.color}">
-        <div class="kb-list-header-left">
-          <div class="kb-list-dot" style="background:${col.color}"></div>
-          <span class="kb-list-label">${col.label}</span>
-          <span class="kb-count">${cards.length}${valStr?' · <span style="color:var(--grn)">'+valStr+'</span>':''}</span>
+    const valStr = totalVal >= 1000 ? `R$${(totalVal/1000).toFixed(1)}k`
+                 : totalVal > 0    ? `R$${Math.round(totalVal)}`
+                 : '';
+    html += `
+      <div class="kb-col" data-status="${col.id}"
+        ondragover="event.preventDefault();this.classList.add('kb-over')"
+        ondragleave="this.classList.remove('kb-over')"
+        ondrop="kbDrop(event,'${col.id}')">
+        <div class="kb-col-hd" style="border-top:3px solid ${col.color}">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${col.color};flex:none;display:inline-block"></span>
+            <span style="font-size:12px;font-weight:700">${col.label}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span class="kb-count">${cards.length}</span>
+            ${valStr ? `<span class="kb-val">${valStr}</span>` : ''}
+          </div>
         </div>
-        <i class="ti ti-chevron-${isCollapsed?'right':'down'}" style="color:var(--txt3);font-size:16px"></i>
-      </div>
-      ${!isCollapsed?`<div class="kb-list-body">
-        ${cards.length ? cards.map(a=>kbListRow(a,col.color)).join('') : '<div class="kb-empty">Sem leads nesta etapa</div>'}
-      </div>`:''}
-    </div>`;
+        <div class="kb-col-body">
+          ${cards.length ? cards.map(a => kbCard(a)).join('') : `<div class="kb-empty">Nenhum lead</div>`}
+        </div>
+      </div>`;
   });
   html += '</div>';
   document.getElementById('kb-board').innerHTML = html;
 }
 
-function kbListRow(a, colColor) {
+function kbCard(a) {
   const ac = userColor(a.vnd);
-  const origEmoji = (activeOrigins()||{})[a.orig] || '';
-  return `<div class="kb-list-row" style="--kc:${colColor}">
-    <div class="kb-list-av" style="background:${ac}">${initials(a.vnd||'?')}</div>
-    <div class="kb-list-info">
-      <div class="kb-list-name">${a.cli}${a.modelo?` <span style="color:var(--txt3);font-weight:400;font-size:11px">· ${a.modelo}</span>`:''}</div>
-      <div class="kb-list-sub">
-        ${a.tel  ?`<span><i class="ti ti-phone"></i>${a.tel}</span>`:''}
-        ${a.data ?`<span><i class="ti ti-calendar"></i>${fmtDate(a.data)}${a.hora?' · '+a.hora:''}</span>`:''}
-        ${a.vnd  ?`<span style="color:${ac};font-weight:600"><i class="ti ti-user"></i>${a.vnd}</span>`:''}
-        ${a.orig ?`<span>${origEmoji} ${a.orig}</span>`:''}
-        ${a.valor?`<span style="color:var(--grn);font-weight:700">${a.valor}</span>`:''}
+  return `
+    <div class="kb-card" draggable="true"
+      ondragstart="_kbDragId='${a.id}'"
+      ondragend="document.querySelectorAll('.kb-col').forEach(c=>c.classList.remove('kb-over'))"
+      onclick="openNeg('${a.id}')">
+      <div class="kb-card-top">
+        <div class="kb-card-av" style="background:${ac}">${initials(a.vnd)}</div>
+        <div class="kb-card-info">
+          <div class="kb-card-name">${a.cli}</div>
+          <div class="kb-card-vnd">${a.vnd}</div>
+        </div>
       </div>
-    </div>
-    ${canEdit(a)?`<div class="kb-list-acts">
-      <button class="kc-btn p" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i></button>
-      ${CU.role!=='vendedor'?`<button class="kc-btn" onclick="openAppt('${a.id}')"><i class="ti ti-edit"></i></button>`:''}
-    </div>`:''}
-  </div>`;
+      ${a.modelo ? `<div class="kb-card-model"><i class="ti ti-car"></i>${a.modelo}</div>` : ''}
+      <div class="kb-card-foot">
+        ${a.valor ? `<span class="kb-card-val">${a.valor}</span>` : '<span></span>'}
+        ${a.data  ? `<span class="kb-card-date"><i class="ti ti-calendar"></i>${fmtDate(a.data)}</span>` : ''}
+      </div>
+    </div>`;
 }
 
-function toggleKbSection(id) {
-  let collapsed = JSON.parse(localStorage.getItem('eye_kb_collapsed') || '[]');
-  if (collapsed.includes(id)) collapsed = collapsed.filter(x => x !== id);
-  else collapsed.push(id);
-  localStorage.setItem('eye_kb_collapsed', JSON.stringify(collapsed));
-  _drawKanban();
+async function kbDrop(event, newStatus) {
+  event.preventDefault();
+  document.querySelectorAll('.kb-col').forEach(c => c.classList.remove('kb-over'));
+  if (!_kbDragId) return;
+  const a = _apptsCache.find(x => x.id === _kbDragId);
+  if (!a || a.status === newStatus) { _kbDragId = null; return; }
+  const oldStatus = a.status;
+  const { error } = await sb.from('eye_appts').update({ status: newStatus }).eq('id', _kbDragId);
+  if (error) { toast('Erro ao mover: ' + error.message, 'err'); _kbDragId = null; return; }
+  if (oldStatus !== newStatus) await logStatus(_kbDragId, oldStatus, newStatus);
+  _kbDragId = null;
+  toast('Lead movido!');
+  await refreshAll();
 }

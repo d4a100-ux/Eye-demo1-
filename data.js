@@ -25,7 +25,10 @@ function vendedores() {
   return (_usersCache||[]).filter(u => {
     if (u.role !== 'vendedor') return false;
     if (!id) return true;
-    return !u.unidade_id || u.unidade_id === id;
+    if (!u.unidade_id && !(u.unidades_ids?.length)) return true;
+    if (u.unidade_id === id) return true;
+    if (Array.isArray(u.unidades_ids) && u.unidades_ids.includes(id)) return true;
+    return false;
   });
 }
 
@@ -59,7 +62,7 @@ async function refreshAll() {
   const active = document.querySelector('.view.on');
   if (!active) return;
   const id = active.id.replace('v-', '');
-  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc };
+  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase };
   if (id === 'crm') _drawKanban();
   else if (renders[id]) await renders[id]();
   if (id === 'agenda') _filterAgenda();

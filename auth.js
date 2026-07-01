@@ -108,7 +108,8 @@ function tabs() {
   if (['gerencia','sdr','master'].includes(CU.role)) {
     base.push(
       { id:'origem', icon:'ti-chart-pie', label:'Origens'      },
-      { id:'negoc',  icon:'ti-handshake', label:'Negociações'  },
+      { id:'negoc',  icon:'ti-handshake', label:'Pipeline'     },
+      { id:'base',   icon:'ti-database',  label:'Base de Dados'},
     );
   }
   if (['gerencia','master'].includes(CU.role)) base.push({ id:'users',  icon:'ti-users-group', label:'Usuários' });
@@ -128,6 +129,6 @@ function goTab(id) {
   const v = document.getElementById('v-' + id);
   if (v) v.classList.add('on');
   document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === id));
-  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, users:renderUsers, config:renderConfig };
+  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, users:renderUsers, config:renderConfig };
   if (renders[id]) renders[id]();
 }
