@@ -1,484 +1,64 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>eye · Agenda</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.47.0/iconfont/tabler-icons.min.css">
-<style>
-:root{
-  --bg:#F2F2F7;--bg2:#E5E5EA;--sur:rgba(255,255,255,.92);--sur2:#F0F0F5;
-  --bdr:rgba(60,60,67,.12);--bdr2:rgba(60,60,67,.22);
-  --txt:#1C1C1E;--txt2:#8E8E93;--txt3:#AEAEB2;
-  --ind:#007AFF;--ind2:#0056CC;--indg:rgba(0,122,255,.12);
-  --amb:#FF9F0A;--ambg:rgba(255,159,10,.12);
-  --grn:#34C759;--grng:rgba(52,199,89,.12);
-  --red:#FF3B30;--redg:rgba(255,59,48,.10);
-  --r:14px;--rs:10px;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;}
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased;}
-.ff{font-family:'Inter',sans-serif;font-weight:700;}
-@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
-@keyframes slideup{from{transform:translateY(100%)}to{transform:translateY(0)}}
-@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes drain{from{width:100%}to{width:0%}}
-@keyframes growbar{from{width:0}to{width:var(--w,0%)}}
-
-/* ── DASHBOARD ── */
-.dash-greeting{margin-bottom:20px;}
-.dash-greeting .dg-title{font-family:'Inter',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.5px;}
-.dash-greeting .dg-sub{font-size:13px;color:var(--txt2);margin-top:3px;font-weight:500;}
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px;}
-.kpi-c{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow:hidden;position:relative;}
-.kpi-c::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--ind));}
-.kpi-c .kv{font-family:'Inter',sans-serif;font-weight:800;font-size:26px;letter-spacing:-.8px;margin-top:4px;}
-.kpi-c .kl{font-size:11px;color:var(--txt2);font-weight:500;}
-.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
-@media(max-width:700px){.dash-row{grid-template-columns:1fr;}}
-.dash-box{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:14px;}
-.dash-box:last-child{margin-bottom:0;}
-.dash-box-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt2);margin-bottom:12px;}
-.alert-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--bdr);}
-.alert-item:last-child{border:none;}
-.alert-dot{width:8px;height:8px;border-radius:50%;flex:none;}
-.alert-txt{font-size:13px;font-weight:600;flex:1;}
-.alert-count{font-size:13px;font-weight:700;}
-.alert-empty{font-size:13px;color:var(--txt3);text-align:center;padding:12px 0;}
-.meta-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.meta-header span{font-size:12px;color:var(--txt2);font-weight:500;}
-.meta-input{width:52px;height:28px;text-align:center;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;background:var(--bg);border:0.5px solid var(--bdr2);border-radius:var(--rs);color:var(--txt);}
-.meta-bar-bg{height:8px;background:var(--bg2);border-radius:4px;overflow:hidden;}
-.meta-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--ind),var(--grn));animation:growbar .9s cubic-bezier(.34,1.2,.64,1) both;}
-.meta-label{font-size:11px;color:var(--txt2);margin-top:6px;font-weight:500;}
-.funnel{display:flex;align-items:stretch;gap:3px;height:50px;}
-.funnel-seg{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;border-radius:8px;font-family:'Inter',sans-serif;font-size:10px;font-weight:700;color:#fff;gap:1px;min-width:0;}
-.funnel-seg .fs-n{font-size:18px;font-weight:800;line-height:1;}
-.today-list{display:flex;flex-direction:column;gap:7px;}
-.today-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:var(--rs);cursor:pointer;transition:.15s;}
-.today-item:hover{background:var(--bg2);}
-.ti-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-weight:700;font-size:11px;color:#fff;flex:none;}
-.ti-info{flex:1;min-width:0;}
-.ti-name{font-size:13px;font-weight:600;}
-.ti-sub{font-size:11px;color:var(--txt2);margin-top:1px;}
-
-/* ── HOT LEAD NOTIFICATION ── */
-.hotlead-notif{position:fixed;top:70px;right:-360px;width:320px;background:rgba(255,255,255,.97);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:0.5px solid rgba(255,59,48,.3);border-radius:var(--r);box-shadow:0 8px 32px rgba(255,59,48,.15),0 2px 8px rgba(0,0,0,.08);z-index:300;overflow:hidden;transition:right .5s cubic-bezier(.34,1.56,.64,1),opacity .4s ease;opacity:0;}
-.hotlead-notif.show{right:16px;opacity:1;}
-.hotlead-notif.hide{right:-360px;opacity:0;transition:right .35s ease,opacity .25s ease;}
-.hn-body{padding:14px 16px 0;}
-.hn-top{display:flex;align-items:flex-start;gap:10px;}
-.hn-icon{width:34px;height:34px;border-radius:50%;background:var(--redg);display:flex;align-items:center;justify-content:center;flex:none;}
-.hn-icon i{color:var(--red);font-size:17px;}
-.hn-text{flex:1;}
-.hn-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:var(--red);}
-.hn-sub{font-size:12px;color:var(--txt2);margin-top:3px;line-height:1.4;}
-.hn-close{background:none;border:none;color:var(--txt3);cursor:pointer;font-size:16px;padding:0;line-height:1;margin-left:4px;}
-.hn-drain{height:3px;background:var(--redg);margin-top:12px;}
-.hn-drain-bar{height:100%;background:var(--red);border-radius:2px;}
-
-/* ── SCREENS ── */
-.screen{display:none;flex-direction:column;min-height:100vh;}
-.screen.on{display:flex;}
-
-/* ── LOGIN ── */
-#s-login{align-items:center;justify-content:center;padding:20px;
-  background:radial-gradient(ellipse 90% 70% at 50% 0%,rgba(0,122,255,.09),transparent 60%),
-             radial-gradient(ellipse 60% 50% at 80% 110%,rgba(255,159,10,.07),transparent 55%),
-             var(--bg);}
-.login-card{
-  width:100%;max-width:380px;
-  background:rgba(255,255,255,.88);
-  -webkit-backdrop-filter:blur(24px) saturate(180%);
-  backdrop-filter:blur(24px) saturate(180%);
-  border:0.5px solid rgba(255,255,255,.9);
-  border-radius:24px;padding:36px 32px;
-  animation:pop .4s ease both;
-  box-shadow:0 8px 40px rgba(0,0,0,.10),0 2px 8px rgba(0,0,0,.06);}
-.login-logo{display:flex;align-items:center;gap:11px;justify-content:center;margin-bottom:28px;}
-.login-logo .lname{font-family:'Inter',sans-serif;font-weight:800;font-size:26px;letter-spacing:-.5px;color:var(--txt);}
-.login-logo .lsub{font-size:11px;color:var(--txt2);margin-top:2px;}
-.form-label{font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;display:block;}
-.finput{width:100%;height:46px;background:rgba(255,255,255,.8);border:0.5px solid var(--bdr2);border-radius:var(--rs);color:var(--txt);padding:0 14px;font-size:14px;font-family:inherit;transition:.15s;margin-bottom:14px;}
-.finput:focus{outline:none;border-color:var(--ind);box-shadow:0 0 0 3px var(--indg);}
-.btn-prim{width:100%;height:48px;border:none;border-radius:var(--rs);background:var(--ind);color:#fff;font-family:'Inter',sans-serif;font-weight:600;font-size:15px;cursor:pointer;transition:.18s;box-shadow:0 4px 14px rgba(0,122,255,.28);}
-.btn-prim:hover{background:var(--ind2);transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,122,255,.34);}
-.btn-prim:disabled{opacity:.6;transform:none;cursor:not-allowed;}
-.err-msg{font-size:12.5px;color:var(--red);text-align:center;margin-top:10px;display:none;padding:10px;background:var(--redg);border-radius:var(--rs);border:0.5px solid rgba(255,59,48,.2);}
-
-/* ── TOPBAR ── */
-.topbar{display:flex;align-items:center;gap:10px;padding:0 20px;height:56px;
-  background:rgba(242,242,247,.85);
-  -webkit-backdrop-filter:blur(20px) saturate(180%);
-  backdrop-filter:blur(20px) saturate(180%);
-  border-bottom:0.5px solid var(--bdr);position:sticky;top:0;z-index:40;}
-.top-brand{display:flex;align-items:center;gap:9px;flex:none;}
-.top-brand .tb-name{font-family:'Inter',sans-serif;font-weight:800;font-size:17px;letter-spacing:-.3px;color:var(--txt);}
-.top-role-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;font-family:'Inter',sans-serif;flex:none;}
-.rb-ger{color:#CC7A00;background:var(--ambg);}
-.rb-sdr{color:#1A8C34;background:var(--grng);}
-.rb-vnd{color:var(--ind);background:var(--indg);}
-.rb-mst{color:#fff;background:#1C1C1E;}
-.top-right{display:flex;align-items:center;gap:8px;margin-left:auto;}
-.top-username{font-size:13px;color:var(--txt2);font-weight:500;}
-.btn-logout{background:transparent;border:0.5px solid var(--bdr2);color:var(--txt2);border-radius:var(--rs);padding:6px 11px;font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.15s;}
-.btn-logout:hover{color:var(--txt);background:var(--sur2);}
-.btn-new{display:flex;align-items:center;gap:6px;background:var(--ind);color:#fff;border:none;border-radius:var(--rs);padding:8px 16px;font-family:'Inter',sans-serif;font-weight:600;font-size:13px;cursor:pointer;transition:.18s;white-space:nowrap;box-shadow:0 2px 8px rgba(0,122,255,.25);}
-.btn-new:hover{background:var(--ind2);transform:translateY(-1px);}
-
-/* ── NAV TABS ── */
-.tab-nav{display:flex;gap:2px;padding:14px 20px 0;background:rgba(242,242,247,.8);backdrop-filter:blur(12px);border-bottom:0.5px solid var(--bdr);overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.tab-nav button{border:none;background:transparent;color:var(--txt2);font-family:'Inter',sans-serif;font-weight:600;font-size:13px;padding:9px 14px;border-radius:var(--rs) var(--rs) 0 0;cursor:pointer;transition:.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;border-bottom:2px solid transparent;margin-bottom:-1px;}
-.tab-nav button:hover{color:var(--ind);}
-.tab-nav button.on{color:var(--ind);border-bottom-color:var(--ind);}
-
-/* ── MAIN ── */
-.main{flex:1;padding:20px;max-width:1100px;width:100%;margin:0 auto;}
-.view{display:none;animation:fade .3s ease both;}
-.view.on{display:block;}
-
-/* ── LOADING ── */
-.loading-st{text-align:center;padding:50px 20px;color:var(--txt3);}
-.loading-st i{font-size:32px;display:block;margin-bottom:10px;animation:spin 1s linear infinite;color:var(--ind);}
-.loading-st p{font-size:13px;}
-
-/* ── STATS ── */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:18px;}
-.stat-c{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
-.stat-c .sv{font-family:'Inter',sans-serif;font-weight:700;font-size:24px;letter-spacing:-.5px;}
-.stat-c .sl{font-size:11px;color:var(--txt2);margin-top:4px;font-weight:500;}
-
-/* ── FILTERS ── */
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
-.fi{height:38px;background:rgba(255,255,255,.9);border:0.5px solid var(--bdr2);border-radius:var(--rs);color:var(--txt);padding:0 12px;font-size:13px;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,.04);}
-.fi:focus{outline:none;border-color:var(--ind);box-shadow:0 0 0 3px var(--indg);}
-.fi-search{flex:1;min-width:160px;}
-.fi-sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer;background-color:rgba(255,255,255,.9);}
-
-/* ── APPT CARD ── */
-.appt-list{display:flex;flex-direction:column;gap:10px;}
-.ac{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;transition:.15s;box-shadow:0 2px 12px rgba(0,0,0,.05);}
-.ac:hover{border-color:var(--bdr2);box-shadow:0 4px 18px rgba(0,0,0,.08);transform:translateY(-1px);}
-.ac::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,var(--ind));}
-.ac-head{display:flex;align-items:flex-start;gap:11px;flex-wrap:wrap;}
-.ac-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#fff;flex:none;}
-.ac-info{flex:1;min-width:0;}
-.ac-name{font-family:'Inter',sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.ac-sub{font-size:12px;color:var(--txt2);margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:500;}
-.ac-sub i{font-size:13px;vertical-align:-2px;}
-.ac-fields{margin-top:12px;padding-top:12px;border-top:0.5px solid var(--bdr);display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;}
-.af{background:var(--bg);border-radius:var(--rs);padding:9px 11px;}
-.af .afl{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.7px;font-weight:600;margin-bottom:3px;}
-.af .afv{font-size:13px;font-weight:600;font-family:'Inter',sans-serif;}
-.ac-neg{margin-top:8px;background:var(--bg);border-radius:var(--rs);padding:11px 13px;font-size:13px;color:var(--txt2);line-height:1.5;}
-.ac-neg .neg-lbl{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.7px;font-weight:600;margin-bottom:5px;}
-.ac-neg .next{color:var(--ind);margin-top:5px;font-size:12.5px;font-weight:500;}
-.ac-acts{margin-top:10px;display:flex;gap:7px;flex-wrap:wrap;}
-.btn-s{border:0.5px solid var(--bdr2);background:var(--sur2);color:var(--txt2);border-radius:var(--rs);padding:6px 11px;font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:.15s;font-weight:500;}
-.btn-s:hover{color:var(--txt);background:var(--bg2);}
-.btn-s.p{background:var(--ind);border-color:var(--ind);color:#fff;}
-.btn-s.p:hover{background:var(--ind2);}
-.btn-s.d{color:var(--red);border-color:rgba(255,59,48,.2);background:var(--redg);}
-
-/* STATUS TAGS */
-.tag{font-size:10.5px;font-weight:600;font-family:'Inter',sans-serif;padding:2px 9px;border-radius:20px;}
-.s-ag{color:var(--ind);background:var(--indg);}
-.s-cf{color:#1A8C34;background:var(--grng);}
-.s-rl{color:#CC7A00;background:var(--ambg);}
-.s-nc{color:var(--red);background:var(--redg);}
-.s-pd{color:var(--txt2);background:var(--sur2);}
-.s-ec{color:#5856D6;background:rgba(88,86,214,.12);}
-.s-lf{color:#6e6e73;background:rgba(142,142,147,.12);}
-
-/* ── KANBAN ── */
-.kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:20px;-webkit-overflow-scrolling:touch;}
-.kanban-board::-webkit-scrollbar{height:6px;}
-.kanban-board::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px;}
-.kb-col{width:256px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;}
-.kb-head{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);}
-.kb-head::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kh-c,var(--ind));}
-.kb-head-lbl{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;}
-.kb-count{font-size:11px;font-weight:700;background:var(--bg2);border-radius:20px;padding:2px 8px;color:var(--txt2);}
-.kb-body{display:flex;flex-direction:column;gap:8px;min-height:80px;border-radius:var(--r);padding:4px;transition:.15s;}
-.kb-body.drag-over{background:rgba(0,122,255,.06);outline:2px dashed var(--ind);outline-offset:-2px;}
-.kb-card{background:rgba(255,255,255,.95);border:0.5px solid var(--bdr);border-radius:var(--rs);padding:12px 14px;cursor:grab;transition:.15s;box-shadow:0 1px 4px rgba(0,0,0,.05);position:relative;overflow:hidden;}
-.kb-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--kc,var(--ind));}
-.kb-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.09);transform:translateY(-1px);}
-.kb-card:active{cursor:grabbing;}
-.kb-card.dragging{opacity:.45;transform:rotate(1.5deg);}
-.kc-name{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;margin-bottom:6px;}
-.kc-sub{font-size:11px;color:var(--txt2);display:flex;flex-direction:column;gap:3px;}
-.kc-sub span{display:flex;align-items:center;gap:4px;}
-.kc-sub i{font-size:12px;}
-.kc-acts{display:flex;gap:5px;margin-top:9px;padding-top:9px;border-top:0.5px solid var(--bdr);}
-.kc-btn{flex:1;border:0.5px solid var(--bdr2);background:var(--bg);color:var(--txt2);border-radius:6px;padding:5px 4px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;transition:.12s;display:flex;align-items:center;justify-content:center;gap:3px;}
-.kc-btn:hover{background:var(--bg2);color:var(--txt);}
-.kc-btn.p{background:var(--ind);border-color:var(--ind);color:#fff;}
-.kc-btn.p:hover{background:var(--ind2);}
-.kb-empty{text-align:center;padding:20px 12px;color:var(--txt3);font-size:12px;border:1.5px dashed var(--bdr);border-radius:var(--rs);margin:4px 0;}
-
-/* ── CONVERSAS ── */
-.conv-wrap{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 145px);background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.05);}
-.conv-left{border-right:0.5px solid var(--bdr);display:flex;flex-direction:column;min-height:0;}
-.conv-search{padding:10px 12px;border-bottom:0.5px solid var(--bdr);}
-.conv-filter-tabs{display:flex;border-bottom:0.5px solid var(--bdr);}
-.conv-ft{flex:1;padding:9px 4px;font-size:11px;font-weight:700;text-align:center;cursor:pointer;border-bottom:2px solid transparent;color:var(--txt2);transition:.15s;}
-.conv-ft.on{color:var(--ind);border-bottom-color:var(--ind);}
-.conv-list{flex:1;overflow-y:auto;}
-.conv-item{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-bottom:0.5px solid var(--bdr);transition:.12s;}
-.conv-item:hover{background:var(--bg);}
-.conv-item.on{background:var(--indg);}
-.ci-av2{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-weight:700;font-size:13px;color:#fff;flex:none;}
-.ci-info2{flex:1;min-width:0;}
-.ci-top{font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:4px;}
-.ci-time{font-size:10px;color:var(--txt3);font-weight:400;flex:none;}
-.ci-preview{font-size:11.5px;color:var(--txt2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;justify-content:space-between;align-items:center;gap:4px;}
-.ci-badge{background:var(--grn);color:#fff;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;flex:none;}
-.conv-right{display:flex;flex-direction:column;min-height:0;}
-.conv-header{padding:11px 16px;border-bottom:0.5px solid var(--bdr);display:flex;align-items:center;gap:10px;flex:none;background:rgba(255,255,255,.92);}
-.ch-info{flex:1;min-width:0;}
-.ch-name{font-size:14px;font-weight:700;}
-.ch-phone{font-size:11px;color:var(--txt2);margin-top:1px;}
-.conv-msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:var(--bg);}
-.msg-bubble{max-width:70%;padding:9px 13px;border-radius:16px;font-size:13px;line-height:1.5;word-break:break-word;}
-.msg-in{background:rgba(255,255,255,.97);border:0.5px solid var(--bdr);border-radius:16px 16px 16px 4px;align-self:flex-start;}
-.msg-out{background:var(--ind);color:#fff;border-radius:16px 16px 4px 16px;align-self:flex-end;}
-.msg-time{font-size:10px;margin-top:4px;opacity:.55;}
-.msg-sender{font-size:10px;font-weight:700;color:rgba(255,255,255,.75);margin-bottom:3px;}
-.conv-input-wrap{padding:10px 14px;border-top:0.5px solid var(--bdr);display:flex;gap:8px;align-items:flex-end;flex:none;background:rgba(255,255,255,.92);}
-.conv-input{flex:1;border:0.5px solid var(--bdr2);border-radius:var(--rs);padding:9px 13px;font-family:inherit;font-size:13px;resize:none;max-height:100px;background:var(--bg);color:var(--txt);line-height:1.5;}
-.conv-input:focus{outline:none;border-color:var(--ind);box-shadow:0 0 0 3px var(--indg);}
-.conv-send{background:var(--ind);border:none;color:#fff;border-radius:var(--rs);width:40px;height:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:.15s;flex:none;}
-.conv-send:hover{background:var(--ind2);}
-.conv-empty-right{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--txt3);}
-@media(max-width:700px){
-  .conv-wrap{grid-template-columns:1fr;height:calc(100vh - 162px);}
-  .conv-right-hidden{display:none;}
-  .conv-left-hidden{display:none;}
-}
-
-/* ── CALENDAR ── */
-.cal-wrap{display:grid;grid-template-columns:1fr 340px;gap:16px;}
-@media(max-width:860px){.cal-wrap{grid-template-columns:1fr;}}
-.cal-box{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.05);}
-.cal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:0.5px solid var(--bdr);}
-.cal-header h3{font-family:'Inter',sans-serif;font-weight:700;font-size:16px;}
-.cal-nav-btn{background:var(--bg);border:0.5px solid var(--bdr2);color:var(--txt);border-radius:var(--rs);width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;}
-.cal-nav-btn:hover{background:var(--ind);border-color:var(--ind);color:#fff;}
-.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);padding:10px 12px 6px;}
-.cal-dow span{text-align:center;font-size:11px;font-weight:600;color:var(--txt3);}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:0 12px 12px;}
-.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px 2px;border-radius:var(--rs);cursor:pointer;position:relative;transition:.15s;border:0.5px solid transparent;font-size:13px;font-weight:500;color:var(--txt);gap:1px;}
-.cal-day:hover{background:var(--bg2);}
-.cal-day.empty{cursor:default;pointer-events:none;}
-.cal-day.today{background:var(--indg);border-color:rgba(0,122,255,.25);font-weight:700;color:var(--ind);}
-.cal-day.sel{background:var(--ind);color:#fff;border-color:var(--ind);}
-.cal-badges{display:flex;gap:2px;justify-content:center;margin-top:2px;flex-wrap:wrap;}
-.cal-badge{font-size:9px;font-weight:700;line-height:1;border-radius:10px;padding:1px 4px;min-width:14px;text-align:center;}
-.cb-ag{color:var(--ind);background:var(--indg);}
-.cb-ld{color:#CC7A00;background:var(--ambg);}
-.cb-ag-sel{color:#fff;background:rgba(255,255,255,.35);}
-.cb-ld-sel{color:rgba(255,255,255,.9);background:rgba(255,255,255,.2);}
-.cal-detail{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.05);}
-.cal-detail-head{padding:14px 16px;border-bottom:0.5px solid var(--bdr);font-family:'Inter',sans-serif;font-weight:700;font-size:14px;}
-.cal-detail-body{padding:12px;}
-.cal-appt-mini{background:var(--bg);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--c,var(--ind));cursor:pointer;transition:.15s;}
-.cal-appt-mini:hover{background:var(--bg2);}
-.cal-appt-mini .cam-time{font-size:11px;color:var(--txt3);margin-bottom:3px;font-weight:600;}
-.cal-appt-mini .cam-name{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;}
-.cal-appt-mini .cam-sub{font-size:11.5px;color:var(--txt2);margin-top:2px;}
-.cal-empty{text-align:center;padding:30px;color:var(--txt3);font-size:13px;}
-
-/* ── ORIGEM ── */
-.origin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;}
-.origin-c{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
-.origin-c .oi{font-size:22px;margin-bottom:6px;}
-.origin-c .on2{font-size:11px;color:var(--txt2);margin-bottom:3px;font-weight:500;}
-.origin-c .ov{font-family:'Inter',sans-serif;font-weight:700;font-size:22px;letter-spacing:-.5px;}
-.origin-c .obar{height:3px;background:var(--bg2);border-radius:2px;margin-top:8px;overflow:hidden;}
-.origin-c .obar i{display:block;height:100%;background:var(--ind);border-radius:2px;}
-
-/* ── SECTION LABEL ── */
-.sec-lbl{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--txt2);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
-.sec-lbl span{font-size:10px;color:var(--txt3);text-transform:none;letter-spacing:0;font-weight:400;}
-
-/* ── USERS ── */
-.user-table{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.05);}
-.user-row{display:flex;align-items:center;gap:13px;padding:13px 18px;border-bottom:0.5px solid var(--bdr);}
-.user-row:last-child{border:none;}
-.ur-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-weight:700;font-size:12px;color:#fff;flex:none;}
-.ur-info{flex:1;}
-.ur-info b{font-family:'Inter',sans-serif;font-size:14px;font-weight:600;}
-.ur-info .ur-login{font-size:12px;color:var(--txt2);margin-top:2px;}
-.ur-acts{display:flex;gap:6px;}
-
-/* ── MODAL ── */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:100;display:none;align-items:flex-end;justify-content:center;}
-@media(min-width:600px){.overlay{align-items:center;padding:20px;}}
-.overlay.on{display:flex;}
-.modal{width:100%;max-width:580px;
-  background:rgba(255,255,255,.95);
-  -webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);
-  border:0.5px solid rgba(255,255,255,.9);
-  border-radius:24px 24px 0 0;padding:24px 22px 36px;max-height:95vh;overflow-y:auto;animation:slideup .3s ease both;
-  box-shadow:0 -4px 40px rgba(0,0,0,.10);}
-@media(min-width:600px){.modal{border-radius:24px;animation:pop .25s ease both;box-shadow:0 8px 40px rgba(0,0,0,.12);}}
-.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
-.modal-hd h3{font-family:'Inter',sans-serif;font-weight:700;font-size:17px;}
-.modal-hd .mc{background:var(--bg2);border:none;color:var(--txt2);font-size:18px;cursor:pointer;line-height:1;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
-.modal-hd .mc:hover{background:var(--bdr2);color:var(--txt);}
-.fg{margin-bottom:13px;}
-.fg label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:5px;}
-.fg .finput{margin-bottom:0;}
-.fg select,.fg textarea{width:100%;background:rgba(255,255,255,.8);border:0.5px solid var(--bdr2);border-radius:var(--rs);color:var(--txt);padding:0 14px;font-size:14px;font-family:inherit;height:46px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
-.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--ind);box-shadow:0 0 0 3px var(--indg);}
-.fg textarea{height:auto;min-height:80px;resize:vertical;padding:12px 14px;background-image:none;}
-.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
-@media(max-width:480px){.frow{grid-template-columns:1fr;}}
-.modal-acts{display:flex;gap:9px;margin-top:18px;}
-.modal-acts .btn-prim{flex:1;height:46px;margin:0;}
-.btn-cancel{height:46px;background:var(--bg2);border:0.5px solid var(--bdr2);color:var(--txt2);border-radius:var(--rs);padding:0 18px;font-family:inherit;font-size:14px;cursor:pointer;font-weight:500;}
-.sec-divider{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--txt3);margin:14px 0 10px;padding-top:14px;border-top:0.5px solid var(--bdr);}
-
-/* ── ORGANOGRAMA (journey stepper) ── */
-.journey{display:flex;align-items:center;gap:0;margin:14px 0 4px;overflow-x:auto;padding:4px 0;}
-.journey-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:70px;}
-.journey-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--bdr2);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:.2s;flex:none;}
-.journey-dot.done{background:var(--grn);border-color:var(--grn);color:#fff;}
-.journey-dot.curr{background:var(--ind);border-color:var(--ind);color:#fff;box-shadow:0 0 0 4px var(--indg);}
-.journey-dot.bad{background:var(--red);border-color:var(--red);color:#fff;}
-.journey-lbl{font-size:9px;font-weight:600;color:var(--txt3);text-align:center;line-height:1.2;}
-.journey-lbl.curr{color:var(--ind);}
-.journey-lbl.done{color:var(--grn);}
-.journey-lbl.bad{color:var(--red);}
-.journey-line{flex:1;height:2px;background:var(--bdr2);min-width:10px;}
-.journey-line.done{background:var(--grn);}
-
-/* ── CONFIG PANEL ── */
-.cfg-section{background:rgba(255,255,255,.92);border:0.5px solid var(--bdr);border-radius:var(--r);padding:18px 20px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.05);}
-.cfg-section-title{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt2);margin-bottom:14px;}
-.cfg-origin-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--bdr);}
-.cfg-origin-row:last-child{border:none;}
-.cfg-origin-emoji{font-size:18px;width:30px;text-align:center;}
-.cfg-origin-name{flex:1;font-size:13px;font-weight:600;}
-.cfg-vendor-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--bdr);}
-.cfg-vendor-row:last-child{border:none;}
-.cfg-goal-input{width:64px;height:32px;text-align:center;font-family:'Inter',sans-serif;font-weight:700;font-size:14px;background:var(--bg);border:0.5px solid var(--bdr2);border-radius:var(--rs);color:var(--txt);}
-
-/* ── EMPTY ── */
-.empty-st{text-align:center;padding:50px 20px;color:var(--txt3);}
-.empty-st i{font-size:44px;display:block;margin-bottom:10px;opacity:.35;}
-.empty-st p{font-size:13.5px;line-height:1.5;}
-
-/* ── TOAST ── */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
-  background:rgba(255,255,255,.92);
-  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
-  border:0.5px solid var(--bdr2);color:var(--txt);border-radius:var(--r);
-  padding:11px 18px;font-size:13px;display:none;align-items:center;gap:8px;
-  z-index:200;animation:pop .25s ease both;
-  box-shadow:0 4px 24px rgba(0,0,0,.12);white-space:nowrap;font-weight:500;}
-@media(min-width:600px){.toast{bottom:24px;}}
-
-/* ── MOBILE NAV ── */
-.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;
-  background:rgba(242,242,247,.88);
-  -webkit-backdrop-filter:blur(20px) saturate(180%);
-  backdrop-filter:blur(20px) saturate(180%);
-  border-top:0.5px solid var(--bdr);
-  padding:0 0 env(safe-area-inset-bottom,0);z-index:39;}
-.mob-nav button{flex:1;border:none;background:transparent;color:var(--txt3);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;padding:10px 2px 9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:.15s;}
-.mob-nav button i{font-size:21px;}
-.mob-nav button.on{color:var(--ind);}
-
-/* ── RESPONSIVE ── */
-@media(max-width:600px){
-  .mob-nav{display:flex;}
-  .tab-nav{display:none;}
-  .main{padding:14px 13px 82px;}
-  .topbar{padding:0 13px;gap:6px;}
-  .frow{grid-template-columns:1fr;}
-  .top-username{display:none;}
-  .btn-new{padding:7px 10px;font-size:12px;}
-  .btn-new i{font-size:14px;}
-  .kpi-grid{grid-template-columns:repeat(2,1fr);}
-  .dash-row{grid-template-columns:1fr;}
-  .modal{padding:20px 16px 36px;}
-  .conv-wrap{grid-template-columns:1fr;height:calc(100vh - 160px);}
-  .ac-fields{grid-template-columns:1fr 1fr;}
-  .kanban-board{gap:8px;}
-  .kb-col{width:220px;}
-  .stats{grid-template-columns:repeat(2,1fr);}
-  .journey{gap:0;}
-  .journey-step{min-width:52px;}
-  .journey-lbl{font-size:8px;}
-  .journey-dot{width:24px;height:24px;font-size:10px;}
-  .cfg-section{padding:14px 14px;}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Eye · Carros Online</title>
+  <meta name="theme-color" content="#F2F2F7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="css/eye.css">
 </head>
 <body>
 
-<!-- ─── LOGIN ─── -->
-<div class="screen on" id="s-login">
+<!-- ══════════════════════════════════════════════════════════ LOGIN -->
+<div class="screen" id="s-login">
   <div class="login-card">
     <div class="login-logo">
-      <svg width="34" height="34" viewBox="0 0 110 110" fill="none">
-        <defs>
-          <radialGradient id="lg" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#E8F0FF"/><stop offset="40%" stop-color="#C0D4FF"/><stop offset="100%" stop-color="#007AFF"/></radialGradient>
-          <radialGradient id="pg" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#1C3A8A"/><stop offset="100%" stop-color="#001A66"/></radialGradient>
-        </defs>
-        <circle cx="55" cy="55" r="40" fill="url(#lg)"/>
-        <ellipse cx="45" cy="42" rx="13" ry="8" fill="white" opacity=".2" transform="rotate(-20 45 42)"/>
-        <circle cx="55" cy="55" r="19" fill="url(#pg)"/>
-        <circle cx="48" cy="48" r="4.5" fill="white" opacity=".25"/>
-      </svg>
-      <div><div class="lname ff">eye</div><div class="lsub">Agenda · Carros Online</div></div>
+      <div>
+        <div class="lname ff">Eye</div>
+        <div class="lsub">Carros Online · CRM</div>
+      </div>
     </div>
-    <label class="form-label">Login</label>
-    <input class="finput" id="li-user" placeholder="Seu login" autocomplete="username">
-    <label class="form-label">Senha</label>
-    <input class="finput" id="li-pass" type="password" placeholder="Sua senha" autocomplete="current-password">
+    <label class="form-label" for="li-user">Login</label>
+    <input class="finput" id="li-user" type="text" placeholder="seu.login" autocomplete="username">
+    <label class="form-label" for="li-pass">Senha</label>
+    <input class="finput" id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password">
     <button class="btn-prim" id="btn-login" onclick="doLogin()">Entrar</button>
     <div class="err-msg" id="li-err">Login ou senha incorretos.</div>
   </div>
 </div>
 
-<!-- ─── APP ─── -->
+<!-- ══════════════════════════════════════════════════════════ APP -->
 <div class="screen" id="s-app">
+
+  <!-- TOPBAR -->
   <div class="topbar">
     <div class="top-brand">
-      <svg width="26" height="26" viewBox="0 0 110 110" fill="none">
-        <defs>
-          <radialGradient id="lg2" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#E8F0FF"/><stop offset="40%" stop-color="#C0D4FF"/><stop offset="100%" stop-color="#007AFF"/></radialGradient>
-          <radialGradient id="pg2" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#1C3A8A"/><stop offset="100%" stop-color="#001A66"/></radialGradient>
-        </defs>
-        <circle cx="55" cy="55" r="40" fill="url(#lg2)"/>
-        <ellipse cx="45" cy="42" rx="13" ry="8" fill="white" opacity=".2" transform="rotate(-20 45 42)"/>
-        <circle cx="55" cy="55" r="19" fill="url(#pg2)"/>
-        <circle cx="48" cy="48" r="4.5" fill="white" opacity=".25"/>
-      </svg>
-      <span class="tb-name ff">eye</span>
+      <span class="tb-name ff">Eye</span>
       <span class="top-role-badge" id="top-role-badge"></span>
     </div>
+    <div id="unit-selector-wrap" style="display:none;align-items:center"></div>
     <div class="top-right">
+      <button class="btn-new" onclick="openLead()"><i class="ti ti-plus"></i>Novo Lead</button>
       <span class="top-username" id="top-username"></span>
-      <button class="btn-new" onclick="openLead()" style="background:var(--grn);box-shadow:0 2px 8px rgba(52,199,89,.3)"><i class="ti ti-user-plus"></i>Novo lead</button>
-      <button class="btn-new" onclick="openAppt()"><i class="ti ti-calendar-plus"></i>Novo agendamento</button>
       <button class="btn-logout" onclick="doLogout()"><i class="ti ti-logout"></i>Sair</button>
     </div>
   </div>
 
-  <div class="tab-nav" id="tab-nav"></div>
+  <!-- TAB NAV (desktop) -->
+  <nav class="tab-nav" id="tab-nav"></nav>
 
+  <!-- MAIN -->
   <div class="main">
     <div class="view" id="v-inicio"></div>
     <div class="view" id="v-conv"></div>
     <div class="view" id="v-crm"></div>
-    <div class="view on" id="v-agenda"></div>
+    <div class="view" id="v-agenda"></div>
     <div class="view" id="v-cal"></div>
     <div class="view" id="v-origem"></div>
     <div class="view" id="v-negoc"></div>
@@ -486,161 +66,30 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <div class="view" id="v-config"></div>
   </div>
 
+  <!-- MOBILE NAV -->
   <nav class="mob-nav" id="mob-nav"></nav>
-</div>
 
-<!-- ─── MODAL: AGENDAMENTO ─── -->
-<div class="overlay" id="ov-appt" onclick="if(event.target===this)closeAppt()">
-  <div class="modal">
+</div><!-- /s-app -->
+
+<!-- ══════════════════════════════════════════════════════════ MODAL: NOVO LEAD RÁPIDO -->
+<div class="overlay" id="ov-lead">
+  <div class="modal" style="max-width:420px">
     <div class="modal-hd">
-      <h3 id="appt-modal-title">Novo lead / agendamento</h3>
-      <button class="mc" onclick="closeAppt()">✕</button>
+      <h3>Novo Lead</h3>
+      <button class="mc" onclick="closeLead()"><i class="ti ti-x"></i></button>
     </div>
-    <input type="hidden" id="appt-id">
-    <div class="frow">
-      <div class="fg"><label>Nome do cliente *</label><input class="finput" id="a-cli" placeholder="Ex.: João Silva"></div>
-      <div class="fg"><label>Telefone</label><input class="finput" id="a-tel" placeholder="(81) 9 9999-0000"></div>
+    <div class="fg">
+      <label for="l-tel">Telefone *</label>
+      <input class="finput" id="l-tel" type="tel" placeholder="(81) 99999-9999">
     </div>
-    <div class="frow">
-      <div class="fg"><label>Data *</label><input class="finput" id="a-data" type="date"></div>
-      <div class="fg"><label>Horário</label><input class="finput" id="a-hora" type="time"></div>
+    <div class="fg">
+      <label for="l-cli">Nome do cliente</label>
+      <input class="finput" id="l-cli" placeholder="(opcional — usa o telefone se vazio)">
     </div>
-    <div class="frow">
-      <div class="fg"><label>Vendedor *</label><select id="a-vnd"></select></div>
-      <div class="fg"><label>Origem *</label>
-        <select id="a-orig">
-          <option value="">Selecione…</option>
-          <option>Meta Ads</option><option>Instagram Orgânico</option>
-          <option>WhatsApp Direto</option><option>Indicação</option>
-          <option>Walk-in</option><option>OLX</option><option>Outros</option>
-        </select>
-      </div>
-    </div>
-    <div class="fg"><label>Status</label>
-      <select id="a-status">
-        <option value="pendente">Novo Lead</option>
-        <option value="em_contato">Em contato</option>
-        <option value="agendado">Agendado</option>
-        <option value="confirmado">Realizado</option>
-        <option value="realizado">Vendido</option>
-        <option value="nao_compareceu">Não compareceu</option>
-        <option value="lead_frio">Lead Frio</option>
-      </select>
-    </div>
-    <div class="sec-divider">Negociação</div>
-    <div class="frow">
-      <div class="fg"><label>Modelo de interesse</label><input class="finput" id="a-modelo" placeholder="Ex.: HR-V EXL 2022"></div>
-      <div class="fg"><label>Valor estimado</label><input class="finput" id="a-valor" placeholder="Ex.: R$ 95.000"></div>
-    </div>
-    <div class="fg"><label>Forma de pagamento</label>
-      <select id="a-pgto">
-        <option value="">Não definido</option>
-        <option>À vista</option><option>Financiamento</option>
-        <option>Troca + financiamento</option><option>Troca + à vista</option>
-        <option>FGTS / Consórcio</option>
-      </select>
-    </div>
-    <div class="fg"><label>Observações da negociação</label>
-      <textarea id="a-obs" placeholder="O que foi discutido, objeções, detalhes importantes…"></textarea>
-    </div>
-    <div class="fg"><label>Próximo passo</label><input class="finput" id="a-prox" placeholder="Ex.: Enviar proposta até sexta, ligar para confirmar…"></div>
-    <div class="modal-acts">
-      <button class="btn-cancel" onclick="closeAppt()">Cancelar</button>
-      <button class="btn-prim" onclick="saveAppt()">Salvar</button>
-    </div>
-    <div id="appt-journey"></div>
-    <div id="appt-comments"></div>
-    <div id="appt-history"></div>
-  </div>
-</div>
-
-<!-- ─── MODAL: NEGOCIAÇÃO ─── -->
-<div class="overlay" id="ov-neg" onclick="if(event.target===this)closeNeg()">
-  <div class="modal">
-    <div class="modal-hd"><h3 id="neg-modal-title">Atualizar negociação</h3><button class="mc" onclick="closeNeg()">✕</button></div>
-    <input type="hidden" id="neg-id">
-    <div class="fg"><label>Status</label>
-      <select id="n-status">
-        <option value="pendente">Novo Lead</option>
-        <option value="em_contato">Em contato</option>
-        <option value="agendado">Agendado</option>
-        <option value="confirmado">Realizado</option>
-        <option value="realizado">Vendido</option>
-        <option value="nao_compareceu">Não compareceu</option>
-        <option value="lead_frio">Lead Frio</option>
-      </select>
-    </div>
-    <div class="frow">
-      <div class="fg"><label>Modelo</label><input class="finput" id="n-modelo" placeholder="Ex.: HR-V EXL"></div>
-      <div class="fg"><label>Valor estimado</label><input class="finput" id="n-valor" placeholder="Ex.: R$ 95.000"></div>
-    </div>
-    <div class="fg"><label>Forma de pagamento</label>
-      <select id="n-pgto">
-        <option value="">Não definido</option>
-        <option>À vista</option><option>Financiamento</option>
-        <option>Troca + financiamento</option><option>Troca + à vista</option>
-        <option>FGTS / Consórcio</option>
-      </select>
-    </div>
-    <div class="fg"><label>Observações</label><textarea id="n-obs" placeholder="O que aconteceu na visita…"></textarea></div>
-    <div class="fg"><label>Próximo passo</label><input class="finput" id="n-prox" placeholder="Ex.: Ligar amanhã para fechar…"></div>
-    <div class="modal-acts">
-      <button class="btn-cancel" onclick="closeNeg()">Cancelar</button>
-      <button class="btn-prim" onclick="saveNeg()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─── MODAL: USUÁRIO ─── -->
-<div class="overlay" id="ov-user" onclick="if(event.target===this)closeUser()">
-  <div class="modal">
-    <div class="modal-hd"><h3 id="user-modal-title">Novo usuário</h3><button class="mc" onclick="closeUser()">✕</button></div>
-    <input type="hidden" id="u-id">
-    <div class="frow">
-      <div class="fg"><label>Nome completo *</label><input class="finput" id="u-nome" placeholder="Ex.: Sandro Lima"></div>
-      <div class="fg"><label>Login *</label><input class="finput" id="u-login" placeholder="Ex.: sandro" autocomplete="off"></div>
-    </div>
-    <div class="frow">
-      <div class="fg"><label>Senha *</label><input class="finput" id="u-senha" type="password" placeholder="Mínimo 4 caracteres" autocomplete="new-password"></div>
-      <div class="fg"><label>Função *</label>
-        <select id="u-role">
-          <option value="vendedor">Vendedor</option>
-          <option value="sdr">SDR</option>
-          <option value="gerencia">Gerência</option>
-          <option value="master">Master</option>
-        </select>
-      </div>
-    </div>
-    <div class="fg"><label>Cor do avatar</label>
-      <select id="u-cor">
-        <option value="#5B6EFF">Índigo</option><option value="#2DD4A7">Verde</option>
-        <option value="#F5A623">Âmbar</option><option value="#d4537e">Rosa</option>
-        <option value="#9b59b6">Roxo</option><option value="#ba7517">Laranja</option>
-        <option value="#e74c3c">Vermelho</option><option value="#1abc9c">Teal</option>
-      </select>
-    </div>
-    <div class="modal-acts">
-      <button class="btn-cancel" onclick="closeUser()">Cancelar</button>
-      <button class="btn-prim" onclick="saveUser()">Salvar usuário</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─── MODAL: NOVO LEAD (rápido) ─── -->
-<div class="overlay" id="ov-lead" onclick="if(event.target===this)closeLead()">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-hd">
-      <h3>Novo lead</h3>
-      <button class="mc" onclick="closeLead()">✕</button>
-    </div>
-    <div class="fg"><label>Telefone *</label><input class="finput" id="l-tel" placeholder="(81) 9 9999-0000" type="tel"></div>
-    <div class="fg"><label>Nome do cliente</label><input class="finput" id="l-cli" placeholder="Opcional — preencher depois"></div>
-    <div class="fg"><label>Origem *</label>
-      <select id="l-orig">
-        <option value="">Selecione…</option>
-        <option>Meta Ads</option><option>Instagram Orgânico</option>
-        <option>WhatsApp Direto</option><option>Indicação</option>
-        <option>Walk-in</option><option>OLX</option><option>Outros</option>
+    <div class="fg">
+      <label for="l-orig">Origem *</label>
+      <select class="finput" id="l-orig" style="appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 14px center;background-color:rgba(255,255,255,.8);padding-right:36px">
+        <option value="">Selecione a origem…</option>
       </select>
     </div>
     <div class="modal-acts">
@@ -650,1522 +99,258 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   </div>
 </div>
 
-<!-- HOT LEAD NOTIFICATION -->
-<div class="hotlead-notif" id="hl-notif" onclick="closeHotLead()">
+<!-- ══════════════════════════════════════════════════════════ MODAL: AGENDAMENTO -->
+<div class="overlay" id="ov-appt">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3 id="appt-modal-title">Novo lead / agendamento</h3>
+      <button class="mc" onclick="closeAppt()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="appt-id">
+
+    <!-- Jornada -->
+    <div id="appt-journey"></div>
+
+    <div class="frow">
+      <div class="fg">
+        <label for="a-cli">Cliente *</label>
+        <input class="finput" id="a-cli" placeholder="Nome do cliente">
+      </div>
+      <div class="fg">
+        <label for="a-tel">Telefone</label>
+        <input class="finput" id="a-tel" type="tel" placeholder="(81) 99999-0000">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="a-data">Data *</label>
+        <input class="finput" id="a-data" type="date">
+      </div>
+      <div class="fg">
+        <label for="a-hora">Horário</label>
+        <input class="finput" id="a-hora" type="time">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="a-vnd">Vendedor *</label>
+        <select class="finput fi-sel" id="a-vnd"></select>
+      </div>
+      <div class="fg">
+        <label for="a-orig">Origem *</label>
+        <select class="finput fi-sel" id="a-orig">
+          <option value="">Selecione…</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg">
+      <label for="a-status">Status</label>
+      <select class="finput fi-sel" id="a-status">
+        <option value="pendente">Novo Lead</option>
+        <option value="em_contato">Em negociação</option>
+        <option value="agendado">Agendado</option>
+        <option value="confirmado">Realizado</option>
+        <option value="realizado">Vendido</option>
+        <option value="nao_compareceu">Não compareceu</option>
+        <option value="lead_frio">Lead Frio</option>
+      </select>
+    </div>
+
+    <div class="sec-divider">Negociação</div>
+    <div class="frow">
+      <div class="fg">
+        <label for="a-modelo">Modelo</label>
+        <input class="finput" id="a-modelo" placeholder="Ex: Civic 2022">
+      </div>
+      <div class="fg">
+        <label for="a-valor">Valor</label>
+        <input class="finput" id="a-valor" placeholder="R$ 0,00">
+      </div>
+    </div>
+    <div class="fg">
+      <label for="a-pgto">Pagamento</label>
+      <select class="finput fi-sel" id="a-pgto">
+        <option value="">Não definido</option>
+        <option value="À vista">À vista</option>
+        <option value="Financiamento">Financiamento</option>
+        <option value="Consórcio">Consórcio</option>
+        <option value="Troca + diferença">Troca + diferença</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label for="a-obs">Observações / negociação</label>
+      <textarea class="finput" id="a-obs" placeholder="Detalhes da negociação, interesses, condições…"></textarea>
+    </div>
+    <div class="fg">
+      <label for="a-prox">Próximo passo</label>
+      <input class="finput" id="a-prox" placeholder="Ex: Retornar na sexta com proposta">
+    </div>
+
+    <!-- Comentários e histórico são injetados via JS -->
+    <div id="appt-comments"></div>
+    <div id="appt-history"></div>
+
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeAppt()">Cancelar</button>
+      <button class="btn-prim" onclick="saveAppt()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ MODAL: NEGOCIAÇÃO -->
+<div class="overlay" id="ov-neg">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-hd">
+      <h3 id="neg-modal-title">Negociação</h3>
+      <button class="mc" onclick="closeNeg()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="neg-id">
+    <div class="fg">
+      <label for="n-status">Status</label>
+      <select class="finput fi-sel" id="n-status">
+        <option value="pendente">Novo Lead</option>
+        <option value="em_contato">Em negociação</option>
+        <option value="agendado">Agendado</option>
+        <option value="confirmado">Realizado</option>
+        <option value="realizado">Vendido</option>
+        <option value="nao_compareceu">Não compareceu</option>
+        <option value="lead_frio">Lead Frio</option>
+      </select>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="n-modelo">Modelo</label>
+        <input class="finput" id="n-modelo" placeholder="Ex: Civic 2022">
+      </div>
+      <div class="fg">
+        <label for="n-valor">Valor</label>
+        <input class="finput" id="n-valor" placeholder="R$ 0,00">
+      </div>
+    </div>
+    <div class="fg">
+      <label for="n-pgto">Pagamento</label>
+      <select class="finput fi-sel" id="n-pgto">
+        <option value="">Não definido</option>
+        <option value="À vista">À vista</option>
+        <option value="Financiamento">Financiamento</option>
+        <option value="Consórcio">Consórcio</option>
+        <option value="Troca + diferença">Troca + diferença</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label for="n-obs">Observações</label>
+      <textarea class="finput" id="n-obs" placeholder="Detalhes da negociação…"></textarea>
+    </div>
+    <div class="fg">
+      <label for="n-prox">Próximo passo</label>
+      <input class="finput" id="n-prox" placeholder="Ex: Enviar proposta amanhã">
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeNeg()">Cancelar</button>
+      <button class="btn-prim" onclick="saveNeg()">Atualizar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ MODAL: USUÁRIO -->
+<div class="overlay" id="ov-user">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd">
+      <h3 id="user-modal-title">Novo usuário</h3>
+      <button class="mc" onclick="closeUser()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="u-id">
+    <div class="frow">
+      <div class="fg">
+        <label for="u-nome">Nome *</label>
+        <input class="finput" id="u-nome" placeholder="Nome completo">
+      </div>
+      <div class="fg">
+        <label for="u-login">Login *</label>
+        <input class="finput" id="u-login" placeholder="usuario.login" autocomplete="off">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="u-senha">Senha</label>
+        <input class="finput" id="u-senha" type="password" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <div class="fg">
+        <label for="u-cor">Cor</label>
+        <input class="finput" id="u-cor" type="color" style="padding:4px 8px;cursor:pointer">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="u-role">Função</label>
+        <select class="finput fi-sel" id="u-role">
+          <option value="vendedor">Vendedor</option>
+          <option value="sdr">SDR</option>
+          <option value="gerencia">Gerência</option>
+          <option value="master">Master</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label for="u-unidade">Unidade</label>
+        <select class="finput fi-sel" id="u-unidade">
+          <option value="">Sem unidade específica</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeUser()">Cancelar</button>
+      <button class="btn-prim" onclick="saveUser()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ HOT LEAD NOTIF -->
+<div class="hotlead-notif" id="hl-notif">
   <div class="hn-body">
     <div class="hn-top">
       <div class="hn-icon"><i class="ti ti-flame"></i></div>
       <div class="hn-text">
-        <div class="hn-title">Lead quente sem contato</div>
-        <div class="hn-sub" id="hl-sub">—</div>
+        <div class="hn-title">Lead quente aguardando!</div>
+        <div class="hn-sub" id="hl-sub"></div>
       </div>
-      <button class="hn-close" onclick="event.stopPropagation();closeHotLead()">✕</button>
+      <button class="hn-close" onclick="closeHotLead()"><i class="ti ti-x"></i></button>
     </div>
     <div class="hn-drain"><div class="hn-drain-bar" id="hl-bar"></div></div>
   </div>
 </div>
 
-<!-- TOAST -->
-<div class="toast" id="toast"><i id="toast-ic" class="ti ti-circle-check" style="color:var(--grn);font-size:18px;"></i><span id="toast-msg">Salvo!</span></div>
+<!-- ══════════════════════════════════════════════════════════ TOAST -->
+<div class="toast" id="toast">
+  <i class="ti ti-check" id="toast-ic"></i>
+  <span id="toast-msg"></span>
+</div>
 
-<!-- ─── SUPABASE SDK ─── -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ══════════════════════════════════════════════════════════ SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/leads.js"></script>
+<script src="js/kanban.js"></script>
+<script src="js/conv.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/users.js"></script>
+<script src="js/config-tab.js"></script>
+<script src="js/main.js"></script>
+
 <script>
-// ─── CONFIG ──────────────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://imwlagfvqeexrvtiyasp.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_9njuZUBrHF5mxWAVJr21lg_wtxGTNBi';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ─── CACHE ───────────────────────────────────────────────────────────────────
-let _usersCache = null;
-let _apptsCache = [];
-
-async function getUsers(force = false) {
-  if (_usersCache && !force) return _usersCache;
-  const { data, error } = await sb.from('eye_users').select('*');
-  if (error) { console.error('getUsers:', error); return []; }
-  _usersCache = data || [];
-  return _usersCache;
-}
-
-async function getAppts() {
-  const { data, error } = await sb.from('eye_appts').select('*').order('data').order('hora');
-  if (error) { console.error('getAppts:', error); return []; }
-  _apptsCache = data || [];
-  return _apptsCache;
-}
-
-// ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const STATUS = {
-  pendente:       { l:'Novo Lead',      cls:'s-pd', c:'var(--txt2)' },
-  em_contato:     { l:'Em contato',     cls:'s-ec', c:'#5856D6'     },
-  agendado:       { l:'Agendado',       cls:'s-ag', c:'var(--ind)'  },
-  confirmado:     { l:'Realizado',      cls:'s-cf', c:'var(--grn)'  },
-  realizado:      { l:'Vendido',        cls:'s-rl', c:'var(--amb)'  },
-  nao_compareceu: { l:'Não compareceu', cls:'s-nc', c:'var(--red)'  },
-  lead_frio:      { l:'Lead Frio',      cls:'s-lf', c:'#8E8E93'     },
-};
-const ORIGINS = {
-  'Meta Ads':           '📊',
-  'Instagram Orgânico': '📸',
-  'WhatsApp Direto':    '💬',
-  'Indicação':          '🤝',
-  'Walk-in':            '🚶',
-  'OLX':                '🛒',
-  'Outros':             '📌',
-};
-const ROLE_LABELS = { gerencia:'Gerência', sdr:'SDR', vendedor:'Vendedor', master:'Master' };
-
-// ─── SEED ────────────────────────────────────────────────────────────────────
-async function initUsers() {
-  const users = await getUsers();
-  if (users.length > 0) return;
-  const seed = [
-    { id:'u1', nome:'Daniel',     login:'daniel',   senha:'daniel123',   role:'gerencia', cor:'#F5A623' },
-    { id:'u2', nome:'Sabrina',    login:'sabrina',   senha:'sabrina123',  role:'sdr',      cor:'#2DD4A7' },
-    { id:'u3', nome:'Sandro',     login:'sandro',    senha:'sandro123',   role:'vendedor', cor:'#5B6EFF' },
-    { id:'u4', nome:'Sabrina V.', login:'sabrinav',  senha:'sabrinav123', role:'vendedor', cor:'#d4537e' },
-    { id:'u5', nome:'Amanda',     login:'amanda',    senha:'amanda123',   role:'vendedor', cor:'#ba7517' },
-    { id:'u6', nome:'Jamila',     login:'jamila',    senha:'jamila123',   role:'vendedor', cor:'#9b59b6' },
-  ];
-  const { error } = await sb.from('eye_users').insert(seed);
-  if (!error) _usersCache = seed;
-}
-
-async function seedAppts() {
-  const { count } = await sb.from('eye_appts').select('*', { count:'exact', head:true });
-  if (count > 0) return;
-  const today = new Date().toISOString().split('T')[0];
-  const tom   = new Date(Date.now() + 864e5).toISOString().split('T')[0];
-  const seed = [
-    { id:uid(), cli:'Marcos Tavares', tel:'(81) 9 8801-2233', data:today, hora:'10:00', vnd:'Sandro',     orig:'Meta Ads',           modelo:'HR-V EXL 2022',         valor:'R$ 95.000',  pgto:'À vista',              status:'confirmado', obs:'Cliente muito interessado, quer fechar hoje.', prox:'Preparar carro às 9h30.',        criado_por:'Sabrina' },
-    { id:uid(), cli:'Camila Nunes',   tel:'(81) 9 9845-1100', data:today, hora:'16:00', vnd:'Sabrina V.', orig:'Meta Ads',           modelo:'Compass Longitude 2023',valor:'R$ 128.000', pgto:'Troca + financiamento', status:'agendado',   obs:'',                                            prox:'Confirmar no WhatsApp às 14h.', criado_por:'Sabrina' },
-    { id:uid(), cli:'Juliana Pires',  tel:'(81) 9 9912-4567', data:tom,   hora:'09:30', vnd:'Sabrina V.', orig:'Instagram Orgânico', modelo:'Corolla XEI 2022',      valor:'R$ 110.000', pgto:'Financiamento',         status:'agendado',   obs:'Perguntou sobre entrada mínima.',              prox:'Preparar simulação.',            criado_por:'Sabrina' },
-    { id:uid(), cli:'Rafael Souza',   tel:'(81) 9 9700-8890', data:tom,   hora:'11:00', vnd:'Sandro',     orig:'WhatsApp Direto',   modelo:'Onix LT 2021',          valor:'R$ 72.900',  pgto:'',                      status:'pendente',   obs:'',                                            prox:'Ligar para confirmar.',         criado_por:'daniel'  },
-    { id:uid(), cli:'Patrícia Melo',  tel:'(81) 9 9521-7788', data:tom,   hora:'14:00', vnd:'Amanda',     orig:'Indicação',         modelo:'T-Cross Highline 2022', valor:'R$ 88.500',  pgto:'Financiamento',         status:'agendado',   obs:'Veio por indicação. Tem entrada (~R$25k).',   prox:'Separar versão prata e cinza.', criado_por:'Sabrina' },
-  ];
-  await sb.from('eye_appts').insert(seed);
-}
-
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
-let CU = null;
-
-async function doLogin() {
-  const loginVal = document.getElementById('li-user').value.trim();
-  const senhaVal = document.getElementById('li-pass').value;
-  const btn = document.getElementById('btn-login');
-  btn.disabled = true;
-  btn.textContent = 'Entrando…';
-
-  if (loginVal === 'eye' && senhaVal === 'eye@master2025') {
-    CU = { id:'master', nome:'Master', login:'eye', role:'gerencia', cor:'#5B6EFF' };
-    localStorage.setItem('eye_cu', JSON.stringify(CU));
-    showApp(); return;
-  }
-  const users = await getUsers();
-  const u = users.find(x => x.login === loginVal && x.senha === senhaVal);
-  if (!u) {
-    document.getElementById('li-err').style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Entrar';
-    return;
-  }
-  document.getElementById('li-err').style.display = 'none';
-  CU = u;
-  localStorage.setItem('eye_cu', JSON.stringify(CU));
-  showApp();
-}
-
-document.getElementById('li-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-
-function doLogout() {
-  CU = null;
-  _usersCache = null;
-  _apptsCache = [];
-  localStorage.removeItem('eye_cu');
-  document.getElementById('li-user').value = '';
-  document.getElementById('li-pass').value = '';
-  const btn = document.getElementById('btn-login');
-  btn.disabled = false;
-  btn.textContent = 'Entrar';
-  show('s-login');
-}
-
-// ─── SCREENS ──────────────────────────────────────────────────────────────────
-function show(id) {
-  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('on'); s.style.display = 'none'; });
-  const el = document.getElementById(id);
-  el.classList.add('on'); el.style.display = 'flex';
-}
-
-function showApp() {
-  show('s-app');
-  document.getElementById('top-username').textContent = CU.nome;
-  const rb = document.getElementById('top-role-badge');
-  rb.textContent = ROLE_LABELS[CU.role] || CU.role;
-  rb.className = 'top-role-badge ' + (CU.role === 'master' ? 'rb-mst' : CU.role === 'gerencia' ? 'rb-ger' : CU.role === 'sdr' ? 'rb-sdr' : 'rb-vnd');
-  buildNav();
-  goTab('inicio');
-  setTimeout(showHotLeadNotif, 8000);
-  requestNotifPerm();
-  startRealtimeLeads();
-}
-
-function requestNotifPerm() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
-}
-
-function pushNotif(title, body) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body, icon: '' });
-  }
-}
-
-// ─── NAV ──────────────────────────────────────────────────────────────────────
-function tabs() {
-  const base = [
-    { id:'inicio', icon:'ti-home',           label:'Início' },
-    { id:'conv',   icon:'ti-message-2',     label:'Conversas' },
-    { id:'crm',    icon:'ti-layout-kanban', label:'CRM' },
-    { id:'agenda', icon:'ti-calendar',       label:'Agenda' },
-    { id:'cal',    icon:'ti-calendar-month', label:'Calendário' },
-  ];
-  if (CU.role === 'gerencia' || CU.role === 'sdr' || CU.role === 'master') {
-    base.push(
-      { id:'origem', icon:'ti-chart-pie',  label:'Origens' },
-      { id:'negoc',  icon:'ti-handshake',  label:'Negociações' },
-    );
-  }
-  if (CU.role === 'gerencia' || CU.role === 'master') {
-    base.push({ id:'users', icon:'ti-users-group', label:'Usuários' });
-  }
-  if (CU.role === 'master') {
-    base.push({ id:'config', icon:'ti-settings', label:'Config' });
-  }
-  return base;
-}
-
-function buildNav() {
-  const ts = tabs();
-  const mk = t => `<button onclick="goTab('${t.id}',this)" data-t="${t.id}"><i class="ti ${t.icon}"></i>${t.label}</button>`;
-  document.getElementById('tab-nav').innerHTML  = ts.map(mk).join('');
-  document.getElementById('mob-nav').innerHTML  = ts.map(mk).join('');
-}
-
-function goTab(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
-  const v = document.getElementById('v-' + id);
-  if (v) v.classList.add('on');
-  document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === id));
-  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, users:renderUsers, config:renderConfig };
-  if (renders[id]) renders[id]();
-}
-
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
-function uid()        { return Date.now() + '-' + Math.random().toString(36).slice(2, 6); }
-function fmtDate(d)   { if (!d) return '—'; const [y,m,dd] = d.split('-'); return `${dd}/${m}/${y}`; }
-function initials(n)  { return (n||'?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase(); }
-function userColor(nome) { return (_usersCache||[]).find(x => x.nome === nome)?.cor || '#5B6EFF'; }
-function canEdit(a)   { return CU.role === 'gerencia' || CU.role === 'sdr' || CU.role === 'master' || a.vnd === CU.nome; }
-function isMgr()      { return CU.role === 'gerencia' || CU.role === 'master'; }
-function canDelete()  { return CU.role === 'gerencia' || CU.role === 'sdr' || CU.role === 'master'; }
-function fmtStatus(s) { return STATUS[s] || STATUS.pendente; }
-function vendedores() { return (_usersCache||[]).filter(u => u.role === 'vendedor'); }
-function loading(el)  { el.innerHTML = `<div class="loading-st"><i class="ti ti-loader-2"></i><p>Carregando…</p></div>`; }
-
-// ─── CARD ─────────────────────────────────────────────────────────────────────
-function apptCard(a, opts = {}) {
-  const sm = fmtStatus(a.status);
-  const ac = userColor(a.vnd);
-  const hasNeg = a.modelo || a.valor || a.pgto;
-  const hasObs = a.obs || a.prox;
-  return `<div class="ac" style="--c:${sm.c}">
-    <div class="ac-head">
-      <div class="ac-av" style="background:${ac}">${initials(a.vnd)}</div>
-      <div class="ac-info">
-        <div class="ac-name">${a.cli}<span class="tag ${sm.cls}">${sm.l}</span></div>
-        <div class="ac-sub">
-          <span><i class="ti ti-calendar"></i>${fmtDate(a.data)}${a.hora ? ' · ' + a.hora : ''}</span>
-          <span><i class="ti ti-user"></i>${a.vnd || '—'}</span>
-          ${a.orig ? `<span><i class="ti ti-map-pin"></i>${a.orig}</span>` : ''}
-          ${a.tel  ? `<span><i class="ti ti-phone"></i>${a.tel}</span>`  : ''}
-        </div>
-      </div>
-    </div>
-    ${hasNeg ? `<div class="ac-fields">
-      ${a.modelo ? `<div class="af"><div class="afl">Modelo</div><div class="afv">${a.modelo}</div></div>` : ''}
-      ${a.valor  ? `<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${a.valor}</div></div>` : ''}
-      ${a.pgto   ? `<div class="af"><div class="afl">Pagamento</div><div class="afv">${a.pgto}</div></div>` : ''}
-    </div>` : ''}
-    ${hasObs ? `<div class="ac-neg">
-      <div class="neg-lbl">Negociação</div>
-      ${a.obs  ? `<div>${a.obs}</div>` : ''}
-      ${a.prox ? `<div class="next"><i class="ti ti-arrow-right" style="font-size:12px;vertical-align:-1px;"></i> ${a.prox}</div>` : ''}
-    </div>` : ''}
-    ${opts.noActs ? '' : canEdit(a) ? `<div class="ac-acts">
-      <button class="btn-s p" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i>${CU.role === 'vendedor' ? 'Atualizar' : 'Negociação'}</button>
-      ${CU.role !== 'vendedor' ? `<button class="btn-s" onclick="openAppt('${a.id}')"><i class="ti ti-edit"></i>Editar</button>` : ''}
-      ${canDelete() ? `<button class="btn-s d" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button>` : ''}
-    </div>` : ''}
-  </div>`;
-}
-
-// ─── AGENDA ───────────────────────────────────────────────────────────────────
-async function renderAgenda() {
-  const el = document.getElementById('v-agenda');
-  loading(el);
-  let appts = await getAppts();
-  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  const all = appts;
-
-  el.innerHTML = `
-    <div class="stats">
-      <div class="stat-c"><div class="sv" style="color:var(--ind2)">${all.length}</div><div class="sl">Total</div></div>
-      <div class="stat-c"><div class="sv">${all.filter(a=>a.status==='agendado').length}</div><div class="sl">Agendados</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--grn)">${all.filter(a=>a.status==='confirmado').length}</div><div class="sl">Realizados</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--amb)">${all.filter(a=>a.status==='realizado').length}</div><div class="sl">Vendidos</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--red)">${all.filter(a=>a.status==='nao_compareceu').length}</div><div class="sl">Não compareceu</div></div>
-    </div>
-    <div class="filters">
-      <input class="fi fi-search" id="ag-q" placeholder="Buscar cliente, modelo…" oninput="_filterAgenda()">
-      <select class="fi fi-sel" id="ag-st" onchange="_filterAgenda()">
-        <option value="">Todos os status</option>
-        ${Object.entries(STATUS).map(([k,v]) => `<option value="${k}">${v.l}</option>`).join('')}
-      </select>
-      ${CU.role !== 'vendedor' ? `<select class="fi fi-sel" id="ag-vnd" onchange="_filterAgenda()">
-        <option value="">Todos os vendedores</option>
-        ${vendedores().map(v => `<option>${v.nome}</option>`).join('')}
-      </select>` : ''}
-      <select class="fi fi-sel" id="ag-orig" onchange="_filterAgenda()">
-        <option value="">Todas as origens</option>
-        ${Object.keys(ORIGINS).map(o => `<option>${o}</option>`).join('')}
-      </select>
-      <button class="btn-s" onclick="exportCSV()" style="white-space:nowrap"><i class="ti ti-table-export"></i>Exportar CSV</button>
-    </div>
-    <div id="ag-list"></div>`;
-  _filterAgenda();
-}
-
-function _filterAgenda() {
-  let appts = [..._apptsCache];
-  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  const q    = (document.getElementById('ag-q')?.value   || '').toLowerCase();
-  const st   = document.getElementById('ag-st')?.value   || '';
-  const vnd  = document.getElementById('ag-vnd')?.value  || '';
-  const orig = document.getElementById('ag-orig')?.value || '';
-  if (q)    appts = appts.filter(a => (a.cli + a.vnd + (a.modelo||'')).toLowerCase().includes(q));
-  if (st)   appts = appts.filter(a => a.status === st);
-  if (vnd)  appts = appts.filter(a => a.vnd    === vnd);
-  if (orig) appts = appts.filter(a => a.orig   === orig);
-  const el = document.getElementById('ag-list');
-  if (!appts.length) {
-    el.innerHTML = `<div class="empty-st"><i class="ti ti-calendar-off"></i><p>Nenhum agendamento encontrado.<br>Clique em "Novo lead" para criar o primeiro.</p></div>`;
-    return;
-  }
-  appts.sort((a, b) => (a.data + a.hora) < (b.data + b.hora) ? -1 : 1);
-  const byDate = {};
-  appts.forEach(a => { if (!byDate[a.data]) byDate[a.data] = []; byDate[a.data].push(a); });
-  el.innerHTML = Object.entries(byDate).map(([d, arr]) => `
-    <div class="sec-lbl" style="margin-top:18px">${fmtDate(d)}<span>${arr.length} agendamento${arr.length!==1?'s':''}</span></div>
-    <div class="appt-list">${arr.map(a => apptCard(a)).join('')}</div>`).join('');
-}
-
-// ─── CALENDAR ─────────────────────────────────────────────────────────────────
-let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), calSelDay = null;
-
-async function renderCal() {
-  const el = document.getElementById('v-cal');
-  loading(el);
-  await getAppts();
-  el.innerHTML = `<div class="cal-wrap"><div class="cal-box" id="cal-grid-box"></div><div class="cal-detail" id="cal-detail-box"></div></div>`;
-  drawCalGrid();
-  const today = new Date();
-  calSelDay = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  drawCalDetail(calSelDay);
-}
-
-function drawCalGrid() {
-  const filtered = CU.role === 'vendedor' ? _apptsCache.filter(a => a.vnd === CU.nome) : _apptsCache;
-  const agendByDay = {}, leadsDay = {};
-  const agendStatus = ['agendado','confirmado','realizado','nao_compareceu'];
-  const leadStatus  = ['pendente','em_contato','lead_frio'];
-  filtered.forEach(a => {
-    if (agendStatus.includes(a.status)) agendByDay[a.data] = (agendByDay[a.data] || 0) + 1;
-    if (leadStatus.includes(a.status))  leadsDay[a.data]   = (leadsDay[a.data]   || 0) + 1;
-  });
-  const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const firstDay    = new Date(calYear, calMonth, 1).getDay();
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  let cells = '';
-  for (let i = 0; i < firstDay; i++) cells += `<div class="cal-day empty"></div>`;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const ds      = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday = ds === todayStr;
-    const isSel   = ds === calSelDay;
-    const agCnt   = agendByDay[ds] || 0;
-    const ldCnt   = leadsDay[ds]   || 0;
-    const hasAny  = agCnt > 0 || ldCnt > 0;
-    const badges  = hasAny ? `<div class="cal-badges">
-      ${agCnt > 0 ? `<span class="cal-badge ${isSel?'cb-ag-sel':'cb-ag'}" title="Agendamentos">${agCnt}</span>` : ''}
-      ${ldCnt > 0 ? `<span class="cal-badge ${isSel?'cb-ld-sel':'cb-ld'}" title="Leads recebidos">${ldCnt}</span>` : ''}
-    </div>` : '';
-    cells += `<div class="cal-day${isToday?' today':''}${isSel?' sel':''}" onclick="selectCalDay('${ds}')">${d}${badges}</div>`;
-  }
-  document.getElementById('cal-grid-box').innerHTML = `
-    <div class="cal-header">
-      <button class="cal-nav-btn" onclick="calNav(-1)"><i class="ti ti-chevron-left"></i></button>
-      <h3>${months[calMonth]} ${calYear}</h3>
-      <button class="cal-nav-btn" onclick="calNav(1)"><i class="ti ti-chevron-right"></i></button>
-    </div>
-    <div class="cal-dow"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
-    <div class="cal-grid">${cells}</div>`;
-}
-
-function calNav(dir) {
-  calMonth += dir;
-  if (calMonth > 11) { calMonth = 0; calYear++; }
-  if (calMonth <  0) { calMonth = 11; calYear--; }
-  drawCalGrid();
-}
-
-function selectCalDay(ds) { calSelDay = ds; drawCalGrid(); drawCalDetail(ds); }
-
-function drawCalDetail(ds) {
-  let appts = _apptsCache.filter(a => a.data === ds);
-  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  appts.sort((a, b) => a.hora < b.hora ? -1 : 1);
-  const [y,m,d] = ds.split('-');
-  document.getElementById('cal-detail-box').innerHTML = `
-    <div class="cal-detail-head">${d}/${m}/${y} · ${appts.length} agendamento${appts.length!==1?'s':''}</div>
-    <div class="cal-detail-body">
-      ${appts.length ? appts.map(a => {
-        const sm = fmtStatus(a.status);
-        return `<div class="cal-appt-mini" style="--c:${sm.c}" onclick="openNeg('${a.id}')">
-          <div class="cam-time">${a.hora||'—'} · <span class="tag ${sm.cls}" style="font-size:10px;">${sm.l}</span></div>
-          <div class="cam-name">${a.cli}</div>
-          <div class="cam-sub"><span style="color:${userColor(a.vnd)};font-weight:600;">${a.vnd}</span>${a.modelo?' · '+a.modelo:''}</div>
-        </div>`;
-      }).join('') : `<div class="cal-empty"><i class="ti ti-calendar-off" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4;"></i>Sem agendamentos neste dia</div>`}
-    </div>`;
-}
-
-// ─── ORIGENS ──────────────────────────────────────────────────────────────────
-async function renderOrigem() {
-  const el = document.getElementById('v-origem');
-  loading(el);
-  let appts = await getAppts();
-  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  const total   = appts.length || 1;
-  const grid    = Object.keys(ORIGINS).map(o => {
-    const c   = appts.filter(a => a.orig === o).length;
-    const pct = Math.round(c / total * 100);
-    return `<div class="origin-c"><div class="oi">${ORIGINS[o]}</div><div class="on2">${o}</div><div class="ov">${c}</div><div class="obar"><i style="width:${pct}%"></i></div></div>`;
-  }).join('');
-  const byOrig = {};
-  appts.forEach(a => { const k = a.orig||'Outros'; if (!byOrig[k]) byOrig[k]=[]; byOrig[k].push(a); });
-  el.innerHTML = `<div class="origin-grid">${grid}</div>
-    ${Object.entries(byOrig).map(([o,arr]) => `
-      <div class="sec-lbl" style="margin-top:18px">${ORIGINS[o]||'📌'} ${o}<span>${arr.length}</span></div>
-      <div class="appt-list">${arr.map(a => apptCard(a,{noActs:true})).join('')}</div>`).join('')}`;
-}
-
-// ─── NEGOCIAÇÕES ──────────────────────────────────────────────────────────────
-async function renderNegoc() {
-  const el = document.getElementById('v-negoc');
-  loading(el);
-  let appts = (await getAppts()).filter(a => a.modelo||a.valor||a.pgto||a.obs);
-  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  const totalVal = appts.reduce((s, a) => {
-    const n = parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));
-    return s + (isNaN(n) ? 0 : n);
-  }, 0);
-  el.innerHTML = `
-    <div class="stats">
-      <div class="stat-c"><div class="sv">${appts.length}</div><div class="sl">Negociações</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--grn)">R$ ${Math.round(totalVal).toLocaleString('pt-BR')}</div><div class="sl">Potencial total</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--amb)">${appts.filter(a=>a.pgto==='À vista').length}</div><div class="sl">À vista</div></div>
-      <div class="stat-c"><div class="sv">${appts.filter(a=>(a.pgto||'').toLowerCase().includes('financ')).length}</div><div class="sl">Financiamento</div></div>
-    </div>
-    <div class="sec-lbl">Em andamento</div>
-    ${appts.length ? `<div class="appt-list">${appts.map(a => apptCard(a)).join('')}</div>` :
-    `<div class="empty-st"><i class="ti ti-handshake"></i><p>Nenhuma negociação registrada.<br>Preencha os campos ao criar ou editar um agendamento.</p></div>`}`;
-}
-
-// ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
-async function renderUsers() {
-  const el = document.getElementById('v-users');
-  loading(el);
-  const users = await getUsers(true);
-  el.innerHTML = `
-    <div class="filters"><button class="btn-new" onclick="openUser()"><i class="ti ti-user-plus"></i>Novo usuário</button></div>
-    <div class="sec-lbl">Usuários cadastrados<span>${users.length} no total</span></div>
-    <div class="user-table">
-      ${users.map(u => `
-        <div class="user-row">
-          <div class="ur-av" style="background:${u.cor}">${initials(u.nome)}</div>
-          <div class="ur-info">
-            <b>${u.nome}</b>
-            <div class="ur-login">@${u.login} · <span class="tag ${u.role==='master'?'s-pd':u.role==='gerencia'?'s-rl':u.role==='sdr'?'s-cf':'s-ag'}">${ROLE_LABELS[u.role]||u.role}</span></div>
-          </div>
-          <div class="ur-acts">
-            ${u.id !== CU.id ? `<button class="btn-s" onclick="openUser('${u.id}')"><i class="ti ti-edit"></i>Editar</button>` : ''}
-            ${u.id !== CU.id ? `<button class="btn-s d" onclick="delUser('${u.id}')"><i class="ti ti-trash"></i></button>` : ''}
-          </div>
-        </div>`).join('')}
-    </div>`;
-}
-
-// ─── MODAL NOVO LEAD (rápido) ─────────────────────────────────────────────────
-function openLead() {
-  ['l-tel','l-cli'].forEach(i => { document.getElementById(i).value = ''; });
-  document.getElementById('l-orig').value = '';
-  document.getElementById('ov-lead').classList.add('on');
-  setTimeout(() => document.getElementById('l-tel').focus(), 100);
-}
-function closeLead() { document.getElementById('ov-lead').classList.remove('on'); }
-
-async function saveLead() {
-  const tel  = document.getElementById('l-tel').value.trim();
-  const orig = document.getElementById('l-orig').value;
-  if (!tel || !orig) { toast('Preencha telefone e origem', 'err'); return; }
-  const telNum = tel.replace(/\D/g,'');
-  const dup = _apptsCache.find(a => a.tel && a.tel.replace(/\D/g,'') === telNum);
-  if (dup && !confirm(`⚠️ Telefone já existe na base (${dup.cli}). Criar mesmo assim?`)) return;
-  const cli = document.getElementById('l-cli').value.trim() || tel;
-  const today = new Date().toISOString().split('T')[0];
-  const obj = {
-    id: uid(), cli, tel, orig,
-    status: 'pendente',
-    data: today,
-    criado_por: CU.login,
-    em: new Date().toISOString(),
-  };
-  const { error } = await sb.from('eye_appts').insert(obj);
-  if (error) { toast('Erro ao criar lead: ' + error.message, 'err'); return; }
-  closeLead();
-  toast('Lead criado!');
-  await refreshAll();
-}
-
-// ─── MODAL AGENDAMENTO ────────────────────────────────────────────────────────
-async function openAppt(id) {
-  await getUsers();
-  const vnds = vendedores();
-  document.getElementById('a-vnd').innerHTML = `<option value="">Selecione…</option>${vnds.map(v => `<option value="${v.nome}">${v.nome}</option>`).join('')}`;
-  const today = new Date().toISOString().split('T')[0];
-  if (id) {
-    const a = _apptsCache.find(x => x.id === id); if (!a) return;
-    document.getElementById('appt-modal-title').textContent = 'Editar agendamento';
-    document.getElementById('appt-id').value   = a.id;
-    document.getElementById('a-cli').value     = a.cli    || '';
-    document.getElementById('a-tel').value     = a.tel    || '';
-    document.getElementById('a-data').value    = a.data   || today;
-    document.getElementById('a-hora').value    = a.hora   || '';
-    document.getElementById('a-vnd').value     = a.vnd    || '';
-    document.getElementById('a-orig').value    = a.orig   || '';
-    document.getElementById('a-status').value  = a.status || 'pendente';
-    document.getElementById('a-modelo').value  = a.modelo || '';
-    document.getElementById('a-valor').value   = a.valor  || '';
-    document.getElementById('a-pgto').value    = a.pgto   || '';
-    document.getElementById('a-obs').value     = a.obs    || '';
-    document.getElementById('a-prox').value    = a.prox   || '';
-    const [logs, comments] = await Promise.all([loadApptLogs(a.id), loadComments(a.id)]);
-    drawComments(a.id, comments);
-    drawJourney(a.status, logs);
-    const histEl = document.getElementById('appt-history');
-    if (histEl) histEl.innerHTML = logs.length ? `
-      <div class="sec-divider">Histórico</div>
-      <div style="display:flex;flex-direction:column;gap:5px">
-        ${logs.map(l => `<div style="font-size:12px;color:var(--txt2);display:flex;gap:8px;align-items:center">
-          <span style="color:var(--txt3);font-size:11px;flex:none">${fmtLogTime(l.created_at)}</span>
-          <span style="font-weight:600;color:var(--txt)">${l.user_nome}</span>
-          <span>→</span>
-          <span class="tag ${fmtStatus(l.para_status).cls}">${fmtStatus(l.para_status).l}</span>
-        </div>`).join('')}
-      </div>` : '';
-  } else {
-    document.getElementById('appt-modal-title').textContent = 'Novo lead / agendamento';
-    document.getElementById('appt-id').value  = '';
-    ['a-cli','a-tel','a-hora','a-modelo','a-valor','a-obs','a-prox'].forEach(i => document.getElementById(i).value = '');
-    document.getElementById('a-data').value   = today;
-    document.getElementById('a-vnd').value    = CU.role === 'vendedor' ? CU.nome : '';
-    document.getElementById('a-orig').value   = '';
-    document.getElementById('a-status').value = 'agendado';
-    document.getElementById('a-pgto').value   = '';
-    const histEl = document.getElementById('appt-history');
-    if (histEl) histEl.innerHTML = '';
-    const commEl = document.getElementById('appt-comments');
-    if (commEl) commEl.innerHTML = '';
-    const journeyEl = document.getElementById('appt-journey');
-    if (journeyEl) journeyEl.innerHTML = '';
-  }
-  document.getElementById('ov-appt').classList.add('on');
-}
-function closeAppt() { document.getElementById('ov-appt').classList.remove('on'); }
-
-async function saveAppt() {
-  const cli  = document.getElementById('a-cli').value.trim();
-  const data = document.getElementById('a-data').value;
-  const vnd  = document.getElementById('a-vnd').value;
-  const orig = document.getElementById('a-orig').value;
-  if (!cli || !data || !vnd || !orig) { toast('Preencha: cliente, data, vendedor e origem','err'); return; }
-  const eid = document.getElementById('appt-id').value;
-  if (!eid) {
-    const telV = document.getElementById('a-tel').value.trim();
-    if (telV) {
-      const telNum = telV.replace(/\D/g,'');
-      const dup = _apptsCache.find(a => a.tel && a.tel.replace(/\D/g,'') === telNum);
-      if (dup && !confirm(`⚠️ Telefone já existe na base (${dup.cli}). Criar mesmo assim?`)) return;
-    }
-  }
-  const obj = {
-    id:         eid || uid(),
-    cli, data,
-    tel:        document.getElementById('a-tel').value.trim(),
-    hora:       document.getElementById('a-hora').value,
-    vnd, orig,
-    status:     document.getElementById('a-status').value || 'agendado',
-    modelo:     document.getElementById('a-modelo').value.trim(),
-    valor:      document.getElementById('a-valor').value.trim(),
-    pgto:       document.getElementById('a-pgto').value,
-    obs:        document.getElementById('a-obs').value.trim(),
-    prox:       document.getElementById('a-prox').value.trim(),
-    criado_por: CU.login,
-    em:         new Date().toISOString(),
-  };
-  let error;
-  if (eid) {
-    ({ error } = await sb.from('eye_appts').update(obj).eq('id', eid));
-  } else {
-    ({ error } = await sb.from('eye_appts').insert(obj));
-  }
-  if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
-  closeAppt();
-  toast(eid ? 'Agendamento atualizado' : 'Lead criado com sucesso');
-  await refreshAll();
-}
-
-// ─── MODAL NEGOCIAÇÃO ─────────────────────────────────────────────────────────
-function openNeg(id) {
-  const a = _apptsCache.find(x => x.id === id); if (!a) return;
-  document.getElementById('neg-modal-title').textContent = 'Negociação · ' + a.cli;
-  document.getElementById('neg-id').value   = id;
-  document.getElementById('n-status').value = a.status || 'agendado';
-  document.getElementById('n-modelo').value = a.modelo || '';
-  document.getElementById('n-valor').value  = a.valor  || '';
-  document.getElementById('n-pgto').value   = a.pgto   || '';
-  document.getElementById('n-obs').value    = a.obs    || '';
-  document.getElementById('n-prox').value   = a.prox   || '';
-  document.getElementById('ov-neg').classList.add('on');
-}
-function closeNeg() { document.getElementById('ov-neg').classList.remove('on'); }
-
-async function saveNeg() {
-  const id = document.getElementById('neg-id').value;
-  const newStatus = document.getElementById('n-status').value;
-  const a = _apptsCache.find(x => x.id === id);
-  if (a) {
-    const merged = { ...a, status: newStatus,
-      modelo: document.getElementById('n-modelo').value.trim() || a.modelo,
-      valor:  document.getElementById('n-valor').value.trim()  || a.valor,
-    };
-    const missing = checkGate(merged, newStatus);
-    if (missing) {
-      toast(`Preencha antes de agendar: ${missing.join(', ')}`, 'err');
-      return;
-    }
-  }
-  const upd = {
-    status: newStatus,
-    modelo: document.getElementById('n-modelo').value.trim(),
-    valor:  document.getElementById('n-valor').value.trim(),
-    pgto:   document.getElementById('n-pgto').value,
-    obs:    document.getElementById('n-obs').value.trim(),
-    prox:   document.getElementById('n-prox').value.trim(),
-  };
-  const oldStatus = a?.status;
-  const { error } = await sb.from('eye_appts').update(upd).eq('id', id);
-  if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
-  if (oldStatus && oldStatus !== newStatus) await logStatus(id, oldStatus, newStatus);
-  closeNeg();
-  toast('Negociação atualizada');
-  await refreshAll();
-}
-
-// ─── MODAL USUÁRIO ────────────────────────────────────────────────────────────
-function openUser(id) {
-  if (id) {
-    const u = (_usersCache||[]).find(x => x.id === id); if (!u) return;
-    document.getElementById('user-modal-title').textContent = 'Editar usuário';
-    document.getElementById('u-id').value    = u.id;
-    document.getElementById('u-nome').value  = u.nome;
-    document.getElementById('u-login').value = u.login;
-    document.getElementById('u-senha').value = '';
-    document.getElementById('u-role').value  = u.role;
-    document.getElementById('u-cor').value   = u.cor;
-  } else {
-    document.getElementById('user-modal-title').textContent = 'Novo usuário';
-    ['u-id','u-nome','u-login','u-senha'].forEach(i => document.getElementById(i).value = '');
-    document.getElementById('u-role').value = 'vendedor';
-    document.getElementById('u-cor').value  = '#5B6EFF';
-  }
-  document.getElementById('ov-user').classList.add('on');
-}
-function closeUser() { document.getElementById('ov-user').classList.remove('on'); }
-
-async function saveUser() {
-  const nome  = document.getElementById('u-nome').value.trim();
-  const login = document.getElementById('u-login').value.trim();
-  const senha = document.getElementById('u-senha').value;
-  const role  = document.getElementById('u-role').value;
-  const cor   = document.getElementById('u-cor').value;
-  if (!nome || !login) { toast('Preencha nome e login','err'); return; }
-  const eid = document.getElementById('u-id').value;
-  let error;
-  if (eid) {
-    const upd = { nome, login, role, cor };
-    if (senha) upd.senha = senha;
-    ({ error } = await sb.from('eye_users').update(upd).eq('id', eid));
-  } else {
-    if (!senha) { toast('Defina uma senha','err'); return; }
-    const exists = (_usersCache||[]).find(u => u.login === login);
-    if (exists)  { toast('Login já existe','err'); return; }
-    ({ error } = await sb.from('eye_users').insert({ id:uid(), nome, login, senha, role, cor }));
-  }
-  if (error) { toast('Erro: ' + error.message,'err'); return; }
-  _usersCache = null;
-  closeUser();
-  toast(eid ? 'Usuário atualizado' : 'Usuário criado');
-  renderUsers();
-}
-
-async function delUser(id) {
-  if (!confirm('Excluir este usuário?')) return;
-  const { error } = await sb.from('eye_users').delete().eq('id', id);
-  if (error) { toast('Erro: ' + error.message,'err'); return; }
-  _usersCache = null;
-  toast('Usuário removido','warn');
-  renderUsers();
-}
-
-// ─── DELETE APPT ──────────────────────────────────────────────────────────────
-async function delAppt(id) {
-  if (!confirm('Excluir este agendamento?')) return;
-  const { error } = await sb.from('eye_appts').delete().eq('id', id);
-  if (error) { toast('Erro: ' + error.message,'err'); return; }
-  toast('Agendamento excluído','warn');
-  await refreshAll();
-}
-
-// ─── REFRESH ──────────────────────────────────────────────────────────────────
-async function refreshAll() {
-  await getAppts();
-  const active = document.querySelector('.view.on');
-  if (!active) return;
-  const id = active.id.replace('v-', '');
-  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc };
-  if (id === 'crm') _drawKanban();
-  else if (renders[id]) await renders[id]();
-  if (id === 'agenda') _filterAgenda();
-}
-
-// ─── TOAST ────────────────────────────────────────────────────────────────────
-function toast(msg, type) {
-  const t  = document.getElementById('toast');
-  const ic = document.getElementById('toast-ic');
-  ic.className  = 'ti ' + (type==='err'?'ti-alert-circle':type==='warn'?'ti-alert-triangle':'ti-circle-check');
-  ic.style.color = type==='err'?'var(--red)':type==='warn'?'var(--amb)':'var(--grn)';
-  document.getElementById('toast-msg').textContent = msg;
-  t.style.display = 'flex';
-  clearTimeout(t._t); t._t = setTimeout(() => t.style.display='none', 2800);
-}
-
-// ─── CONVERSAS ────────────────────────────────────────────────────────────────
-let _activeConvId = null;
-let _convsCache   = [];
-let _convFilter   = 'aguardando';
-let _realtimeSub  = null;
-
-const CONV_COLORS = ['#5856D6','#007AFF','#34C759','#FF9F0A','#d4537e','#9b59b6','#ba7517'];
-function convColor(phone) { return CONV_COLORS[(phone||'').charCodeAt((phone||'').length-1) % CONV_COLORS.length]; }
-function convInitials(name, phone) { return (name || phone || '?').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
-function fmtMsgTime(iso) {
-  if (!iso) return '';
-  const d = new Date(iso), now = new Date(), diff = now - d;
-  if (diff < 86400000) return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  if (diff < 604800000) return ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()];
-  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-}
-
-async function renderConv() {
-  const el = document.getElementById('v-conv');
-  el.innerHTML = `
-    <div class="conv-wrap" id="conv-wrap">
-      <div class="conv-left" id="conv-left">
-        <div class="conv-search">
-          <input class="fi fi-search" style="width:100%;height:34px" placeholder="Buscar…" oninput="drawConvList(this.value)" id="conv-q">
-        </div>
-        <div class="conv-filter-tabs">
-          <div class="conv-ft on"  onclick="setConvFilter('aguardando',this)">Aguardando<span id="ct-aw"></span></div>
-          <div class="conv-ft"     onclick="setConvFilter('atendendo',this)">Atendendo<span id="ct-at"></span></div>
-          <div class="conv-ft"     onclick="setConvFilter('finalizado',this)">Finalizados<span id="ct-fn"></span></div>
-        </div>
-        <div class="conv-list" id="conv-list">
-          <div style="text-align:center;padding:30px;color:var(--txt3);font-size:13px">
-            <i class="ti ti-loader-2" style="font-size:24px;display:block;margin-bottom:8px;animation:spin 1s linear infinite;color:var(--ind)"></i>
-            Carregando…
-          </div>
-        </div>
-      </div>
-      <div class="conv-right" id="conv-right">
-        <div class="conv-empty-right">
-          <i class="ti ti-message-2" style="font-size:48px;opacity:.15"></i>
-          <p style="font-size:13px;color:var(--txt3)">Selecione uma conversa</p>
-        </div>
-      </div>
-    </div>`;
-  await loadConvList();
-  startRealtimeConv();
-}
-
-async function loadConvList() {
-  const { data, error } = await sb.from('eye_conversations')
-    .select('*').order('last_message_at', { ascending:false });
-  if (error) { console.error('conv:', error); return; }
-  _convsCache = data || [];
-  drawConvList();
-}
-
-function drawConvList(q = '') {
-  q = q || (document.getElementById('conv-q')?.value || '');
-  q = q.toLowerCase();
-  let list = _convsCache.filter(c => c.status === _convFilter);
-  if (q) list = list.filter(c => ((c.name||'')+(c.phone||'')).toLowerCase().includes(q));
-
-  const counts = { aguardando:0, atendendo:0, finalizado:0 };
-  _convsCache.forEach(c => { if (counts[c.status] !== undefined) counts[c.status]++; });
-  ['aguardando','atendendo','finalizado'].forEach(s => {
-    const ids = { aguardando:'ct-aw', atendendo:'ct-at', finalizado:'ct-fn' };
-    const el = document.getElementById(ids[s]);
-    if (el) el.textContent = counts[s] ? ` (${counts[s]})` : '';
-  });
-
-  const listEl = document.getElementById('conv-list');
-  if (!listEl) return;
-  if (!list.length) {
-    listEl.innerHTML = `<div style="text-align:center;padding:30px;color:var(--txt3);font-size:13px">Nenhuma conversa</div>`;
-    return;
-  }
-  listEl.innerHTML = list.map(c => `
-    <div class="conv-item${_activeConvId===c.id?' on':''}" onclick="openConv('${c.id}')">
-      <div class="ci-av2" style="background:${convColor(c.phone)}">${convInitials(c.name, c.phone)}</div>
-      <div class="ci-info2">
-        <div class="ci-top"><span>${c.name||c.phone}</span><span class="ci-time">${fmtMsgTime(c.last_message_at)}</span></div>
-        <div class="ci-preview">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.last_message||c.phone||'—'}</span>
-          ${c.unread_count>0 ? `<span class="ci-badge">${c.unread_count}</span>` : ''}
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-function setConvFilter(filter, btn) {
-  _convFilter = filter;
-  document.querySelectorAll('.conv-ft').forEach(t => t.classList.remove('on'));
-  btn.classList.add('on');
-  drawConvList();
-}
-
-async function openConv(id) {
-  _activeConvId = id;
-  drawConvList();
-  const conv = _convsCache.find(c => c.id === id);
-  if (!conv) return;
-
-  if (conv.status === 'aguardando') {
-    await sb.from('eye_conversations').update({ status:'atendendo', assigned_to:CU.nome, unread_count:0 }).eq('id', id);
-    conv.status = 'atendendo'; conv.assigned_to = CU.nome; conv.unread_count = 0;
-    drawConvList();
-  } else {
-    await sb.from('eye_conversations').update({ unread_count:0 }).eq('id', id);
-    conv.unread_count = 0;
-  }
-
-  const { data: msgs } = await sb.from('eye_messages')
-    .select('*').eq('conversation_id', id).order('created_at');
-
-  const color = convColor(conv.phone);
-  const inits = convInitials(conv.name, conv.phone);
-
-  document.getElementById('conv-right').innerHTML = `
-    <div class="conv-header">
-      <div class="ci-av2" style="background:${color};width:36px;height:36px;font-size:12px">${inits}</div>
-      <div class="ch-info">
-        <div class="ch-name">${conv.name||conv.phone}</div>
-        <div class="ch-phone">${conv.phone}${conv.assigned_to?' · <b>'+conv.assigned_to+'</b>':''}</div>
-      </div>
-      <button class="btn-s p" onclick="criarLeadDaConv('${id}')"><i class="ti ti-user-plus"></i>Criar lead</button>
-      ${CU.role!=='vendedor'?`<button class="btn-s" onclick="finalizarConv('${id}')"><i class="ti ti-check"></i>Finalizar</button>`:''}
-    </div>
-    <div class="conv-msgs" id="conv-msgs">
-      ${(msgs||[]).length ? (msgs||[]).map(m => msgBubble(m)).join('') : '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:30px">Nenhuma mensagem ainda</div>'}
-    </div>
-    <div class="conv-input-wrap">
-      <textarea class="conv-input" id="conv-input" rows="1" placeholder="Digite sua mensagem… (Enter para enviar)"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendConvMsg()}"
-        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-      <button class="conv-send" onclick="sendConvMsg()"><i class="ti ti-send"></i></button>
-    </div>`;
-
-  const msgsEl = document.getElementById('conv-msgs');
-  if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
-}
-
-function msgBubble(m) {
-  const isOut = m.direction === 'out';
-  const time = m.created_at ? new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
-  return `<div class="msg-bubble ${isOut?'msg-out':'msg-in'}">
-    ${isOut && m.sent_by ? `<div class="msg-sender">${m.sent_by}</div>` : ''}
-    <div>${m.content}</div>
-    <div class="msg-time">${time}</div>
-  </div>`;
-}
-
-async function sendConvMsg() {
-  const input = document.getElementById('conv-input');
-  const content = (input?.value||'').trim();
-  if (!content || !_activeConvId) return;
-  input.value = ''; input.style.height = 'auto';
-
-  const msg = { id:uid(), conversation_id:_activeConvId, direction:'out', content, sent_by:CU.nome, created_at:new Date().toISOString() };
-  const { error } = await sb.from('eye_messages').insert(msg);
-  if (error) { toast('Erro ao enviar','err'); return; }
-
-  await sb.from('eye_conversations').update({
-    last_message: content, last_message_at: msg.created_at, status:'atendendo', assigned_to: CU.nome,
-  }).eq('id', _activeConvId);
-
-  const msgsEl = document.getElementById('conv-msgs');
-  if (msgsEl) {
-    msgsEl.insertAdjacentHTML('beforeend', msgBubble(msg));
-    msgsEl.scrollTop = msgsEl.scrollHeight;
-  }
-  const conv = _convsCache.find(c => c.id === _activeConvId);
-  if (conv) { conv.last_message = content; conv.last_message_at = msg.created_at; }
-  drawConvList();
-
-  if (conv?.phone) {
-    try {
-      await fetch('https://imwlagfvqeexrvtiyasp.supabase.co/functions/v1/wpp-send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: conv.phone, message: content }),
-      });
-    } catch(e) { console.warn('WhatsApp send falhou:', e); }
-  }
-}
-
-async function finalizarConv(id) {
-  if (!confirm('Finalizar esta conversa?')) return;
-  await sb.from('eye_conversations').update({ status:'finalizado' }).eq('id', id);
-  _activeConvId = null;
-  await loadConvList();
-  document.getElementById('conv-right').innerHTML = `<div class="conv-empty-right"><i class="ti ti-check" style="font-size:44px;opacity:.2"></i><p style="font-size:13px;color:var(--txt3)">Conversa finalizada</p></div>`;
-  toast('Conversa finalizada');
-}
-
-async function criarLeadDaConv(id) {
-  const conv = _convsCache.find(c => c.id === id);
-  if (!conv) return;
-  await getUsers();
-  const vnds = vendedores();
-  document.getElementById('a-vnd').innerHTML = `<option value="">Selecione…</option>${vnds.map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}`;
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('appt-modal-title').textContent = 'Criar lead da conversa';
-  document.getElementById('appt-id').value   = '';
-  document.getElementById('a-cli').value     = conv.name || '';
-  document.getElementById('a-tel').value     = conv.phone || '';
-  document.getElementById('a-data').value    = today;
-  document.getElementById('a-orig').value    = 'WhatsApp Direto';
-  document.getElementById('a-status').value  = 'em_contato';
-  document.getElementById('a-vnd').value     = '';
-  ['a-hora','a-modelo','a-valor','a-obs','a-prox'].forEach(i => { const el=document.getElementById(i); if(el) el.value=''; });
-  document.getElementById('a-pgto').value    = '';
-  document.getElementById('ov-appt').classList.add('on');
-}
-
-function startRealtimeConv() {
-  if (_realtimeSub) { try { sb.removeChannel(_realtimeSub); } catch(e){} }
-  _realtimeSub = sb.channel('eye-conv-rt')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'eye_messages'}, async payload => {
-      const msg = payload.new;
-      if (msg.conversation_id === _activeConvId && msg.direction === 'in') {
-        const msgsEl = document.getElementById('conv-msgs');
-        if (msgsEl) { msgsEl.insertAdjacentHTML('beforeend', msgBubble(msg)); msgsEl.scrollTop = msgsEl.scrollHeight; }
-      }
-      await loadConvList();
-    })
-    .on('postgres_changes',{event:'*',schema:'public',table:'eye_conversations'}, async () => { await loadConvList(); })
-    .subscribe();
-}
-
-let _leadNotifSub = null;
-function startRealtimeLeads() {
-  if (_leadNotifSub) { try { sb.removeChannel(_leadNotifSub); } catch(e){} }
-  _leadNotifSub = sb.channel('eye-leads-rt')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'eye_appts'}, payload => {
-      const a = payload.new;
-      if (CU.role === 'vendedor') return;
-      pushNotif('Novo lead chegou!', `${a.cli || a.tel} · ${a.orig || ''}`);
-      toast(`Novo lead: ${a.cli || a.tel}`, 'ind');
-    })
-    .subscribe();
-}
-
-// ─── COMENTÁRIOS ─────────────────────────────────────────────────────────────
-async function loadComments(apptId) {
-  try {
-    const { data } = await sb.from('eye_comments')
-      .select('*').eq('appt_id', apptId).order('created_at');
-    return data || [];
-  } catch(e) { return []; }
-}
-
-function drawComments(apptId, comments) {
-  const el = document.getElementById('appt-comments');
-  if (!el) return;
-  el.innerHTML = `
-    <div class="sec-divider">Comentários</div>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px" id="comment-list">
-      ${comments.length ? comments.map(c => `
-        <div style="background:var(--bg);border-radius:var(--rs);padding:9px 12px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:12px;font-weight:700;color:${userColor(c.user_nome)}">${c.user_nome}</span>
-            <span style="font-size:10px;color:var(--txt3)">${fmtLogTime(c.created_at)}</span>
-          </div>
-          <div style="font-size:13px;color:var(--txt);line-height:1.45">${c.texto}</div>
-        </div>`).join('')
-      : `<div style="font-size:12px;color:var(--txt3);text-align:center;padding:8px">Nenhum comentário ainda</div>`}
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <input class="finput" id="comment-input" placeholder="Adicionar comentário…"
-        style="flex:1;margin:0;height:40px"
-        onkeydown="if(event.key==='Enter')addComment('${apptId}')">
-      <button class="btn-s p" style="height:40px;padding:0 14px" onclick="addComment('${apptId}')">
-        <i class="ti ti-send"></i>
-      </button>
-    </div>`;
-}
-
-async function addComment(apptId) {
-  const input = document.getElementById('comment-input');
-  const texto = (input?.value || '').trim();
-  if (!texto || !apptId) return;
-  input.value = '';
-  const { error } = await sb.from('eye_comments').insert({
-    id: uid(), appt_id: apptId, user_nome: CU.nome,
-    texto, created_at: new Date().toISOString(),
-  });
-  if (error) { toast('Erro ao salvar comentário', 'err'); return; }
-  const comments = await loadComments(apptId);
-  drawComments(apptId, comments);
-}
-
-// ─── LOG DE ALTERAÇÕES ────────────────────────────────────────────────────────
-async function logStatus(apptId, deStatus, paraStatus) {
-  try {
-    await sb.from('eye_logs').insert({
-      id: uid(), appt_id: apptId,
-      user_nome: CU.nome, acao: 'status',
-      de_status: deStatus, para_status: paraStatus,
-      created_at: new Date().toISOString(),
+  // Populate origin selects — runs after all JS files above have executed
+  (function () {
+    const orgs = typeof activeOrigins === 'function' ? activeOrigins() : {};
+    ['l-orig', 'a-orig'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const base = id === 'a-orig' ? '<option value="">Selecione…</option>' : '<option value="">Selecione a origem…</option>';
+      sel.innerHTML = base + Object.entries(orgs).map(([n, e]) => `<option value="${n}">${e} ${n}</option>`).join('');
     });
-  } catch(e) {}
-}
-
-async function loadApptLogs(apptId) {
-  try {
-    const { data } = await sb.from('eye_logs')
-      .select('*').eq('appt_id', apptId).order('created_at');
-    return data || [];
-  } catch(e) { return []; }
-}
-
-function fmtLogTime(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-}
-
-// ─── KANBAN CRM ───────────────────────────────────────────────────────────────
-const KB_COLS = [
-  { id:'pendente',       label:'Novo Lead',      color:'var(--txt2)' },
-  { id:'em_contato',     label:'Em contato',     color:'#5856D6'     },
-  { id:'lead_frio',      label:'Lead Frio',      color:'#8E8E93'     },
-  { id:'agendado',       label:'Agendado',       color:'var(--ind)'  },
-  { id:'confirmado',     label:'Realizado',      color:'var(--grn)'  },
-  { id:'realizado',      label:'Vendido',        color:'var(--amb)'  },
-  { id:'nao_compareceu', label:'Não compareceu', color:'var(--red)'  },
-];
-
-const GATE_FIELDS = [
-  { key:'data',  label:'Data' },
-  { key:'hora',  label:'Horário' },
-  { key:'vnd',   label:'Vendedor' },
-  { key:'orig',  label:'Origem' },
-];
-
-function checkGate(a, newStatus) {
-  if (!['agendado','confirmado','realizado'].includes(newStatus)) return null;
-  const missing = GATE_FIELDS.filter(f => !a[f.key]).map(f => f.label);
-  return missing.length ? missing : null;
-}
-
-let _kbVndFilter = '';
-
-async function renderCrm() {
-  const el = document.getElementById('v-crm');
-  loading(el);
-  await getAppts();
-  const vndOpts = CU.role !== 'vendedor'
-    ? `<select class="fi fi-sel" id="kb-vnd-f" onchange="_kbVndFilter=this.value;_drawKanban()" style="height:34px">
-        <option value="">Todos os vendedores</option>
-        ${vendedores().map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}
-       </select>` : '';
-  el.innerHTML = `
-    <div class="filters" style="margin-bottom:12px">
-      <input class="fi fi-search" style="height:34px" id="kb-q" placeholder="Buscar cliente…" oninput="_drawKanban()">
-      ${vndOpts}
-    </div>
-    <div id="kb-board"></div>`;
-  _drawKanban();
-}
-
-function _drawKanban() {
-  let appts = [..._apptsCache];
-  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  const vf = document.getElementById('kb-vnd-f')?.value || _kbVndFilter;
-  const q  = (document.getElementById('kb-q')?.value || '').toLowerCase();
-  if (vf) appts = appts.filter(a => a.vnd === vf);
-  if (q)  appts = appts.filter(a => (a.cli+' '+(a.tel||'')).toLowerCase().includes(q));
-  const hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
-  const visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
-  document.getElementById('kb-board').innerHTML =
-    `<div class="kanban-board">${visibleCols.map(col => {
-      const cards = appts.filter(a => a.status === col.id);
-      const totalVal = cards.reduce((s,a) => {
-        const n = parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));
-        return s + (isNaN(n) ? 0 : n);
-      }, 0);
-      const valStr = totalVal > 0 ? (totalVal >= 1000 ? `R$${(totalVal/1000).toFixed(0)}k` : `R$${Math.round(totalVal)}`) : '';
-      return `<div class="kb-col">
-        <div class="kb-head" style="--kh-c:${col.color}">
-          <span class="kb-head-lbl">${col.label}</span>
-          <div style="display:flex;gap:5px;align-items:center">
-            ${valStr ? `<span style="font-size:10px;color:var(--grn);font-weight:700">${valStr}</span>` : ''}
-            <span class="kb-count">${cards.length}</span>
-          </div>
-        </div>
-        <div class="kb-body"
-          ondragover="kbDragOver(event)"
-          ondragleave="kbDragLeave(event)"
-          ondrop="kbDrop(event,'${col.id}')">
-          ${cards.length
-            ? cards.map(a => kbCard(a, col.color)).join('')
-            : '<div class="kb-empty">Sem leads aqui</div>'}
-        </div>
-      </div>`;
-    }).join('')}</div>`;
-}
-
-function kbCard(a, colColor) {
-  const ac = userColor(a.vnd);
-  return `<div class="kb-card" draggable="true" style="--kc:${colColor}"
-    ondragstart="kbDragStart(event,'${a.id}')"
-    ondragend="kbDragEnd(event)">
-    <div class="kc-name">${a.cli}</div>
-    <div class="kc-sub">
-      ${a.tel    ? `<span><i class="ti ti-phone"></i>${a.tel}</span>` : ''}
-      ${a.data   ? `<span><i class="ti ti-calendar"></i>${fmtDate(a.data)}${a.hora?' · '+a.hora:''}</span>` : ''}
-      ${a.vnd    ? `<span><i class="ti ti-user" style="color:${ac}"></i><b style="color:${ac}">${a.vnd}</b></span>` : ''}
-      ${a.modelo ? `<span><i class="ti ti-car"></i>${a.modelo}</span>` : ''}
-    </div>
-    ${canEdit(a) ? `<div class="kc-acts">
-      <button class="kc-btn p" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i>Negoc.</button>
-      ${CU.role !== 'vendedor' ? `<button class="kc-btn" onclick="openAppt('${a.id}')"><i class="ti ti-edit"></i>Editar</button>` : ''}
-    </div>` : ''}
-  </div>`;
-}
-
-let _kbDragId = null;
-
-function kbDragStart(e, id) {
-  _kbDragId = id;
-  setTimeout(() => e.target.classList.add('dragging'), 0);
-  e.dataTransfer.effectAllowed = 'move';
-}
-function kbDragEnd(e)   { e.target.classList.remove('dragging'); }
-function kbDragOver(e)  { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
-function kbDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
-
-async function kbDrop(e, newStatus) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  if (!_kbDragId) return;
-  const a = _apptsCache.find(x => x.id === _kbDragId);
-  _kbDragId = null;
-  if (!a || a.status === newStatus) return;
-  const missing = checkGate(a, newStatus);
-  if (missing) {
-    toast(`Preencha antes de agendar: ${missing.join(', ')}`, 'err');
-    openAppt(a.id);
-    return;
-  }
-  const oldStatus = a.status;
-  const { error } = await sb.from('eye_appts').update({ status: newStatus }).eq('id', a.id);
-  if (error) { toast('Erro ao mover card', 'err'); return; }
-  await logStatus(a.id, oldStatus, newStatus);
-  toast('Status atualizado');
-  await refreshAll();
-}
-
-// ─── DASHBOARD ────────────────────────────────────────────────────────────────
-async function renderInicio() {
-  const el = document.getElementById('v-inicio');
-  loading(el);
-  const appts = await getAppts();
-  const myAppts = CU.role === 'vendedor' ? appts.filter(a => a.vnd === CU.nome) : appts;
-
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-
-  const todayAppts    = myAppts.filter(a => a.data === today);
-  const realizedMonth = myAppts.filter(a => a.status === 'realizado' && (a.data||'').startsWith(monthKey));
-  const potential     = myAppts.reduce((s, a) => {
-    const n = parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));
-    return s + (isNaN(n) ? 0 : n);
-  }, 0);
-
-  const hotLeads      = myAppts.filter(a => ['pendente','agendado'].includes(a.status) && a.data <= today);
-  const confirmedToday = myAppts.filter(a => a.status === 'confirmado' && a.data === today);
-  const realizedToday  = myAppts.filter(a => a.status === 'realizado' && a.data === today);
-
-  const meta = parseInt(localStorage.getItem('eye_meta') || '10');
-  const pct  = Math.min(100, Math.round(realizedMonth.length / meta * 100));
-
-  const funnel = [
-    { l:'Leads',      n:myAppts.length, bg:'#007AFF' },
-    { l:'Agendados',  n:myAppts.filter(a=>['agendado','confirmado','realizado'].includes(a.status)).length, bg:'#5B8FF9' },
-    { l:'Realizados', n:myAppts.filter(a=>['confirmado','realizado'].includes(a.status)).length, bg:'#34C759' },
-    { l:'Vendidos',   n:myAppts.filter(a=>a.status==='realizado').length, bg:'#FF9F0A' },
-  ];
-
-  const ranking = CU.role !== 'vendedor' ? vendedores().map(v => {
-    const va = appts.filter(a => a.vnd === v.nome);
-    const vendidos = va.filter(a => a.status === 'realizado').length;
-    const realizados = va.filter(a => a.status === 'confirmado').length;
-    return { nome: v.nome, vendidos, realizados, total: va.length,
-      conv: va.length > 0 ? Math.round(vendidos / va.length * 100) : 0 };
-  }).filter(v => v.total > 0).sort((a,b) => b.vendidos - a.vendidos || b.total - a.total) : [];
-
-  const h = now.getHours();
-  const grt = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  const DAYS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
-  const MONTHS = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const potFmt = potential >= 1000 ? `R$ ${(potential/1000).toFixed(0)}k` : `R$ ${Math.round(potential)}`;
-
-  el.innerHTML = `
-    <div class="dash-greeting">
-      <div class="dg-title">${grt}, ${CU.nome} 👋</div>
-      <div class="dg-sub">${DAYS[now.getDay()]}, ${now.getDate()} de ${MONTHS[now.getMonth()]}</div>
-    </div>
-
-    <div class="kpi-grid">
-      <div class="kpi-c" style="--kc:var(--ind)"><div class="kl">Total de leads</div><div class="kv" style="color:var(--ind)">${myAppts.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--amb)"><div class="kl">Agendamentos hoje</div><div class="kv" style="color:var(--amb)">${todayAppts.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Vendidos no mês</div><div class="kv" style="color:var(--grn)">${realizedMonth.length}</div></div>
-      <div class="kpi-c" style="--kc:#9b59b6"><div class="kl">Potencial R$</div><div class="kv" style="color:#9b59b6;font-size:${potential>=1000?'20':'26'}px">${potFmt}</div></div>
-    </div>
-
-    <div class="dash-row">
-      <div class="dash-box">
-        <div class="dash-box-title">Alertas</div>
-        ${hotLeads.length || confirmedToday.length || realizedToday.length ? `
-          ${hotLeads.length ? `<div class="alert-item"><div class="alert-dot" style="background:var(--red)"></div><div class="alert-txt">Leads sem resposta</div><div class="alert-count" style="color:var(--red)">${hotLeads.length}</div></div>` : ''}
-          ${confirmedToday.length ? `<div class="alert-item"><div class="alert-dot" style="background:var(--grn)"></div><div class="alert-txt">Visitas confirmadas</div><div class="alert-count" style="color:var(--grn)">${confirmedToday.length}</div></div>` : ''}
-          ${realizedToday.length ? `<div class="alert-item"><div class="alert-dot" style="background:var(--amb)"></div><div class="alert-txt">Vendidos hoje</div><div class="alert-count" style="color:var(--amb)">${realizedToday.length}</div></div>` : ''}
-        ` : `<div class="alert-empty">✅ Tudo tranquilo hoje</div>`}
-      </div>
-
-      <div class="dash-box">
-        <div class="dash-box-title">Meta do mês</div>
-        <div class="meta-header">
-          <span>Realizados: <b>${realizedMonth.length}</b></span>
-          <input class="meta-input" type="number" id="meta-input" value="${meta}" min="1" onchange="saveMeta(this.value)">
-        </div>
-        <div class="meta-bar-bg"><div class="meta-bar-fill" style="--w:${pct}%;width:${pct}%"></div></div>
-        <div class="meta-label">${pct}% da meta · ${Math.max(0, meta - realizedMonth.length)} restantes</div>
-      </div>
-    </div>
-
-    <div class="dash-box">
-      <div class="dash-box-title">Funil do mês</div>
-      <div class="funnel">
-        ${funnel.map(f=>`<div class="funnel-seg" style="background:${f.bg}"><div class="fs-n">${f.n}</div><div>${f.l}</div></div>`).join('')}
-      </div>
-    </div>
-
-    ${ranking.length ? `<div class="dash-box">
-      <div class="dash-box-title">Ranking de vendedores</div>
-      <div style="display:flex;flex-direction:column;gap:7px">
-        ${ranking.map((v,i) => {
-          const barW = ranking[0].vendidos > 0 ? Math.round(v.vendidos/ranking[0].vendidos*100) : 0;
-          const medals = ['🥇','🥈','🥉'];
-          return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:var(--rs)">
-            <div style="font-size:16px;width:22px;text-align:center">${medals[i]||'#'+(i+1)}</div>
-            <div class="ti-av" style="background:${userColor(v.nome)};width:30px;height:30px;font-size:10px">${initials(v.nome)}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600">${v.nome}</div>
-              <div style="height:4px;background:var(--bg2);border-radius:2px;margin-top:4px;overflow:hidden">
-                <div style="height:100%;width:${barW}%;background:var(--grn);border-radius:2px;transition:.4s"></div>
-              </div>
-            </div>
-            <div style="text-align:right;flex:none">
-              <div style="font-size:16px;font-weight:800;color:var(--grn)">${v.vendidos}</div>
-              <div style="font-size:10px;color:var(--txt3)">${v.realizados} realiz. · ${v.conv}%</div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>` : ''}
-
-    <div class="dash-box">
-      <div class="dash-box-title">Hoje · ${todayAppts.length} agendamento${todayAppts.length!==1?'s':''}</div>
-      ${todayAppts.length ? `<div class="today-list">
-        ${todayAppts.sort((a,b)=>(a.hora||'')>(b.hora||'')?1:-1).map(a => {
-          const sm = fmtStatus(a.status);
-          return `<div class="today-item" onclick="openNeg('${a.id}')">
-            <div class="ti-av" style="background:${userColor(a.vnd)}">${initials(a.vnd)}</div>
-            <div class="ti-info">
-              <div class="ti-name">${a.cli}</div>
-              <div class="ti-sub">${a.hora||'—'} · ${a.vnd}</div>
-            </div>
-            <span class="tag ${sm.cls}">${sm.l}</span>
-          </div>`;
-        }).join('')}
-      </div>` : `<div class="alert-empty" style="padding:16px 0">Nenhum agendamento para hoje</div>`}
-    </div>`;
-}
-
-function exportCSV() {
-  const appts = CU.role === 'vendedor' ? _apptsCache.filter(a => a.vnd === CU.nome) : [..._apptsCache];
-  const headers = ['Nome','Telefone','Data','Horário','Vendedor','Origem','Status','Modelo','Valor','Pagamento','Observações','Próximo passo'];
-  const rows = appts.map(a => [
-    a.cli, a.tel, a.data, a.hora, a.vnd, a.orig,
-    fmtStatus(a.status).l, a.modelo, a.valor, a.pgto, a.obs, a.prox
-  ].map(v => `"${(v||'').replace(/"/g,'""')}"`));
-  const csv = [headers.map(h=>`"${h}"`), ...rows].map(r => r.join(',')).join('\n');
-  const blob = new Blob(['﻿' + csv], { type:'text/csv;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `eye-leads-${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('Exportado com sucesso!');
-}
-
-function saveMeta(val) {
-  localStorage.setItem('eye_meta', Math.max(1, parseInt(val) || 10));
-  renderInicio();
-}
-
-// ─── HOT LEAD NOTIFICATION ────────────────────────────────────────────────────
-function showHotLeadNotif() {
-  const today = new Date().toISOString().split('T')[0];
-  const lead = _apptsCache.find(a =>
-    ['pendente','agendado'].includes(a.status) &&
-    (CU.role !== 'vendedor' || a.vnd === CU.nome)
-  );
-  if (!lead) return;
-
-  const parts = [lead.cli, lead.modelo, lead.orig].filter(Boolean);
-  document.getElementById('hl-sub').textContent = parts.join(' · ') + ' · aguardando atendimento';
-
-  const bar = document.getElementById('hl-bar');
-  bar.style.animation = 'none';
-  void bar.offsetHeight;
-  bar.style.cssText = 'animation:drain 8s linear forwards;';
-
-  const notif = document.getElementById('hl-notif');
-  notif.classList.remove('hide');
-  notif.classList.add('show');
-  clearTimeout(notif._t);
-  notif._t = setTimeout(closeHotLead, 8000);
-}
-
-function closeHotLead() {
-  const notif = document.getElementById('hl-notif');
-  clearTimeout(notif._t);
-  notif.classList.remove('show');
-  notif.classList.add('hide');
-}
-
-// ─── JOURNEY STEPPER ──────────────────────────────────────────────────────────
-function drawJourney(currentStatus, logs) {
-  const el = document.getElementById('appt-journey');
-  if (!el) return;
-  const steps = [
-    { key:'pendente',       icon:'🔔', label:'Novo Lead'  },
-    { key:'em_contato',     icon:'📞', label:'Em contato' },
-    { key:'agendado',       icon:'📅', label:'Agendado'   },
-    { key:'confirmado',     icon:'✅', label:'Realizado'  },
-    { key:'realizado',      icon:'🏆', label:'Vendido'    },
-  ];
-  const badKeys = ['nao_compareceu','lead_frio'];
-  const isBad = badKeys.includes(currentStatus);
-  const currIdx = steps.findIndex(s => s.key === currentStatus);
-  const logMap = {};
-  (logs||[]).forEach(l => { logMap[l.para_status] = l.created_at; });
-
-  let html = '<div class="sec-divider">Jornada do lead</div><div class="journey">';
-  steps.forEach((s, i) => {
-    const isDone = currIdx > i || (!isBad && s.key === currentStatus);
-    const isCurr = !isBad && s.key === currentStatus;
-    const cls = isCurr ? 'curr' : isDone ? 'done' : '';
-    const ts = logMap[s.key] ? `<div style="font-size:8px;color:var(--txt3);margin-top:1px">${fmtLogTime(logMap[s.key]).split(' ')[0]}</div>` : '';
-    html += `<div class="journey-step">
-      <div class="journey-dot ${cls}">${isCurr||isDone ? s.icon : ''}</div>
-      <div class="journey-lbl ${cls}">${s.label}${ts}</div>
-    </div>`;
-    if (i < steps.length - 1) html += `<div class="journey-line ${currIdx > i && !isBad ? 'done' : ''}"></div>`;
-  });
-  if (isBad) {
-    const badLabel = currentStatus === 'nao_compareceu' ? 'Não compareceu' : 'Lead Frio';
-    html += `<div class="journey-line"></div><div class="journey-step">
-      <div class="journey-dot bad">${currentStatus === 'nao_compareceu' ? '❌' : '🥶'}</div>
-      <div class="journey-lbl bad">${badLabel}</div>
-    </div>`;
-  }
-  html += '</div>';
-  el.innerHTML = html;
-}
-
-// ─── CONFIG (master only) ─────────────────────────────────────────────────────
-function getOrigins() {
-  try { return JSON.parse(localStorage.getItem('eye_origins')) || null; } catch(e) { return null; }
-}
-function activeOrigins() { return getOrigins() || ORIGINS; }
-
-function renderConfig() {
-  if (CU.role !== 'master') return;
-  const el = document.getElementById('v-config');
-  const origins = activeOrigins();
-  const vnds = vendedores();
-  const goals = JSON.parse(localStorage.getItem('eye_goals') || '{}');
-
-  el.innerHTML = `
-    <div class="sec-lbl">Configurações do sistema</div>
-
-    <div class="cfg-section">
-      <div class="cfg-section-title">Origens de leads</div>
-      <div id="cfg-origins-list">
-        ${Object.entries(origins).map(([name, emoji]) => `
-          <div class="cfg-origin-row">
-            <span class="cfg-origin-emoji">${emoji}</span>
-            <span class="cfg-origin-name">${name}</span>
-            <button class="btn-s d" onclick="removeOrigin('${name}')"><i class="ti ti-trash"></i></button>
-          </div>`).join('')}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
-        <input class="finput" id="cfg-orig-emoji" placeholder="📌" style="width:56px;margin:0;text-align:center">
-        <input class="finput" id="cfg-orig-name" placeholder="Nome da origem" style="flex:1;margin:0">
-        <button class="btn-s p" onclick="addOrigin()"><i class="ti ti-plus"></i>Adicionar</button>
-      </div>
-    </div>
-
-    <div class="cfg-section">
-      <div class="cfg-section-title">Meta mensal por vendedor</div>
-      ${vnds.length ? vnds.map(v => `
-        <div class="cfg-vendor-row">
-          <div class="ti-av" style="background:${v.cor};width:30px;height:30px;font-size:10px">${initials(v.nome)}</div>
-          <div style="flex:1;font-size:13px;font-weight:600">${v.nome}</div>
-          <span style="font-size:12px;color:var(--txt2);margin-right:6px">Meta:</span>
-          <input class="cfg-goal-input" type="number" min="1" value="${goals[v.nome]||10}"
-            onchange="saveGoal('${v.nome}',this.value)">
-        </div>`).join('')
-      : '<div style="color:var(--txt3);font-size:13px">Nenhum vendedor cadastrado</div>'}
-    </div>
-
-    <div class="cfg-section">
-      <div class="cfg-section-title">Colunas do Kanban</div>
-      ${KB_COLS.map(col => {
-        const hidden = (JSON.parse(localStorage.getItem('eye_kb_hidden')||'[]')).includes(col.id);
-        return `<div class="cfg-vendor-row">
-          <div style="width:10px;height:10px;border-radius:50%;background:${col.color};flex:none"></div>
-          <div style="flex:1;font-size:13px;font-weight:600;margin-left:8px">${col.label}</div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);cursor:pointer">
-            <input type="checkbox" ${!hidden?'checked':''} onchange="toggleKbCol('${col.id}',this.checked)">
-            Visível
-          </label>
-        </div>`;
-      }).join('')}
-    </div>`;
-}
-
-function addOrigin() {
-  const emoji = document.getElementById('cfg-orig-emoji').value.trim() || '📌';
-  const name  = document.getElementById('cfg-orig-name').value.trim();
-  if (!name) { toast('Digite o nome da origem','err'); return; }
-  const origins = { ...activeOrigins(), [name]: emoji };
-  localStorage.setItem('eye_origins', JSON.stringify(origins));
-  toast('Origem adicionada');
-  renderConfig();
-}
-
-function removeOrigin(name) {
-  if (!confirm(`Remover origem "${name}"?`)) return;
-  const origins = { ...activeOrigins() };
-  delete origins[name];
-  localStorage.setItem('eye_origins', JSON.stringify(origins));
-  toast('Origem removida','warn');
-  renderConfig();
-}
-
-function saveGoal(nome, val) {
-  const goals = JSON.parse(localStorage.getItem('eye_goals') || '{}');
-  goals[nome] = Math.max(1, parseInt(val) || 10);
-  localStorage.setItem('eye_goals', JSON.stringify(goals));
-  toast('Meta salva');
-}
-
-function toggleKbCol(id, visible) {
-  let hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
-  if (visible) hidden = hidden.filter(x => x !== id);
-  else if (!hidden.includes(id)) hidden.push(id);
-  localStorage.setItem('eye_kb_hidden', JSON.stringify(hidden));
-  toast('Kanban atualizado');
-}
-
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-(async () => {
-  await initUsers();
-  await seedAppts();
-  const saved = localStorage.getItem('eye_cu');
-  if (saved) {
-    try {
-      CU = JSON.parse(saved);
-      showApp();
-    } catch(e) {
-      localStorage.removeItem('eye_cu');
-    }
-  }
-})();
+  })();
 </script>
+
 </body>
 </html>
