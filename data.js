@@ -62,7 +62,7 @@ async function refreshAll() {
   const active = document.querySelector('.view.on');
   if (!active) return;
   const id = active.id.replace('v-', '');
-  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase };
+  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi };
   if (id === 'crm') _drawKanban();
   else if (renders[id]) await renders[id]();
   if (id === 'agenda') _filterAgenda();

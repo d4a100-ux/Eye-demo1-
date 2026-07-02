@@ -405,7 +405,7 @@ async function saveAppt() {
 }
 
 // ─── MODAL NEGOCIAÇÃO ─────────────────────────────────────────────────────────
-function openNeg(id){
+async function openNeg(id){
   const a=_apptsCache.find(x=>x.id===id);if(!a)return;
   document.getElementById('neg-modal-title').textContent='Negociação · '+a.cli;
   document.getElementById('neg-id').value=id;
@@ -415,6 +415,24 @@ function openNeg(id){
   document.getElementById('n-pgto').value=a.pgto||'';
   document.getElementById('n-obs').value=a.obs||'';
   document.getElementById('n-prox').value=a.prox||'';
+
+  // Campos completos para quem pode editar
+  const full = canEdit(a);
+  const block = document.getElementById('neg-lead-fields');
+  if(block) block.style.display = full ? 'block' : 'none';
+  if(full){
+    document.getElementById('n-cli').value  = a.cli||'';
+    document.getElementById('n-tel').value  = a.tel||'';
+    document.getElementById('n-data').value = a.data||'';
+    document.getElementById('n-hora').value = a.hora||'';
+    await getUsers();
+    const vnds = vendedores();
+    document.getElementById('n-vnd').innerHTML = `<option value="">Selecione…</option>${vnds.map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}`;
+    document.getElementById('n-vnd').value  = a.vnd||'';
+    const orgs = activeOrigins();
+    document.getElementById('n-orig').innerHTML = `<option value="">Selecione…</option>${Object.entries(orgs).map(([n,e])=>`<option value="${n}">${e} ${n}</option>`).join('')}`;
+    document.getElementById('n-orig').value = a.orig||'';
+  }
   document.getElementById('ov-neg').classList.add('on');
 }
 function closeNeg(){document.getElementById('ov-neg').classList.remove('on');}
@@ -429,6 +447,15 @@ async function saveNeg(){
   }
   const upd={status:newStatus,modelo:document.getElementById('n-modelo').value.trim(),valor:document.getElementById('n-valor').value.trim(),
     pgto:document.getElementById('n-pgto').value,obs:document.getElementById('n-obs').value.trim(),prox:document.getElementById('n-prox').value.trim()};
+  if(canEdit(a)){
+    const cli=document.getElementById('n-cli')?.value.trim();
+    if(cli) upd.cli=cli;
+    upd.tel  = document.getElementById('n-tel')?.value.trim()||a?.tel||'';
+    upd.data = document.getElementById('n-data')?.value||a?.data||'';
+    upd.hora = document.getElementById('n-hora')?.value||'';
+    upd.vnd  = document.getElementById('n-vnd')?.value||a?.vnd||'';
+    upd.orig = document.getElementById('n-orig')?.value||a?.orig||'';
+  }
   const oldStatus=a?.status;
   const{error}=await sb.from('eye_appts').update(upd).eq('id',id);
   if(error){toast('Erro ao salvar: '+error.message,'err');return;}
