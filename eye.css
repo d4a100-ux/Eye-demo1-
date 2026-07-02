@@ -377,6 +377,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border:0.5px solid var(--bdr2);color:var(--txt);border-radius:var(--r);padding:11px 18px;font-size:13px;display:none;align-items:center;gap:8px;z-index:200;animation:pop .25s ease both;box-shadow:0 4px 24px rgba(0,0,0,.12);white-space:nowrap;font-weight:500;}
 @media(min-width:600px){.toast{bottom:24px;}}
 
+/* ── BI ── */
+.bi-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.bi-full{grid-column:span 2;}
+@media(max-width:700px){.bi-grid{grid-template-columns:1fr;}.bi-full{grid-column:span 1;}}
+
 /* ── MOBILE NAV ── */
 .mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(242,242,247,.88);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-top:0.5px solid var(--bdr);padding:0 0 env(safe-area-inset-bottom,0);z-index:39;}
 .mob-nav button{flex:1;border:none;background:transparent;color:var(--txt3);font-family:'Inter',sans-serif;font-size:10px;font-weight:600;padding:10px 2px 9px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:.15s;}

@@ -65,6 +65,7 @@
     <div class="view" id="v-negoc"></div>
     <div class="view" id="v-users"></div>
     <div class="view" id="v-base"></div>
+    <div class="view" id="v-bi"></div>
     <div class="view" id="v-config"></div>
   </div>
 
@@ -207,6 +208,42 @@
       <button class="mc" onclick="closeNeg()"><i class="ti ti-x"></i></button>
     </div>
     <input type="hidden" id="neg-id">
+
+    <!-- Campos completos visíveis para SDR / Gerência / Master -->
+    <div id="neg-lead-fields" style="display:none">
+      <div class="sec-divider">Dados do lead</div>
+      <div class="frow">
+        <div class="fg">
+          <label for="n-cli">Cliente</label>
+          <input class="finput" id="n-cli" placeholder="Nome do cliente">
+        </div>
+        <div class="fg">
+          <label for="n-tel">Telefone</label>
+          <input class="finput" id="n-tel" type="tel" placeholder="(81) 99999-0000">
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label for="n-data">Data</label>
+          <input class="finput" id="n-data" type="date">
+        </div>
+        <div class="fg">
+          <label for="n-hora">Horário</label>
+          <input class="finput" id="n-hora" type="time">
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg">
+          <label for="n-vnd">Vendedor</label>
+          <select class="finput fi-sel" id="n-vnd"></select>
+        </div>
+        <div class="fg">
+          <label for="n-orig">Origem</label>
+          <select class="finput fi-sel" id="n-orig"></select>
+        </div>
+      </div>
+    </div>
+
     <div class="fg">
       <label for="n-status">Status</label>
       <select class="finput fi-sel" id="n-status">
@@ -366,6 +403,7 @@
 
 <!-- ══════════════════════════════════════════════════════════ SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="config.js"></script>
 <script src="utils.js"></script>
 <script src="data.js"></script>
@@ -377,6 +415,7 @@
 <script src="users.js"></script>
 <script src="config-tab.js"></script>
 <script src="base.js"></script>
+<script src="bi.js"></script>
 <script src="main.js"></script>
 
 <script>
