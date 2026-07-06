@@ -39,6 +39,17 @@
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="top-brand">
+      <svg id="eye-logo" viewBox="0 0 36 24" width="34" height="23" style="flex:none;cursor:default;margin-right:1px">
+        <defs>
+          <clipPath id="eye-clip">
+            <path d="M1,12 Q9,1 18,1 Q27,1 35,12 Q27,23 18,23 Q9,23 1,12 Z"/>
+          </clipPath>
+        </defs>
+        <path d="M1,12 Q9,1 18,1 Q27,1 35,12 Q27,23 18,23 Q9,23 1,12 Z" fill="white" stroke="rgba(0,0,0,.13)" stroke-width="0.8"/>
+        <circle clip-path="url(#eye-clip)" cx="18" cy="12" r="7" fill="#007AFF"/>
+        <circle id="eye-pupil" clip-path="url(#eye-clip)" cx="18" cy="12" r="3.5" fill="#07070f"/>
+        <circle clip-path="url(#eye-clip)" cx="20.5" cy="10" r="1.2" fill="white" opacity="0.8"/>
+      </svg>
       <span class="tb-name ff">Eye</span>
       <span class="top-role-badge" id="top-role-badge"></span>
     </div>
@@ -420,6 +431,21 @@
 
 <script>
   // Populate origin selects — runs after all JS files above have executed
+  // Olho que segue o mouse
+  document.addEventListener('mousemove', function(e) {
+    const pupil = document.getElementById('eye-pupil');
+    const logo  = document.getElementById('eye-logo');
+    if (!pupil || !logo) return;
+    const rect  = logo.getBoundingClientRect();
+    const cx = rect.left + rect.width  / 2;
+    const cy = rect.top  + rect.height / 2;
+    const angle = Math.atan2(e.clientY - cy, e.clientX - cx);
+    const dist  = Math.min(Math.hypot(e.clientX - cx, e.clientY - cy), 120);
+    const r     = (dist / 120) * 3;
+    pupil.setAttribute('cx', 18 + Math.cos(angle) * r);
+    pupil.setAttribute('cy', 12 + Math.sin(angle) * r);
+  });
+
   (function () {
     const orgs = typeof activeOrigins === 'function' ? activeOrigins() : {};
     ['l-orig', 'a-orig'].forEach(id => {

@@ -87,15 +87,24 @@ function kbCard(a) {
 
 async function kbDrop(event, newStatus) {
   event.preventDefault();
+  event.stopPropagation();
   document.querySelectorAll('.kb-col').forEach(c => c.classList.remove('kb-over'));
   if (!_kbDragId) return;
-  const a = _apptsCache.find(x => x.id === _kbDragId);
-  if (!a || a.status === newStatus) { _kbDragId = null; return; }
-  const oldStatus = a.status;
-  const { error } = await sb.from('eye_appts').update({ status: newStatus }).eq('id', _kbDragId);
-  if (error) { toast('Erro ao mover: ' + error.message, 'err'); _kbDragId = null; return; }
-  if (oldStatus !== newStatus) await logStatus(_kbDragId, oldStatus, newStatus);
+  const id = _kbDragId;
   _kbDragId = null;
+  const a = _apptsCache.find(x => x.id === id);
+  if (!a || a.status === newStatus) return;
+  const oldStatus = a.status;
+  // Atualiza cache local imediatamente — sem esperar o Supabase
+  a.status = newStatus;
+  _drawKanban();
   toast('Lead movido!');
-  await refreshAll();
+  const { error } = await sb.from('eye_appts').update({ status: newStatus }).eq('id', id);
+  if (error) {
+    toast('Erro ao mover: ' + error.message, 'err');
+    a.status = oldStatus; // rollback
+    _drawKanban();
+    return;
+  }
+  if (oldStatus !== newStatus) await logStatus(id, oldStatus, newStatus);
 }
