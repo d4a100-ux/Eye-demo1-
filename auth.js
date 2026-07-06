@@ -128,6 +128,14 @@ function buildNav() {
 }
 
 function goTab(id) {
+  // pisca o olho
+  const logo = document.getElementById('eye-logo');
+  if (logo) {
+    logo.classList.remove('blink');
+    void logo.offsetWidth;
+    logo.classList.add('blink');
+    logo.addEventListener('animationend', () => logo.classList.remove('blink'), { once: true });
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
   const v = document.getElementById('v-' + id);
   if (v) v.classList.add('on');
