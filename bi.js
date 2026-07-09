@@ -54,6 +54,31 @@ async function renderBi() {
     frios: mine.filter(a => a.status === 'lead_frio' && a.vnd === v.nome).length
   })).filter(v => v.frios > 0).sort((a,b) => b.frios - a.frios);
 
+  // Health Check — leads ativos parados há 7+ dias
+  const ACTIVE_ST = ['pendente','em_contato','agendado','ag_confirmado'];
+  const stuck = mine.filter(a => {
+    if (!ACTIVE_ST.includes(a.status)) return false;
+    const days = a.em ? Math.floor((Date.now() - new Date(a.em)) / 86400000) : 999;
+    return days >= 7;
+  }).map(a => ({
+    ...a,
+    dias: a.em ? Math.floor((Date.now() - new Date(a.em)) / 86400000) : '?'
+  })).sort((a,b) => b.dias - a.dias);
+
+  // Relatório detalhado por vendedor (mês atual)
+  const mesAtual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const vndReport = vendedores().map(v => {
+    const va = mine.filter(a => a.vnd === v.nome);
+    const doMes = va.filter(a => (a.em||a.data||'').startsWith(mesAtual));
+    const agendados = va.filter(a => ['agendado','ag_confirmado','confirmado','realizado'].includes(a.status)).length;
+    const vendidos  = va.filter(a => a.status === 'realizado').length;
+    const stuckVnd  = stuck.filter(a => a.vnd === v.nome).length;
+    const tickets   = va.filter(a=>a.status==='realizado'&&a.valor).map(a=>parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'))).filter(n=>!isNaN(n));
+    const ticketMedio = tickets.length ? Math.round(tickets.reduce((s,n)=>s+n,0)/tickets.length) : 0;
+    const conv = va.length ? Math.round(vendidos/va.length*100) : 0;
+    return { nome:v.nome, total:va.length, doMes:doMes.length, agendados, vendidos, conv, ticketMedio, stuckVnd, score: leadScore({orig:'', em:null, tel:true}) };
+  }).filter(v => v.total > 0).sort((a,b) => b.vendidos - a.vendidos);
+
   el.innerHTML = `
     <div class="bi-grid">
       <div class="dash-box bi-full">
@@ -78,6 +103,65 @@ async function renderBi() {
         </div>
         <canvas id="bi-frios" height="60"></canvas>
       </div>`:''}
+
+      <!-- RELATÓRIO DE VENDEDOR -->
+      ${vndReport.length?`<div class="dash-box bi-full">
+        <div class="dash-box-title">Relatório de vendedores — mês atual</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="color:var(--txt3);font-size:11px;text-transform:uppercase;letter-spacing:.04em">
+                <th style="text-align:left;padding:7px 10px;font-weight:600">Vendedor</th>
+                <th style="text-align:center;padding:7px 8px;font-weight:600">Total leads</th>
+                <th style="text-align:center;padding:7px 8px;font-weight:600">Mês atual</th>
+                <th style="text-align:center;padding:7px 8px;font-weight:600">Agendados</th>
+                <th style="text-align:center;padding:7px 8px;font-weight:600">Vendidos</th>
+                <th style="text-align:center;padding:7px 8px;font-weight:600">Conversão</th>
+                <th style="text-align:center;padding:7px 8px;font-weight:600">Ticket médio</th>
+                <th style="text-align:center;padding:7px 8px;font-weight:600">Travados</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${vndReport.map((v,i)=>`<tr style="border-top:0.5px solid var(--bdr);${i%2===0?'background:rgba(0,0,0,.015)':''}">
+                <td style="padding:9px 10px;font-weight:600;color:var(--txt)">${v.nome}</td>
+                <td style="text-align:center;padding:9px 8px;color:var(--txt2)">${v.total}</td>
+                <td style="text-align:center;padding:9px 8px;color:var(--ind);font-weight:600">${v.doMes}</td>
+                <td style="text-align:center;padding:9px 8px;color:var(--txt2)">${v.agendados}</td>
+                <td style="text-align:center;padding:9px 8px;color:var(--grn);font-weight:700">${v.vendidos}</td>
+                <td style="text-align:center;padding:9px 8px"><span style="font-weight:700;color:${v.conv>=20?'var(--grn)':v.conv>=10?'var(--amb)':'var(--red)'}">${v.conv}%</span></td>
+                <td style="text-align:center;padding:9px 8px;color:var(--txt2)">${v.ticketMedio?'R$'+v.ticketMedio.toLocaleString('pt-BR'):'—'}</td>
+                <td style="text-align:center;padding:9px 8px"><span style="color:${v.stuckVnd>0?'var(--red)':'var(--txt3)'};font-weight:${v.stuckVnd>0?700:400}">${v.stuckVnd>0?'⚠ '+v.stuckVnd:'0'}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`:''}
+
+      <!-- HEALTH CHECK -->
+      ${stuck.length?`<div class="dash-box bi-full">
+        <div class="dash-box-title">🚨 Health Check — leads parados há 7+ dias
+          <span style="font-size:10px;color:var(--red);font-weight:500;text-transform:none;letter-spacing:0;margin-left:6px">${stuck.length} lead${stuck.length>1?'s':''} sem movimentação</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto">
+          ${stuck.map(a=>{
+            const sm=STATUS[a.status]||{l:a.status,cls:'s-pd',c:'var(--txt2)'};
+            const ac=typeof userColor==='function'?userColor(a.vnd):'#8E8E93';
+            return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:var(--rs);border-left:3px solid var(--red)">
+              <div style="width:32px;height:32px;border-radius:50%;background:${ac};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex:none">${typeof initials==='function'?initials(a.vnd):''}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:13px;color:var(--txt)">${a.cli}</div>
+                <div style="font-size:11px;color:var(--txt3);margin-top:2px">${a.vnd||'—'} · <span class="tag ${sm.cls}" style="font-size:10px">${sm.l}</span></div>
+              </div>
+              <div style="text-align:right;flex:none">
+                <div style="font-size:13px;font-weight:700;color:var(--red)">${a.dias}d</div>
+                <div style="font-size:10px;color:var(--txt3)">parado</div>
+              </div>
+              <button class="btn-s p" style="flex:none" onclick="openLeadTimeline('${a.id}')"><i class="ti ti-timeline"></i></button>
+              <button class="btn-s" style="flex:none" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i></button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`:'<div class="dash-box bi-full"><div class="dash-box-title">✅ Health Check</div><div style="padding:20px;text-align:center;color:var(--grn);font-size:13px;font-weight:600">Todos os leads estão com movimentação recente!</div></div>'}
     </div>`;
 
   const base = {

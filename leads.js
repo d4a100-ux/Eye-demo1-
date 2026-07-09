@@ -45,6 +45,7 @@ async function renderAgenda() {
     <div class="stats">
       <div class="stat-c"><div class="sv" style="color:var(--ind2)">${appts.length}</div><div class="sl">Total</div></div>
       <div class="stat-c"><div class="sv">${appts.filter(a=>a.status==='agendado').length}</div><div class="sl">Agendados</div></div>
+      <div class="stat-c"><div class="sv" style="color:#2DD4A7">${appts.filter(a=>a.status==='ag_confirmado').length}</div><div class="sl">Confirmados</div></div>
       <div class="stat-c"><div class="sv" style="color:var(--grn)">${appts.filter(a=>a.status==='confirmado').length}</div><div class="sl">Realizados</div></div>
       <div class="stat-c"><div class="sv" style="color:var(--amb)">${appts.filter(a=>a.status==='realizado').length}</div><div class="sl">Vendidos</div></div>
       <div class="stat-c"><div class="sv" style="color:var(--red)">${appts.filter(a=>a.status==='nao_compareceu').length}</div><div class="sl">Não compareceu</div></div>
@@ -108,7 +109,7 @@ function drawCalGrid() {
   const filtered = CU.role==='vendedor' ? _apptsCache.filter(a=>a.vnd===CU.nome) : _apptsCache;
   const agendByDay={}, leadsDay={};
   filtered.forEach(a => {
-    if (['agendado','confirmado','realizado','nao_compareceu'].includes(a.status)) agendByDay[a.data]=(agendByDay[a.data]||0)+1;
+    if (['agendado','ag_confirmado','confirmado','realizado','nao_compareceu'].includes(a.status)) agendByDay[a.data]=(agendByDay[a.data]||0)+1;
     if (['pendente','em_contato','lead_frio'].includes(a.status)) leadsDay[a.data]=(leadsDay[a.data]||0)+1;
   });
   const months=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -188,7 +189,7 @@ async function renderNegoc() {
   loading(el);
   let appts = await getAppts();
   if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  const active = appts.filter(a => ['pendente','em_contato','agendado','confirmado'].includes(a.status));
+  const active = appts.filter(a => ['pendente','em_contato','agendado','ag_confirmado','confirmado'].includes(a.status));
   const totalVal = active.reduce((s,a)=>{const n=parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));return s+(isNaN(n)?0:n);},0);
   el.innerHTML = `
     <div class="stats">
@@ -443,9 +444,9 @@ async function saveNeg(){
   if(a){
     const merged={...a,status:newStatus,modelo:document.getElementById('n-modelo').value.trim()||a.modelo,valor:document.getElementById('n-valor').value.trim()||a.valor};
     const missing=checkGate(merged,newStatus);
-    if(missing){toast(`Preencha antes de agendar: ${missing.join(', ')}`,'err');return;}
+    if(missing){toast(`Para confirmar agendamento preencha: ${missing.join(', ')}`,'err');return;}
   }
-  const upd={status:newStatus,modelo:document.getElementById('n-modelo').value.trim(),valor:document.getElementById('n-valor').value.trim(),
+  const upd={status:newStatus,em:new Date().toISOString(),modelo:document.getElementById('n-modelo').value.trim(),valor:document.getElementById('n-valor').value.trim(),
     pgto:document.getElementById('n-pgto').value,obs:document.getElementById('n-obs').value.trim(),prox:document.getElementById('n-prox').value.trim()};
   if(canEdit(a)){
     const cli=document.getElementById('n-cli')?.value.trim();
@@ -530,11 +531,12 @@ async function loadApptLogs(apptId){
 function drawJourney(currentStatus, logs, targetEl) {
   const el = targetEl || document.getElementById('appt-journey'); if (!el) return;
   const steps=[
-    {key:'pendente',  icon:'🔔',label:'Novo Lead'},
-    {key:'em_contato',icon:'📞',label:'Em negoc.' },
-    {key:'agendado',  icon:'📅',label:'Agendado'  },
-    {key:'confirmado',icon:'✅',label:'Realizado' },
-    {key:'realizado', icon:'🏆',label:'Vendido'   },
+    {key:'pendente',     icon:'🔔',label:'Novo Lead' },
+    {key:'em_contato',   icon:'📞',label:'Em negoc.' },
+    {key:'agendado',     icon:'📅',label:'Agendado'  },
+    {key:'ag_confirmado',icon:'📋',label:'Confirmado'},
+    {key:'confirmado',   icon:'✅',label:'Realizado' },
+    {key:'realizado',    icon:'🏆',label:'Vendido'   },
   ];
   const badKeys=['nao_compareceu','lead_frio'];
   const isBad=badKeys.includes(currentStatus);
@@ -558,7 +560,8 @@ function drawJourney(currentStatus, logs, targetEl) {
 }
 
 function checkGate(a,newStatus){
-  if(!['agendado','confirmado','realizado'].includes(newStatus)) return null;
+  // Agendado: sem campos obrigatórios; Ag.Confirmado/Realizado/Vendido: exige tudo
+  if(!['ag_confirmado','confirmado','realizado'].includes(newStatus)) return null;
   const missing=GATE_FIELDS.filter(f=>!a[f.key]).map(f=>f.label);
   return missing.length?missing:null;
 }

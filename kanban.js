@@ -74,8 +74,9 @@ function kbCard(a) {
         <div class="kb-card-av" style="background:${ac}">${initials(a.vnd)}</div>
         <div class="kb-card-info">
           <div class="kb-card-name">${a.cli}</div>
-          <div class="kb-card-vnd">${a.vnd}</div>
+          <div class="kb-card-vnd">${a.vnd||'—'}</div>
         </div>
+        ${scoreBadge(a)}
       </div>
       ${a.modelo ? `<div class="kb-card-model"><i class="ti ti-car"></i>${a.modelo}</div>` : ''}
       <div class="kb-card-foot">
@@ -96,10 +97,12 @@ async function kbDrop(event, newStatus) {
   if (!a || a.status === newStatus) return;
   const oldStatus = a.status;
   // Atualiza cache local imediatamente — sem esperar o Supabase
+  const now = new Date().toISOString();
   a.status = newStatus;
+  a.em = now;
   _drawKanban();
   toast('Lead movido!');
-  const { error } = await sb.from('eye_appts').update({ status: newStatus }).eq('id', id);
+  const { error } = await sb.from('eye_appts').update({ status: newStatus, em: now }).eq('id', id);
   if (error) {
     toast('Erro ao mover: ' + error.message, 'err');
     a.status = oldStatus; // rollback
