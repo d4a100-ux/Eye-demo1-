@@ -433,6 +433,9 @@ async function openNeg(id){
     const orgs = activeOrigins();
     document.getElementById('n-orig').innerHTML = `<option value="">Selecione…</option>${Object.entries(orgs).map(([n,e])=>`<option value="${n}">${e} ${n}</option>`).join('')}`;
     document.getElementById('n-orig').value = a.orig||'';
+    const ativs = await getAtivos();
+    document.getElementById('n-ativo').innerHTML = `<option value="">Sem ativo vinculado</option>${ativs.map(at=>`<option value="${at.id}">${at.nome}${at.placa?' · '+at.placa:''}</option>`).join('')}`;
+    document.getElementById('n-ativo').value = a.ativo_id||'';
   }
   document.getElementById('ov-neg').classList.add('on');
 }
@@ -455,7 +458,8 @@ async function saveNeg(){
     upd.data = document.getElementById('n-data')?.value||a?.data||'';
     upd.hora = document.getElementById('n-hora')?.value||'';
     upd.vnd  = document.getElementById('n-vnd')?.value||a?.vnd||'';
-    upd.orig = document.getElementById('n-orig')?.value||a?.orig||'';
+    upd.orig     = document.getElementById('n-orig')?.value||a?.orig||'';
+    upd.ativo_id = document.getElementById('n-ativo')?.value||null;
   }
   const oldStatus=a?.status;
   const{error}=await sb.from('eye_appts').update(upd).eq('id',id);

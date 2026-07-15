@@ -1,7 +1,8 @@
-let _usersCache = null;
-let _apptsCache = [];
-let _unidades   = [];
-let _activeUnit = null; // master pode trocar
+let _usersCache  = null;
+let _apptsCache  = [];
+let _unidades    = [];
+let _ativosCache = [];
+let _activeUnit  = null; // master pode trocar
 
 // ─── UNIT HELPERS ──────────────────────────────────────────────────────────────
 function currentUnitId() {
@@ -48,6 +49,16 @@ async function getUsers(force = false) {
   return _usersCache;
 }
 
+async function getAtivos(force = false) {
+  if (_ativosCache.length && !force) return _ativosCache;
+  let q = sb.from('eye_ativos').select('*').order('nome');
+  q = applyUnitFilter(q);
+  const { data, error } = await q;
+  if (error) { console.error('getAtivos:', error); return []; }
+  _ativosCache = data || [];
+  return _ativosCache;
+}
+
 async function getAppts() {
   let q = sb.from('eye_appts').select('*').order('data').order('hora');
   q = applyUnitFilter(q);
@@ -62,7 +73,7 @@ async function refreshAll() {
   const active = document.querySelector('.view.on');
   if (!active) return;
   const id = active.id.replace('v-', '');
-  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi };
+  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos };
   if (id === 'crm') _drawKanban();
   else if (renders[id]) await renders[id]();
   if (id === 'agenda') _filterAgenda();

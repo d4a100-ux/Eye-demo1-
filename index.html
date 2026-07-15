@@ -77,6 +77,7 @@
     <div class="view" id="v-users"></div>
     <div class="view" id="v-base"></div>
     <div class="view" id="v-bi"></div>
+    <div class="view" id="v-ativos"></div>
     <div class="view" id="v-config"></div>
   </div>
 
@@ -254,6 +255,10 @@
           <select class="finput fi-sel" id="n-orig"></select>
         </div>
       </div>
+      <div class="fg">
+        <label for="n-ativo">Ativo vinculado</label>
+        <select class="finput fi-sel" id="n-ativo"></select>
+      </div>
     </div>
 
     <div class="fg">
@@ -360,6 +365,55 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════ MODAL: ATIVO -->
+<div class="overlay" id="ov-ativo">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hd">
+      <h3 id="ativo-modal-title">Novo ativo</h3>
+      <button class="mc" onclick="closeAtivo()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="at-id">
+    <div class="frow">
+      <div class="fg">
+        <label for="at-nome">Modelo / Nome *</label>
+        <input class="finput" id="at-nome" placeholder="Ex: Fiorino 2023">
+      </div>
+      <div class="fg">
+        <label for="at-placa">Placa</label>
+        <input class="finput" id="at-placa" placeholder="ABC-1D23">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="at-ano">Ano</label>
+        <input class="finput" id="at-ano" placeholder="2023">
+      </div>
+      <div class="fg">
+        <label for="at-cor">Cor</label>
+        <input class="finput" id="at-cor" placeholder="Branco">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="at-status">Status</label>
+        <select class="finput fi-sel" id="at-status">
+          <option value="disponivel">Disponível</option>
+          <option value="em_uso">Em uso</option>
+          <option value="vendido">Vendido</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label for="at-vnd">Vendedor responsável</label>
+        <select class="finput fi-sel" id="at-vnd"></select>
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeAtivo()">Cancelar</button>
+      <button class="btn-prim" onclick="saveAtivo()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════ MODAL: TIMELINE -->
 <div class="overlay" id="ov-timeline">
   <div class="modal">
@@ -429,6 +483,7 @@
 <script src="config-tab.js"></script>
 <script src="base.js"></script>
 <script src="bi.js"></script>
+<script src="ativos.js"></script>
 <script src="main.js"></script>
 
 <script>
