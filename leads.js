@@ -45,10 +45,9 @@ async function renderAgenda() {
     <div class="stats">
       <div class="stat-c"><div class="sv" style="color:var(--ind2)">${appts.length}</div><div class="sl">Total</div></div>
       <div class="stat-c"><div class="sv">${appts.filter(a=>a.status==='agendado').length}</div><div class="sl">Agendados</div></div>
-      <div class="stat-c"><div class="sv" style="color:#2DD4A7">${appts.filter(a=>a.status==='ag_confirmado').length}</div><div class="sl">Confirmados</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--grn)">${appts.filter(a=>a.status==='confirmado').length}</div><div class="sl">Realizados</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--amb)">${appts.filter(a=>a.status==='realizado').length}</div><div class="sl">Vendidos</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--red)">${appts.filter(a=>a.status==='nao_compareceu').length}</div><div class="sl">Não compareceu</div></div>
+      <div class="stat-c"><div class="sv" style="color:#FF9F0A">${appts.filter(a=>a.status==='passado_vendedor').length}</div><div class="sl">Com vendedor</div></div>
+      <div class="stat-c"><div class="sv" style="color:#34C759">${appts.filter(a=>a.status==='venda_concluida').length}</div><div class="sl">Vendas</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--red)">${appts.filter(a=>a.status==='perdido').length}</div><div class="sl">Perdidos</div></div>
     </div>
     <div class="filters">
       <input class="fi fi-search" id="ag-q" placeholder="Buscar cliente, modelo…" oninput="_filterAgenda()">
@@ -109,8 +108,8 @@ function drawCalGrid() {
   const filtered = CU.role==='vendedor' ? _apptsCache.filter(a=>a.vnd===CU.nome) : _apptsCache;
   const agendByDay={}, leadsDay={};
   filtered.forEach(a => {
-    if (['agendado','ag_confirmado','confirmado','realizado','nao_compareceu'].includes(a.status)) agendByDay[a.data]=(agendByDay[a.data]||0)+1;
-    if (['pendente','em_contato','lead_frio'].includes(a.status)) leadsDay[a.data]=(leadsDay[a.data]||0)+1;
+    if (['agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)) agendByDay[a.data]=(agendByDay[a.data]||0)+1;
+    if (['pendente','em_atendimento','qualificado','sem_resposta'].includes(a.status)) leadsDay[a.data]=(leadsDay[a.data]||0)+1;
   });
   const months=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
   const firstDay=new Date(calYear,calMonth,1).getDay(), daysInMonth=new Date(calYear,calMonth+1,0).getDate();
@@ -189,7 +188,7 @@ async function renderNegoc() {
   loading(el);
   let appts = await getAppts();
   if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  const active = appts.filter(a => ['pendente','em_contato','agendado','ag_confirmado','confirmado'].includes(a.status));
+  const active = appts.filter(a => ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno'].includes(a.status));
   const totalVal = active.reduce((s,a)=>{const n=parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));return s+(isNaN(n)?0:n);},0);
   el.innerHTML = `
     <div class="stats">
@@ -436,6 +435,8 @@ async function openNeg(id){
     const ativs = await getAtivos();
     document.getElementById('n-ativo').innerHTML = `<option value="">Sem ativo vinculado</option>${ativs.map(at=>`<option value="${at.id}">${at.nome}${at.placa?' · '+at.placa:''}</option>`).join('')}`;
     document.getElementById('n-ativo').value = a.ativo_id||'';
+    const troca = document.getElementById('n-troca');
+    if (troca) troca.value = a.troca||'';
   }
   document.getElementById('ov-neg').classList.add('on');
 }
@@ -447,7 +448,10 @@ async function saveNeg(){
   if(a){
     const merged={...a,status:newStatus,modelo:document.getElementById('n-modelo').value.trim()||a.modelo,valor:document.getElementById('n-valor').value.trim()||a.valor};
     const missing=checkGate(merged,newStatus);
-    if(missing){toast(`Para confirmar agendamento preencha: ${missing.join(', ')}`,'err');return;}
+    if(missing){
+      const msg = newStatus==='passado_vendedor' ? `Briefing obrigatório. Preencha: ${missing.join(', ')}` : `Para registrar preencha: ${missing.join(', ')}`;
+      toast(msg,'err'); return;
+    }
   }
   const upd={status:newStatus,em:new Date().toISOString(),modelo:document.getElementById('n-modelo').value.trim(),valor:document.getElementById('n-valor').value.trim(),
     pgto:document.getElementById('n-pgto').value,obs:document.getElementById('n-obs').value.trim(),prox:document.getElementById('n-prox').value.trim()};
@@ -460,6 +464,7 @@ async function saveNeg(){
     upd.vnd  = document.getElementById('n-vnd')?.value||a?.vnd||'';
     upd.orig     = document.getElementById('n-orig')?.value||a?.orig||'';
     upd.ativo_id = document.getElementById('n-ativo')?.value||null;
+    upd.troca    = document.getElementById('n-troca')?.value.trim()||'';
   }
   const oldStatus=a?.status;
   const{error}=await sb.from('eye_appts').update(upd).eq('id',id);
@@ -535,14 +540,18 @@ async function loadApptLogs(apptId){
 function drawJourney(currentStatus, logs, targetEl) {
   const el = targetEl || document.getElementById('appt-journey'); if (!el) return;
   const steps=[
-    {key:'pendente',     icon:'🔔',label:'Novo Lead' },
-    {key:'em_contato',   icon:'📞',label:'Em negoc.' },
-    {key:'agendado',     icon:'📅',label:'Agendado'  },
-    {key:'ag_confirmado',icon:'📋',label:'Confirmado'},
-    {key:'confirmado',   icon:'✅',label:'Realizado' },
-    {key:'realizado',    icon:'🏆',label:'Vendido'   },
+    {key:'pendente',        icon:'🔔',label:'Novo Lead'  },
+    {key:'em_atendimento',  icon:'📞',label:'Atendimento'},
+    {key:'qualificado',     icon:'⭐',label:'Qualificado'},
+    {key:'agendado',        icon:'📅',label:'Agendado'   },
+    {key:'passado_vendedor',icon:'🤝',label:'Vendedor'   },
+    {key:'em_negociacao',   icon:'💬',label:'Negociação' },
+    {key:'test_drive',      icon:'🚗',label:'Test Drive' },
+    {key:'ficha_enviada',   icon:'📋',label:'Ficha'      },
+    {key:'credito_aprovado',icon:'✅',label:'Crédito'    },
+    {key:'venda_concluida', icon:'🏆',label:'Vendido'    },
   ];
-  const badKeys=['nao_compareceu','lead_frio'];
+  const badKeys=['lead_frio','perdido','sem_resposta','credito_reprovado','ag_retorno'];
   const isBad=badKeys.includes(currentStatus);
   const currIdx=steps.findIndex(s=>s.key===currentStatus);
   const logMap={};
@@ -557,15 +566,24 @@ function drawJourney(currentStatus, logs, targetEl) {
     if(i<steps.length-1) html+=`<div class="journey-line ${currIdx>i&&!isBad?'done':''}"></div>`;
   });
   if(isBad){
-    const badLabel=currentStatus==='nao_compareceu'?'Não compareceu':'Lead Frio';
-    html+=`<div class="journey-line"></div><div class="journey-step"><div class="journey-dot bad">${currentStatus==='nao_compareceu'?'❌':'🥶'}</div><div class="journey-lbl bad">${badLabel}</div></div>`;
+    const badLabels={lead_frio:'Lead Frio',perdido:'Perdido',sem_resposta:'Sem Resposta',credito_reprovado:'Créd. Reprovado',ag_retorno:'Ag. Retorno'};
+    const badIcons={lead_frio:'🥶',perdido:'❌',sem_resposta:'😶',credito_reprovado:'🚫',ag_retorno:'⏸'};
+    html+=`<div class="journey-line"></div><div class="journey-step"><div class="journey-dot bad">${badIcons[currentStatus]||'❌'}</div><div class="journey-lbl bad">${badLabels[currentStatus]||currentStatus}</div></div>`;
   }
   el.innerHTML=html+'</div>';
 }
 
-function checkGate(a,newStatus){
-  // Agendado: sem campos obrigatórios; Ag.Confirmado/Realizado/Vendido: exige tudo
-  if(!['ag_confirmado','confirmado','realizado'].includes(newStatus)) return null;
-  const missing=GATE_FIELDS.filter(f=>!a[f.key]).map(f=>f.label);
-  return missing.length?missing:null;
+function checkGate(a, newStatus) {
+  if (newStatus === 'passado_vendedor') {
+    const req = { cli:'Cliente', tel:'Telefone', vnd:'Vendedor', orig:'Origem', modelo:'Veículo de interesse', pgto:'Forma de pagamento' };
+    const missing = Object.entries(req).filter(([k])=>!a[k]).map(([,l])=>l);
+    if (!a.obs || a.obs.trim().length < 5) missing.push('Resumo da conversa (obs)');
+    return missing.length ? missing : null;
+  }
+  if (newStatus === 'venda_concluida') {
+    const req = { cli:'Cliente', vnd:'Vendedor', orig:'Origem', modelo:'Veículo vendido', valor:'Valor' };
+    const missing = Object.entries(req).filter(([k])=>!a[k]).map(([,l])=>l);
+    return missing.length ? missing : null;
+  }
+  return null;
 }

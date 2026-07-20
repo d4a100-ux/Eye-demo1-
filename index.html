@@ -161,14 +161,27 @@
     <div class="fg">
       <label for="a-status">Status</label>
       <select class="finput fi-sel" id="a-status">
-        <option value="pendente">Novo Lead</option>
-        <option value="em_contato">Em negociação</option>
-        <option value="agendado">Agendado</option>
-        <option value="ag_confirmado">Ag. Confirmado</option>
-        <option value="confirmado">Realizado</option>
-        <option value="realizado">Vendido</option>
-        <option value="nao_compareceu">Não compareceu</option>
-        <option value="lead_frio">Lead Frio</option>
+        <optgroup label="── Fase SDR">
+          <option value="pendente">Novo Lead</option>
+          <option value="em_atendimento">Em Atendimento</option>
+          <option value="qualificado">Qualificado</option>
+          <option value="agendado">Agendado</option>
+          <option value="passado_vendedor">Passado ao Vendedor</option>
+          <option value="sem_resposta">Sem Resposta</option>
+        </optgroup>
+        <optgroup label="── Fase Vendedor">
+          <option value="em_negociacao">Em Negociação</option>
+          <option value="test_drive">Test Drive</option>
+          <option value="ficha_enviada">Ficha Enviada</option>
+          <option value="credito_aprovado">Crédito Aprovado</option>
+          <option value="credito_reprovado">Crédito Reprovado</option>
+          <option value="ag_retorno">Ag. Retorno</option>
+          <option value="venda_concluida">Venda Concluída</option>
+        </optgroup>
+        <optgroup label="── Saídas">
+          <option value="lead_frio">Lead Frio</option>
+          <option value="perdido">Perdido</option>
+        </optgroup>
       </select>
     </div>
 
@@ -255,23 +268,42 @@
           <select class="finput fi-sel" id="n-orig"></select>
         </div>
       </div>
-      <div class="fg">
-        <label for="n-ativo">Ativo vinculado</label>
-        <select class="finput fi-sel" id="n-ativo"></select>
+      <div class="frow">
+        <div class="fg">
+          <label for="n-ativo">Ativo vinculado</label>
+          <select class="finput fi-sel" id="n-ativo"></select>
+        </div>
+        <div class="fg">
+          <label for="n-troca">Veículo de troca</label>
+          <input class="finput" id="n-troca" placeholder="Marca / modelo / ano">
+        </div>
       </div>
     </div>
 
     <div class="fg">
       <label for="n-status">Status</label>
       <select class="finput fi-sel" id="n-status">
-        <option value="pendente">Novo Lead</option>
-        <option value="em_contato">Em negociação</option>
-        <option value="agendado">Agendado</option>
-        <option value="ag_confirmado">Ag. Confirmado</option>
-        <option value="confirmado">Realizado</option>
-        <option value="realizado">Vendido</option>
-        <option value="nao_compareceu">Não compareceu</option>
-        <option value="lead_frio">Lead Frio</option>
+        <optgroup label="── Fase SDR">
+          <option value="pendente">Novo Lead</option>
+          <option value="em_atendimento">Em Atendimento</option>
+          <option value="qualificado">Qualificado</option>
+          <option value="agendado">Agendado</option>
+          <option value="passado_vendedor">Passado ao Vendedor</option>
+          <option value="sem_resposta">Sem Resposta</option>
+        </optgroup>
+        <optgroup label="── Fase Vendedor">
+          <option value="em_negociacao">Em Negociação</option>
+          <option value="test_drive">Test Drive</option>
+          <option value="ficha_enviada">Ficha Enviada</option>
+          <option value="credito_aprovado">Crédito Aprovado</option>
+          <option value="credito_reprovado">Crédito Reprovado</option>
+          <option value="ag_retorno">Ag. Retorno</option>
+          <option value="venda_concluida">Venda Concluída</option>
+        </optgroup>
+        <optgroup label="── Saídas">
+          <option value="lead_frio">Lead Frio</option>
+          <option value="perdido">Perdido</option>
+        </optgroup>
       </select>
     </div>
     <div class="frow">

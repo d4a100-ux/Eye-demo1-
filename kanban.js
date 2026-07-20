@@ -1,6 +1,15 @@
 let _kbVndFilter = '';
 let _kbDragId = null;
 
+function alertClass(a) {
+  const activeStatuses = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno'];
+  if (!a.em || !activeStatuses.includes(a.status)) return '';
+  const h = (Date.now() - new Date(a.em)) / 3600000;
+  if (h >= 4) return 'card-crit';
+  if (h >= 2) return 'card-warn';
+  return '';
+}
+
 async function renderCrm() {
   const el = document.getElementById('v-crm');
   loading(el);
@@ -29,8 +38,14 @@ function _drawKanban() {
   const hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
   const visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
 
+  const phaseLabels = { sdr:'— SDR', vnd:'— Vendedor', exit:'— Saídas' };
+  let lastFase = null;
   let html = '<div class="kb-board">';
   visibleCols.forEach(col => {
+    if (col.fase !== lastFase) {
+      html += `<div class="kb-phase-div"><span>${phaseLabels[col.fase]||col.fase}</span></div>`;
+      lastFase = col.fase;
+    }
     const cards = appts.filter(a => a.status === col.id);
     const totalVal = cards.reduce((s, a) => {
       const n = parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));
@@ -65,8 +80,9 @@ function _drawKanban() {
 
 function kbCard(a) {
   const ac = userColor(a.vnd);
+  const al = alertClass(a);
   return `
-    <div class="kb-card" draggable="true"
+    <div class="kb-card${al?' '+al:''}" draggable="true"
       ondragstart="_kbDragId='${a.id}'"
       ondragend="document.querySelectorAll('.kb-col').forEach(c=>c.classList.remove('kb-over'))"
       onclick="openNeg('${a.id}')">

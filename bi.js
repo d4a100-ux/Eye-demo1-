@@ -17,10 +17,10 @@ async function renderBi() {
   // Funil
   const funnel = [
     { l:'Total de leads',  n: mine.length },
-    { l:'Em negociação',   n: mine.filter(a => a.status === 'em_contato').length },
-    { l:'Agendados',       n: mine.filter(a => ['agendado','confirmado','realizado'].includes(a.status)).length },
-    { l:'Realizados',      n: mine.filter(a => ['confirmado','realizado'].includes(a.status)).length },
-    { l:'Vendidos',        n: mine.filter(a => a.status === 'realizado').length },
+    { l:'Agendados',       n: mine.filter(a => ['agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length },
+    { l:'Com vendedor',    n: mine.filter(a => ['em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length },
+    { l:'Crédito aprovado',n: mine.filter(a => ['credito_aprovado','venda_concluida'].includes(a.status)).length },
+    { l:'Vendidos',        n: mine.filter(a => a.status === 'venda_concluida').length },
   ];
 
   // Tendência 6 meses
@@ -31,14 +31,14 @@ async function renderBi() {
     months.push({
       label:  d.toLocaleDateString('pt-BR', { month:'short', year:'2-digit' }),
       leads:  mine.filter(a => (a.em||a.data||'').startsWith(key)).length,
-      vendas: mine.filter(a => a.status === 'realizado' && (a.data||'').startsWith(key)).length,
+      vendas: mine.filter(a => a.status === 'venda_concluida' && (a.data||'').startsWith(key)).length,
     });
   }
 
   // Por vendedor
   const vnds = vendedores().map(v => {
     const va = mine.filter(a => a.vnd === v.nome);
-    return { nome:v.nome, total:va.length, vendidos:va.filter(a=>a.status==='realizado').length };
+    return { nome:v.nome, total:va.length, vendidos:va.filter(a=>a.status==='venda_concluida').length };
   }).filter(v => v.total > 0).sort((a,b) => b.vendidos - a.vendidos);
 
   // Por origem
@@ -55,7 +55,7 @@ async function renderBi() {
   })).filter(v => v.frios > 0).sort((a,b) => b.frios - a.frios);
 
   // Health Check — leads ativos parados há 7+ dias
-  const ACTIVE_ST = ['pendente','em_contato','agendado','ag_confirmado'];
+  const ACTIVE_ST = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','ag_retorno'];
   const stuck = mine.filter(a => {
     if (!ACTIVE_ST.includes(a.status)) return false;
     const days = a.em ? Math.floor((Date.now() - new Date(a.em)) / 86400000) : 999;
@@ -70,10 +70,10 @@ async function renderBi() {
   const vndReport = vendedores().map(v => {
     const va = mine.filter(a => a.vnd === v.nome);
     const doMes = va.filter(a => (a.em||a.data||'').startsWith(mesAtual));
-    const agendados = va.filter(a => ['agendado','ag_confirmado','confirmado','realizado'].includes(a.status)).length;
-    const vendidos  = va.filter(a => a.status === 'realizado').length;
+    const agendados = va.filter(a => ['agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length;
+    const vendidos  = va.filter(a => a.status === 'venda_concluida').length;
     const stuckVnd  = stuck.filter(a => a.vnd === v.nome).length;
-    const tickets   = va.filter(a=>a.status==='realizado'&&a.valor).map(a=>parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'))).filter(n=>!isNaN(n));
+    const tickets   = va.filter(a=>a.status==='venda_concluida'&&a.valor).map(a=>parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'))).filter(n=>!isNaN(n));
     const ticketMedio = tickets.length ? Math.round(tickets.reduce((s,n)=>s+n,0)/tickets.length) : 0;
     const conv = va.length ? Math.round(vendidos/va.length*100) : 0;
     return { nome:v.nome, total:va.length, doMes:doMes.length, agendados, vendidos, conv, ticketMedio, stuckVnd, score: leadScore({orig:'', em:null, tel:true}) };
