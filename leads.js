@@ -330,7 +330,8 @@ async function saveLead() {
   if(dup&&!confirm(`⚠️ Telefone já existe na base (${dup.cli}). Criar mesmo assim?`)) return;
   const cli=document.getElementById('l-cli').value.trim()||tel;
   const today=new Date().toISOString().split('T')[0];
-  const obj=withUnit({id:uid(),cli,tel,orig,status:'pendente',data:today,criado_por:CU.login,em:new Date().toISOString()});
+  const now=new Date().toISOString();
+  const obj=withUnit({id:uid(),cli,tel,orig,status:'pendente',data:today,criado_por:CU.login,em:now,criado_em:now});
   const{error}=await sb.from('eye_appts').insert(obj);
   if(error){toast('Erro ao criar lead: '+error.message,'err');return;}
   closeLead(); toast('Lead criado!'); await refreshAll();
@@ -392,11 +393,12 @@ async function saveAppt() {
     if(telV){const dup=_apptsCache.find(a=>a.tel&&a.tel.replace(/\D/g,'')=== telV.replace(/\D/g,''));
       if(dup&&!confirm(`⚠️ Telefone já existe na base (${dup.cli}). Criar mesmo assim?`)) return;}
   }
+  const nowTs=new Date().toISOString();
   const obj=withUnit({id:eid||uid(),cli,data,tel:document.getElementById('a-tel').value.trim(),hora:document.getElementById('a-hora').value,
     vnd,orig,status:document.getElementById('a-status').value||'agendado',modelo:document.getElementById('a-modelo').value.trim(),
     valor:document.getElementById('a-valor').value.trim(),pgto:document.getElementById('a-pgto').value,
     obs:document.getElementById('a-obs').value.trim(),prox:document.getElementById('a-prox').value.trim(),
-    criado_por:CU.login,em:new Date().toISOString()});
+    criado_por:CU.login,em:nowTs,...(!eid&&{criado_em:nowTs})});
   let error;
   if(eid){({error}=await sb.from('eye_appts').update(obj).eq('id',eid));}
   else   {({error}=await sb.from('eye_appts').insert(obj));}
@@ -409,7 +411,12 @@ async function openNeg(id){
   const a=_apptsCache.find(x=>x.id===id);if(!a)return;
   document.getElementById('neg-modal-title').textContent='Negociação · '+a.cli;
   document.getElementById('neg-id').value=id;
-  document.getElementById('n-status').value=a.status||'agendado';
+  document.getElementById('n-status').value=a.status||'pendente';
+  // Mostrar datas de chegada e agendamento
+  const chegEl=document.getElementById('n-criado-em');
+  if(chegEl) chegEl.textContent=(a.criado_em?fmtDate(a.criado_em.split('T')[0]):a.data?fmtDate(a.data):'—');
+  const dataEl=document.getElementById('n-data-disp');
+  if(dataEl) dataEl.textContent=a.data?fmtDate(a.data):'—';
   document.getElementById('n-modelo').value=a.modelo||'';
   document.getElementById('n-valor').value=a.valor||'';
   document.getElementById('n-pgto').value=a.pgto||'';
@@ -470,6 +477,11 @@ async function saveNeg(){
   const{error}=await sb.from('eye_appts').update(upd).eq('id',id);
   if(error){toast('Erro ao salvar: '+error.message,'err');return;}
   if(oldStatus&&oldStatus!==newStatus) await logStatus(id,oldStatus,newStatus);
+  // Auto follow-up: se ficou agendado com data 2+ dias à frente
+  if(newStatus==='agendado'&&upd.data){
+    const daysAhead=Math.floor((new Date(upd.data+'T12:00:00')-new Date())/86400000);
+    if(daysAhead>=2) createFollowUpTasks(id,upd.data,upd.vnd||a?.vnd,upd.cli||a?.cli);
+  }
   closeNeg(); toast('Negociação atualizada'); await refreshAll();
 }
 

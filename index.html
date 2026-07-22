@@ -78,6 +78,7 @@
     <div class="view" id="v-base"></div>
     <div class="view" id="v-bi"></div>
     <div class="view" id="v-ativos"></div>
+    <div class="view" id="v-tarefas"></div>
     <div class="view" id="v-config"></div>
   </div>
 
@@ -238,6 +239,16 @@
     <!-- Campos completos visíveis para SDR / Gerência / Master -->
     <div id="neg-lead-fields" style="display:none">
       <div class="sec-divider">Dados do lead</div>
+      <div class="frow" style="margin-bottom:10px">
+        <div class="fg">
+          <div style="font-size:10px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Lead chegou em</div>
+          <div id="n-criado-em" style="font-size:14px;font-weight:700;color:var(--txt)">—</div>
+        </div>
+        <div class="fg">
+          <div style="font-size:10px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Agendado para</div>
+          <div id="n-data-disp" style="font-size:14px;font-weight:700;color:var(--ind)">—</div>
+        </div>
+      </div>
       <div class="frow">
         <div class="fg">
           <label for="n-cli">Cliente</label>
@@ -446,6 +457,56 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════ MODAL: TASK -->
+<div class="overlay" id="ov-task">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-hd">
+      <h3 id="task-modal-title">Nova tarefa</h3>
+      <button class="mc" onclick="closeTask()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="task-id">
+    <input type="hidden" id="task-appt-id">
+    <div class="fg">
+      <label for="task-lead-sel">Lead vinculado</label>
+      <select class="finput fi-sel" id="task-lead-sel"></select>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="task-tipo">Tipo *</label>
+        <select class="finput fi-sel" id="task-tipo">
+          <option value="ligacao">📞 Ligação</option>
+          <option value="whatsapp">💬 WhatsApp</option>
+          <option value="lembrete">🔔 Lembrete</option>
+          <option value="visita">🤝 Visita</option>
+          <option value="outros">📌 Outro</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label for="task-resp">Responsável</label>
+        <input class="finput" id="task-resp" placeholder="Nome do responsável">
+      </div>
+    </div>
+    <div class="fg">
+      <label for="task-desc">Descrição</label>
+      <input class="finput" id="task-desc" placeholder="O que precisa ser feito?">
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="task-venc">Data *</label>
+        <input class="finput" id="task-venc" type="date">
+      </div>
+      <div class="fg">
+        <label for="task-hora">Horário</label>
+        <input class="finput" id="task-hora" type="time">
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeTask()">Cancelar</button>
+      <button class="btn-prim" onclick="saveTask()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════ MODAL: TIMELINE -->
 <div class="overlay" id="ov-timeline">
   <div class="modal">
@@ -516,6 +577,7 @@
 <script src="base.js"></script>
 <script src="bi.js"></script>
 <script src="ativos.js"></script>
+<script src="tasks.js"></script>
 <script src="main.js"></script>
 
 <script>

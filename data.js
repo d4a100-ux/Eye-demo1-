@@ -2,6 +2,7 @@ let _usersCache  = null;
 let _apptsCache  = [];
 let _unidades    = [];
 let _ativosCache = [];
+let _tasksCache  = [];
 let _activeUnit  = null; // master pode trocar
 
 // ─── UNIT HELPERS ──────────────────────────────────────────────────────────────
@@ -59,6 +60,17 @@ async function getAtivos(force = false) {
   return _ativosCache;
 }
 
+async function getTasks(force = false) {
+  if (_tasksCache.length && !force) return _tasksCache;
+  let q = sb.from('eye_tasks').select('*').order('vencimento').order('created_at');
+  q = applyUnitFilter(q);
+  if (CU.role === 'vendedor') q = q.eq('responsavel', CU.nome);
+  const { data, error } = await q;
+  if (error) { console.error('getTasks:', error); return []; }
+  _tasksCache = data || [];
+  return _tasksCache;
+}
+
 async function getAppts() {
   let q = sb.from('eye_appts').select('*').order('data').order('hora');
   q = applyUnitFilter(q);
@@ -73,10 +85,12 @@ async function refreshAll() {
   const active = document.querySelector('.view.on');
   if (!active) return;
   const id = active.id.replace('v-', '');
-  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos };
+  const renders = { inicio:renderInicio, conv:renderConv, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos, tarefas:renderTarefas };
   if (id === 'crm') _drawKanban();
   else if (renders[id]) await renders[id]();
   if (id === 'agenda') _filterAgenda();
+  _tasksCache = [];
+  setTimeout(refreshTaskBadge, 500);
 }
 
 // ─── SEED (só roda se banco estiver vazio) ────────────────────────────────────

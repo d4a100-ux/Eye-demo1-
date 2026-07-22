@@ -18,7 +18,9 @@ async function doLogin() {
     btn.disabled = false; btn.textContent = 'Entrar'; return;
   }
   document.getElementById('li-err').style.display = 'none';
-  CU = u;
+  // Strip senha before storing — never persist credentials in localStorage
+  const { senha: _stripped, ...cuSafe } = u;
+  CU = cuSafe;
   localStorage.setItem('eye_cu', JSON.stringify(CU));
   showApp();
 }
@@ -97,39 +99,44 @@ function isMgr()     { return CU.role === 'gerencia' || CU.role === 'master'; }
 function canDelete() { return CU.role === 'gerencia' || CU.role === 'sdr' || CU.role === 'master'; }
 
 // ─── NAV ──────────────────────────────────────────────────────────────────────
-function tabs() {
-  const base = [
-    { id:'inicio', icon:'ti-home',           label:'Início'      },
-    { id:'conv',   icon:'ti-message-2',      label:'Conversas'   },
-    { id:'crm',    icon:'ti-layout-kanban',  label:'CRM'         },
-    { id:'agenda', icon:'ti-calendar',       label:'Agenda'      },
-    { id:'cal',    icon:'ti-calendar-month', label:'Calendário'  },
+function navGroups() {
+  const ALL = {
+    inicio:  { icon:'ti-home',           label:'Início'      },
+    conv:    { icon:'ti-message-2',      label:'Conversas'   },
+    crm:     { icon:'ti-layout-kanban',  label:'CRM'         },
+    tarefas: { icon:'ti-checkbox',       label:'Tarefas'     },
+    agenda:  { icon:'ti-calendar',       label:'Agenda'      },
+    cal:     { icon:'ti-calendar-month', label:'Calendário'  },
+    origem:  { icon:'ti-chart-pie',      label:'Origens'     },
+    negoc:   { icon:'ti-handshake',      label:'Pipeline'    },
+    base:    { icon:'ti-database',       label:'Base de Dados'},
+    bi:      { icon:'ti-chart-bar',      label:'BI'          },
+    ativos:  { icon:'ti-car',            label:'Ativos'      },
+    users:   { icon:'ti-users-group',    label:'Usuários'    },
+    config:  { icon:'ti-settings',       label:'Config'      },
+  };
+  const mk = id => ({ id, ...ALL[id] });
+  const groups = [
+    { label:'Atendimento', ids:['inicio','conv','crm','tarefas','agenda','cal'], roles:null },
+    { label:'Comercial',   ids:['origem','negoc','base'],                        roles:['sdr','gerencia','master'] },
+    { label:'Gestão',      ids:['bi','ativos'],                                  roles:['gerencia','master'] },
+    { label:'Admin',       ids:CU.role==='master'?['users','config']:['users'],  roles:['gerencia','master'] },
   ];
-  if (['gerencia','sdr','master'].includes(CU.role)) {
-    base.push(
-      { id:'origem', icon:'ti-chart-pie', label:'Origens'      },
-      { id:'negoc',  icon:'ti-handshake', label:'Pipeline'     },
-      { id:'base',   icon:'ti-database',  label:'Base de Dados'},
-    );
-  }
-  if (['gerencia','master'].includes(CU.role)) {
-    base.push({ id:'bi',     icon:'ti-chart-bar',   label:'BI'       });
-    base.push({ id:'ativos', icon:'ti-car',          label:'Ativos'   });
-    base.push({ id:'users',  icon:'ti-users-group', label:'Usuários' });
-  }
-  if (CU.role === 'master')                    base.push({ id:'config', icon:'ti-settings',    label:'Config'   });
-  return base;
+  return groups
+    .filter(g => !g.roles || g.roles.includes(CU.role))
+    .map(g => ({ label:g.label, tabs:g.ids.map(mk) }));
 }
 
 function buildNav() {
-  const ts = tabs();
-  const mk = t => `<button onclick="goTab('${t.id}')" data-t="${t.id}"><i class="ti ${t.icon}"></i>${t.label}</button>`;
-  document.getElementById('tab-nav').innerHTML = ts.map(mk).join('');
-  document.getElementById('mob-nav').innerHTML = ts.map(mk).join('');
+  const groups = navGroups();
+  const mkTab  = t => `<button onclick="goTab('${t.id}')" data-t="${t.id}"><i class="ti ${t.icon}"></i>${t.label}</button>`;
+  const mkGrp  = g => `<div class="nav-group"><span class="nav-gl">${g.label}</span><div class="nav-tabs">${g.tabs.map(mkTab).join('')}</div></div>`;
+  document.getElementById('tab-nav').innerHTML  = groups.map(mkGrp).join('');
+  document.getElementById('mob-nav').innerHTML  = groups.flatMap(g => g.tabs).map(mkTab).join('');
+  setTimeout(refreshTaskBadge, 1500);
 }
 
 function goTab(id) {
-  // pisca o olho
   const logo = document.getElementById('eye-logo');
   if (logo) {
     logo.classList.remove('blink');
@@ -141,6 +148,6 @@ function goTab(id) {
   const v = document.getElementById('v-' + id);
   if (v) v.classList.add('on');
   document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === id));
-  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos, users:renderUsers, config:renderConfig };
+  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos, tarefas:renderTarefas, users:renderUsers, config:renderConfig };
   if (renders[id]) renders[id]();
 }
