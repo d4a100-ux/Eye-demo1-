@@ -33,12 +33,38 @@ async function renderInicio() {
   const MONTHS=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const potFmt=potential>=1000?`R$ ${(potential/1000).toFixed(0)}k`:`R$ ${Math.round(potential)}`;
 
+  // Módulos disponíveis por role
+  const allMods = [
+    { id:'crm',    icon:'ti-layout-kanban',  label:'CRM',           sub:'Pipeline de leads',    color:'#007AFF', roles:null },
+    { id:'tarefas',icon:'ti-checkbox',       label:'Tarefas',        sub:'Follow-ups e alertas', color:'#5856D6', roles:null },
+    { id:'agenda', icon:'ti-calendar',       label:'Agenda',         sub:'Agendamentos',         color:'#2DD4A7', roles:null },
+    { id:'conv',   icon:'ti-message-2',      label:'Conversas',      sub:'Histórico de leads',   color:'#FF9F0A', roles:null },
+    { id:'negoc',  icon:'ti-handshake',      label:'Pipeline',       sub:'Leads em negociação',  color:'#5856D6', roles:['sdr','gerencia','master'] },
+    { id:'origem', icon:'ti-chart-pie',      label:'Origens',        sub:'Fonte dos leads',      color:'#34C759', roles:['sdr','gerencia','master'] },
+    { id:'bi',     icon:'ti-chart-bar',      label:'BI',             sub:'Relatórios e dados',   color:'#FF3B30', roles:['gerencia','master'] },
+    { id:'ativos', icon:'ti-car',            label:'Ativos',         sub:'Gestão de veículos',   color:'#FF9F0A', roles:['gerencia','master'] },
+  ];
+  const mods = allMods.filter(m => !m.roles || m.roles.includes(CU.role));
+
   el.innerHTML=`
     <div class="dash-greeting">
       <div class="dg-title">${grt}, ${CU.nome} 👋</div>
       <div class="dg-sub">${DAYS[now.getDay()]}, ${now.getDate()} de ${MONTHS[now.getMonth()]}</div>
     </div>
-    <div class="kpi-grid">
+
+    <div class="mod-question">Qual módulo você deseja acessar?</div>
+    <div class="mod-grid">
+      ${mods.map(m=>`
+        <div class="mod-card" onclick="goTab('${m.id}')">
+          <div class="mod-icon" style="background:${m.color}1a;color:${m.color}">
+            <i class="ti ${m.icon}"></i>
+          </div>
+          <div class="mod-label">${m.label}</div>
+          <div class="mod-sub">${m.sub}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="kpi-grid" style="margin-top:24px">
       <div class="kpi-c" style="--kc:var(--ind)"><div class="kl">Total de leads</div><div class="kv" style="color:var(--ind)">${myAppts.length}</div></div>
       <div class="kpi-c" style="--kc:var(--amb)"><div class="kl">Agendamentos hoje</div><div class="kv" style="color:var(--amb)">${todayAppts.length}</div></div>
       <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Vendas no mês</div><div class="kv" style="color:var(--grn)">${realizedMonth.length}</div></div>
