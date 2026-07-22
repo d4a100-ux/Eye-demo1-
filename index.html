@@ -483,9 +483,17 @@
         </select>
       </div>
       <div class="fg">
-        <label for="task-resp">Responsável</label>
-        <input class="finput" id="task-resp" placeholder="Nome do responsável">
+        <label for="task-resp">Responsável *</label>
+        <select class="finput fi-sel" id="task-resp"><option value="">Carregando…</option></select>
       </div>
+    </div>
+    <div class="fg">
+      <label for="task-recorr">Recorrência</label>
+      <select class="finput fi-sel" id="task-recorr" onchange="_updateVencLabel()">
+        <option value="nao">Não repete</option>
+        <option value="diaria">Diária 🔁</option>
+        <option value="semanal">Semanal 🔁</option>
+      </select>
     </div>
     <div class="fg">
       <label for="task-desc">Descrição</label>
@@ -493,7 +501,7 @@
     </div>
     <div class="frow">
       <div class="fg">
-        <label for="task-venc">Data *</label>
+        <label id="task-venc-label" for="task-venc">Data *</label>
         <input class="finput" id="task-venc" type="date">
       </div>
       <div class="fg">
