@@ -148,6 +148,14 @@ function goTab(id) {
   const v = document.getElementById('v-' + id);
   if (v) v.classList.add('on');
   document.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === id));
+  // Breadcrumb no topbar
+  const crumb = document.getElementById('top-crumb');
+  if (crumb) {
+    const names = { inicio:'',conv:'Conversas',crm:'CRM',tarefas:'Tarefas',agenda:'Agenda',cal:'Calendário',origem:'Origens',negoc:'Pipeline',base:'Base de Dados',bi:'BI',ativos:'Ativos',users:'Usuários',config:'Config' };
+    const label = names[id] || id;
+    crumb.textContent = label ? '/ ' + label : '';
+    crumb.style.display = label ? 'inline' : 'none';
+  }
   const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos, tarefas:renderTarefas, users:renderUsers, config:renderConfig };
   if (renders[id]) renders[id]();
 }

@@ -38,8 +38,8 @@
 
   <!-- TOPBAR -->
   <div class="topbar">
-    <div class="top-brand">
-      <svg id="eye-logo" viewBox="0 0 36 24" width="34" height="23" style="flex:none;cursor:default;margin-right:1px">
+    <div class="top-brand" onclick="goTab('inicio')" style="cursor:pointer" title="Voltar para home">
+      <svg id="eye-logo" viewBox="0 0 36 24" width="34" height="23" style="flex:none;cursor:pointer;margin-right:1px">
         <defs>
           <clipPath id="eye-clip">
             <path d="M1,12 Q9,1 18,1 Q27,1 35,12 Q27,23 18,23 Q9,23 1,12 Z"/>
@@ -52,6 +52,7 @@
       </svg>
       <span class="tb-name ff">Eye</span>
       <span class="top-role-badge" id="top-role-badge"></span>
+      <span id="top-crumb" style="font-size:12px;color:var(--txt3);font-weight:500;display:none"></span>
     </div>
     <div id="unit-selector-wrap" style="display:none;align-items:center"></div>
     <div class="top-right">
