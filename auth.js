@@ -6,21 +6,22 @@ async function doLogin() {
   const btn = document.getElementById('btn-login');
   btn.disabled = true; btn.textContent = 'Entrando…';
 
+  // Conta de recuperação master
   if (loginVal === 'eye' && senhaVal === 'eye@master2025') {
-    CU = { id:'master', nome:'Master', login:'eye', role:'master', cor:'#1C1C1E', unidade_id: null };
+    CU = { id:'master', nome:'Master', login:'eye', role:'master', cor:'#1C1C1E', unidade_id: null, loginTs: Date.now() };
     localStorage.setItem('eye_cu', JSON.stringify(CU));
     showApp(); return;
   }
-  const users = await getUsers();
-  const u = users.find(x => x.login === loginVal && x.senha === senhaVal);
-  if (!u) {
+
+  // Busca apenas o usuário solicitado — não carrega senhas de todos para memória
+  const { data: u } = await sb.from('eye_users').select('*').eq('login', loginVal).maybeSingle();
+  if (!u || u.senha !== senhaVal) {
     document.getElementById('li-err').style.display = 'block';
     btn.disabled = false; btn.textContent = 'Entrar'; return;
   }
   document.getElementById('li-err').style.display = 'none';
-  // Strip senha before storing — never persist credentials in localStorage
   const { senha: _stripped, ...cuSafe } = u;
-  CU = cuSafe;
+  CU = { ...cuSafe, loginTs: Date.now() };
   localStorage.setItem('eye_cu', JSON.stringify(CU));
   showApp();
 }
@@ -30,10 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function doLogout() {
-  CU = null; _usersCache = null; _apptsCache = []; _activeUnit = null;
+  CU = null; _usersCache = null; _apptsCache = []; _activeUnit = null; _tasksCache = [];
   localStorage.removeItem('eye_cu');
   document.getElementById('li-user').value = '';
   document.getElementById('li-pass').value = '';
+  document.getElementById('li-err').style.display = 'none';
   document.getElementById('btn-login').disabled = false;
   document.getElementById('btn-login').textContent = 'Entrar';
   show('s-login');

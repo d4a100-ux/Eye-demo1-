@@ -44,7 +44,8 @@ async function getUnidades() {
 
 async function getUsers(force = false) {
   if (_usersCache && !force) return _usersCache;
-  const { data, error } = await sb.from('eye_users').select('*');
+  // Nunca seleciona senha — credenciais não devem ficar em cache no navegador
+  const { data, error } = await sb.from('eye_users').select('id,nome,login,role,cor,unidade_id,unidades_ids');
   if (error) { console.error('getUsers:', error); return []; }
   _usersCache = data || [];
   return _usersCache;

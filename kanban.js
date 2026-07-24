@@ -36,7 +36,13 @@ function _drawKanban() {
   if (vf) appts = appts.filter(a => a.vnd === vf);
   if (q)  appts = appts.filter(a => (a.cli + ' ' + (a.tel||'')).toLowerCase().includes(q));
   const hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
-  const visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
+  let visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
+  // SDR vê só fase SDR + saídas; Vendedor vê passado_vendedor + fase Vendedor + saídas
+  if (CU.role === 'sdr') {
+    visibleCols = visibleCols.filter(c => c.fase === 'sdr' || c.fase === 'exit');
+  } else if (CU.role === 'vendedor') {
+    visibleCols = visibleCols.filter(c => c.id === 'passado_vendedor' || c.fase === 'vnd' || c.fase === 'exit');
+  }
 
   const phaseLabels = { sdr:'— SDR', vnd:'— Vendedor', exit:'— Saídas' };
   let lastFase = null;
