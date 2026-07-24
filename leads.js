@@ -1,14 +1,26 @@
+// ─── BRIEFING SDR → VENDEDOR ──────────────────────────────────────────────────
+let _pendingBriefing = null;
+
+function _alertHours(a) {
+  if (!a.em) return 0;
+  const activeStatuses = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno'];
+  if (!activeStatuses.includes(a.status)) return 0;
+  return (Date.now() - new Date(a.em)) / 3600000;
+}
+
 // ─── APPT CARD ────────────────────────────────────────────────────────────────
 function apptCard(a, opts = {}) {
   const sm = fmtStatus(a.status);
   const ac = userColor(a.vnd);
   const hasNeg = a.modelo || a.valor || a.pgto;
   const hasObs = a.obs || a.prox;
-  return `<div class="ac" style="--c:${sm.c}">
+  const alertH = _alertHours(a);
+  const alertCls = alertH >= 24 ? 'ac-alert-dead' : alertH >= 4 ? 'ac-alert-crit' : alertH >= 2 ? 'ac-alert-warn' : '';
+  return `<div class="ac${alertCls?' '+alertCls:''}" style="--c:${sm.c}">
     <div class="ac-head">
       <div class="ac-av" style="background:${ac}">${initials(a.vnd)}</div>
       <div class="ac-info">
-        <div class="ac-name">${a.cli}<span class="tag ${sm.cls}">${sm.l}</span></div>
+        <div class="ac-name">${a.cli}<span class="tag ${sm.cls}">${sm.l}</span>${alertH>=2?`<span class="ac-alert-badge">${alertH>=24?'🔴':'⚠'} Parado há ${Math.round(alertH)}h</span>`:''}</div>
         <div class="ac-sub">
           <span><i class="ti ti-calendar"></i>${fmtDate(a.data)}${a.hora?' · '+a.hora:''}</span>
           <span><i class="ti ti-user"></i>${a.vnd||'—'}</span>
@@ -239,13 +251,14 @@ function pipelineCard(a) {
 async function openLeadTimeline(id) {
   const a = _apptsCache.find(x => x.id === id);
   if (!a) return;
-  const [logs, comments] = await Promise.all([loadApptLogs(id), loadComments(id)]);
+  const [logs, comments, briefing] = await Promise.all([loadApptLogs(id), loadComments(id), getBriefing(id)]);
   const sm = fmtStatus(a.status);
   const ac = userColor(a.vnd);
 
   const events = [
-    ...logs.map(l => ({ type:'status', ts:l.created_at, user:l.user_nome, de:l.de_status, para:l.para_status })),
-    ...comments.map(c => ({ type:'comment', ts:c.created_at, user:c.user_nome, texto:c.texto }))
+    ...logs.map(l => ({ type:'status',   ts:l.created_at, user:l.user_nome, de:l.de_status, para:l.para_status })),
+    ...comments.map(c => ({ type:'comment', ts:c.created_at, user:c.user_nome, texto:c.texto })),
+    ...(briefing ? [{ type:'briefing', ts:briefing.criado_em, data:briefing }] : [])
   ].sort((a,b) => a.ts < b.ts ? -1 : 1);
 
   document.getElementById('tl-title').textContent = a.cli;
@@ -278,6 +291,27 @@ async function openLeadTimeline(id) {
                 <span class="tag ${from.cls}" style="font-size:10px">${from.l}</span>
                 <i class="ti ti-chevron-right" style="font-size:11px;color:var(--txt3)"></i>
                 <span class="tag ${to.cls}" style="font-size:10px">${to.l}</span>
+              </div>
+              <div class="tl-time">${fmtLogTime(ev.ts)}</div>
+            </div>
+          </div>`;
+        } else if (ev.type === 'briefing') {
+          const b = ev.data;
+          const urgLabels = {essa_semana:'Essa semana',esse_mes:'Esse mês',sem_prazo:'Sem prazo'};
+          const objLabels = {preco:'Preço',pagamento:'Condição de pagamento',modelo:'Modelo',pesquisando:'Ainda pesquisando',nenhuma:'Nenhuma'};
+          return `<div class="tl-item">
+            <div class="tl-dot" style="background:#FF9F0A"><i class="ti ti-clipboard" style="font-size:10px;color:#fff"></i></div>
+            <div class="tl-body">
+              <div class="tl-user">${b.criado_por}</div>
+              <div class="tl-briefing-card">
+                <div style="font-weight:700;margin-bottom:8px;font-size:13px">📋 Briefing de passagem ao vendedor</div>
+                <div class="tl-br-row"><span>Veículo</span>${b.veiculo||'—'}</div>
+                <div class="tl-br-row"><span>Entrada</span>${b.entrada||'Não informado'}</div>
+                <div class="tl-br-row"><span>Troca</span>${b.troca?('Sim — '+(b.troca_detalhe||'n/i')):'Não'}</div>
+                <div class="tl-br-row"><span>Pagamento</span>${b.pagamento||'—'}</div>
+                <div class="tl-br-row"><span>Urgência</span>${urgLabels[b.urgencia]||b.urgencia||'—'}</div>
+                <div class="tl-br-row"><span>Objeção</span>${objLabels[b.objecao]||b.objecao||'—'}</div>
+                ${b.resumo?`<div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--bdr);font-style:italic;font-size:12px;color:var(--txt2)">${b.resumo}</div>`:''}
               </div>
               <div class="tl-time">${fmtLogTime(ev.ts)}</div>
             </div>
@@ -452,32 +486,41 @@ function closeNeg(){document.getElementById('ov-neg').classList.remove('on');}
 async function saveNeg(){
   const id=document.getElementById('neg-id').value, newStatus=document.getElementById('n-status').value;
   const a=_apptsCache.find(x=>x.id===id);
-  if(a){
-    const merged={...a,status:newStatus,modelo:document.getElementById('n-modelo').value.trim()||a.modelo,valor:document.getElementById('n-valor').value.trim()||a.valor};
-    const missing=checkGate(merged,newStatus);
-    if(missing){
-      const msg = newStatus==='passado_vendedor' ? `Briefing obrigatório. Preencha: ${missing.join(', ')}` : `Para registrar preencha: ${missing.join(', ')}`;
-      toast(msg,'err'); return;
-    }
-  }
+
+  // Coleta todos os campos do formulário antes de qualquer desvio de fluxo
   const upd={status:newStatus,em:new Date().toISOString(),modelo:document.getElementById('n-modelo').value.trim(),valor:document.getElementById('n-valor').value.trim(),
     pgto:document.getElementById('n-pgto').value,obs:document.getElementById('n-obs').value.trim(),prox:document.getElementById('n-prox').value.trim()};
   if(canEdit(a)){
     const cli=document.getElementById('n-cli')?.value.trim();
     if(cli) upd.cli=cli;
-    upd.tel  = document.getElementById('n-tel')?.value.trim()||a?.tel||'';
-    upd.data = document.getElementById('n-data')?.value||a?.data||'';
-    upd.hora = document.getElementById('n-hora')?.value||'';
-    upd.vnd  = document.getElementById('n-vnd')?.value||a?.vnd||'';
+    upd.tel      = document.getElementById('n-tel')?.value.trim()||a?.tel||'';
+    upd.data     = document.getElementById('n-data')?.value||a?.data||'';
+    upd.hora     = document.getElementById('n-hora')?.value||'';
+    upd.vnd      = document.getElementById('n-vnd')?.value||a?.vnd||'';
     upd.orig     = document.getElementById('n-orig')?.value||a?.orig||'';
     upd.ativo_id = document.getElementById('n-ativo')?.value||null;
     upd.troca    = document.getElementById('n-troca')?.value.trim()||'';
   }
+
+  // Passado ao vendedor → briefing obrigatório antes de salvar
+  if(newStatus==='passado_vendedor'){
+    if(!upd.vnd&&!a?.vnd){toast('Selecione o vendedor antes de passar','err');return;}
+    _pendingBriefing={source:'neg',apptId:id,upd,oldStatus:a?.status};
+    openBriefingModal(id);
+    return;
+  }
+
+  // Validação normal para outros status
+  if(a){
+    const merged={...a,...upd};
+    const missing=checkGate(merged,newStatus);
+    if(missing){toast('Para registrar preencha: '+missing.join(', '),'err');return;}
+  }
+
   const oldStatus=a?.status;
   const{error}=await sb.from('eye_appts').update(upd).eq('id',id);
   if(error){toast('Erro ao salvar: '+error.message,'err');return;}
   if(oldStatus&&oldStatus!==newStatus) await logStatus(id,oldStatus,newStatus);
-  // Auto follow-up: se ficou agendado com data 2+ dias à frente
   if(newStatus==='agendado'&&upd.data){
     const daysAhead=Math.floor((new Date(upd.data+'T12:00:00')-new Date())/86400000);
     if(daysAhead>=2) createFollowUpTasks(id,upd.data,upd.vnd||a?.vnd,upd.cli||a?.cli);
@@ -540,8 +583,20 @@ async function addComment(apptId){
 
 // ─── LOGS ────────────────────────────────────────────────────────────────────
 async function logStatus(apptId,deStatus,paraStatus){
-  try{await sb.from('eye_logs').insert({id:uid(),appt_id:apptId,user_nome:CU.nome,acao:'status',de_status:deStatus,para_status:paraStatus,created_at:new Date().toISOString()});}
-  catch(e){}
+  try{
+    await sb.from('eye_logs').insert({id:uid(),appt_id:apptId,user_nome:CU.nome,acao:'status',de_status:deStatus,para_status:paraStatus,created_at:new Date().toISOString()});
+    // Registro automático de retrabalho ao mover para status de saída (item 5)
+    const EXIT_SDR=['lead_frio','sem_resposta'];
+    const EXIT_VND=['perdido','credito_reprovado','ag_retorno'];
+    const EXIT_ALL=[...EXIT_SDR,...EXIT_VND];
+    if(EXIT_ALL.includes(paraStatus)){
+      const a=_apptsCache.find(x=>x.id===apptId);
+      const resp=EXIT_VND.includes(paraStatus)?(a?.vnd||'Vendedor'):CU.nome;
+      const motivos={lead_frio:'Sem interesse/resposta',perdido:'Lead perdido',sem_resposta:'Sem resposta após tentativas',credito_reprovado:'Crédito reprovado',ag_retorno:'Aguardando retorno'};
+      const texto=`🔄 ${fmtStatus(paraStatus).l} · Responsável pelo retrabalho: ${resp} · ${motivos[paraStatus]||''}`;
+      await sb.from('eye_comments').insert({id:uid(),appt_id:apptId,user_nome:CU.nome,texto,created_at:new Date().toISOString()});
+    }
+  }catch(e){}
 }
 async function loadApptLogs(apptId){
   try{const{data}=await sb.from('eye_logs').select('*').eq('appt_id',apptId).order('created_at');return data||[];}
@@ -583,6 +638,131 @@ function drawJourney(currentStatus, logs, targetEl) {
     html+=`<div class="journey-line"></div><div class="journey-step"><div class="journey-dot bad">${badIcons[currentStatus]||'❌'}</div><div class="journey-lbl bad">${badLabels[currentStatus]||currentStatus}</div></div>`;
   }
   el.innerHTML=html+'</div>';
+}
+
+// ─── BRIEFING MODAL ───────────────────────────────────────────────────────────
+function _toggleTrocaField() {
+  const fg = document.getElementById('br-troca-detalhe-fg');
+  if (fg) fg.style.display = document.getElementById('br-troca')?.value === 'sim' ? 'block' : 'none';
+}
+
+async function openBriefingModal(apptId) {
+  const a = _apptsCache.find(x => x.id === apptId);
+  const existing = await getBriefing(apptId);
+  document.getElementById('br-appt-id').value = apptId;
+  document.getElementById('br-appt-name').textContent = a?.cli || '';
+  document.getElementById('br-veiculo').value    = existing?.veiculo || a?.modelo || '';
+  document.getElementById('br-entrada').value    = existing?.entrada || '';
+  document.getElementById('br-troca').value      = existing?.troca ? 'sim' : 'nao';
+  document.getElementById('br-troca-detalhe').value = existing?.troca_detalhe || a?.troca || '';
+  document.getElementById('br-pagamento').value  = existing?.pagamento || a?.pgto || '';
+  document.getElementById('br-urgencia').value   = existing?.urgencia || '';
+  document.getElementById('br-objecao').value    = existing?.objecao || '';
+  document.getElementById('br-resumo').value     = existing?.resumo || a?.obs || '';
+  _toggleTrocaField();
+  document.getElementById('ov-briefing').classList.add('on');
+}
+
+function closeBriefing() {
+  document.getElementById('ov-briefing').classList.remove('on');
+  _pendingBriefing = null;
+}
+
+async function saveBriefing() {
+  const apptId   = document.getElementById('br-appt-id').value;
+  const veiculo  = document.getElementById('br-veiculo').value.trim();
+  const pagamento= document.getElementById('br-pagamento').value;
+  const urgencia = document.getElementById('br-urgencia').value;
+  const objecao  = document.getElementById('br-objecao').value;
+  const resumo   = document.getElementById('br-resumo').value.trim();
+
+  if (!veiculo || !pagamento || !urgencia || !objecao || resumo.length < 5) {
+    toast('Preencha todos os campos obrigatórios do briefing', 'err'); return;
+  }
+
+  const entrada = document.getElementById('br-entrada').value.trim();
+  const troca   = document.getElementById('br-troca').value === 'sim';
+  const troca_detalhe = document.getElementById('br-troca-detalhe').value.trim();
+
+  const briefObj = withUnit({ veiculo, entrada, troca, troca_detalhe, pagamento, urgencia, objecao, resumo, appt_id:apptId, criado_por:CU.nome, criado_em:new Date().toISOString() });
+  const existing = await getBriefing(apptId);
+  if (existing) {
+    await sb.from('eye_briefings').update(briefObj).eq('appt_id', apptId);
+  } else {
+    await sb.from('eye_briefings').insert({ ...briefObj, id: uid() });
+  }
+
+  document.getElementById('ov-briefing').classList.remove('on');
+  const pending = _pendingBriefing;
+  _pendingBriefing = null;
+  if (!pending) { toast('Briefing salvo!'); return; }
+
+  if (pending.source === 'kb') {
+    const a = _apptsCache.find(x => x.id === pending.apptId);
+    if (a) {
+      const now = new Date().toISOString(), prev = a.status;
+      a.status = 'passado_vendedor'; a.em = now;
+      _drawKanban();
+      const { error } = await sb.from('eye_appts').update({ status:'passado_vendedor', em:now }).eq('id', pending.apptId);
+      if (error) { toast('Erro ao mover lead', 'err'); a.status = prev; _drawKanban(); return; }
+      await logStatus(pending.apptId, prev, 'passado_vendedor');
+    }
+    toast('📋 Lead passado ao vendedor com briefing!');
+  } else if (pending.source === 'neg') {
+    const { error } = await sb.from('eye_appts').update(pending.upd).eq('id', pending.apptId);
+    if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+    if (pending.oldStatus && pending.oldStatus !== 'passado_vendedor')
+      await logStatus(pending.apptId, pending.oldStatus, 'passado_vendedor');
+    closeNeg();
+    toast('📋 Lead passado ao vendedor com briefing!');
+    await refreshAll();
+  }
+}
+
+// ─── RETRABALHO ───────────────────────────────────────────────────────────────
+async function renderRetrab() {
+  const el = document.getElementById('v-retrab');
+  loading(el);
+  const appts = await getAppts();
+
+  const RETRAB_SDR = ['lead_frio','sem_resposta'];
+  const RETRAB_VND = ['perdido','credito_reprovado','ag_retorno'];
+  const RETRAB_ALL = [...RETRAB_SDR,...RETRAB_VND];
+
+  let leads = appts.filter(a => RETRAB_ALL.includes(a.status));
+  if (CU.role === 'vendedor') leads = leads.filter(a => RETRAB_VND.includes(a.status) && a.vnd === CU.nome);
+  else if (CU.role === 'sdr') leads = leads.filter(a => RETRAB_SDR.includes(a.status));
+
+  const sdrTotal = leads.filter(a => RETRAB_SDR.includes(a.status)).length;
+  const vndTotal = leads.filter(a => RETRAB_VND.includes(a.status)).length;
+
+  if (!leads.length) {
+    el.innerHTML = `<div class="stats"><div class="stat-c"><div class="sv" style="color:var(--grn)">0</div><div class="sl">Retrabalho</div></div></div><div class="empty-st"><i class="ti ti-refresh"></i><p>Nenhum lead para retrabalho!<br>Tudo limpo por aqui.</p></div>`;
+    return;
+  }
+
+  const groups = {};
+  leads.forEach(a => {
+    const resp = RETRAB_VND.includes(a.status) ? (a.vnd||'Sem vendedor') : (a.criado_por||'SDR');
+    if (!groups[resp]) groups[resp] = [];
+    groups[resp].push(a);
+  });
+
+  el.innerHTML = `
+    <div class="stats">
+      <div class="stat-c"><div class="sv" style="color:var(--red)">${leads.length}</div><div class="sl">Total</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--ind)">${sdrTotal}</div><div class="sl">SDR</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--amb)">${vndTotal}</div><div class="sl">Vendedor</div></div>
+    </div>
+    ${Object.entries(groups).map(([resp,arr])=>`
+      <div class="sec-lbl" style="margin-top:18px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="ti-av" style="background:${userColor(resp)};width:24px;height:24px;font-size:9px">${initials(resp)}</div>${resp}
+        </div>
+        <span>${arr.length}</span>
+      </div>
+      <div class="appt-list">${arr.map(a=>apptCard(a)).join('')}</div>
+    `).join('')}`;
 }
 
 function checkGate(a, newStatus) {

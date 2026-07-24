@@ -18,8 +18,7 @@ async function renderTarefas() {
   const futuras  = open.filter(t => !t.vencimento || t.vencimento > today);
   const done     = avulsas.filter(t => t.concluida).slice(0, 20);
 
-  // Rotina: mostra só as recorrentes de hoje ou vencidas
-  const rotina = recorrentes.filter(t => !t.concluida && t.vencimento <= today);
+  const rotina      = recorrentes.filter(t => !t.concluida && t.vencimento <= today);
   const rotinaFeita = recorrentes.filter(t => t.concluida && t.vencimento === today);
 
   el.innerHTML = `
@@ -36,10 +35,10 @@ async function renderTarefas() {
     ${rotina.length || rotinaFeita.length ? `
       <div class="sec-lbl" style="margin-bottom:8px">🔁 Rotina de hoje<span>${rotinaFeita.length}/${rotina.length+rotinaFeita.length} concluídas</span></div>
       <div class="task-list" style="margin-bottom:18px">
-        ${[...rotina, ...rotinaFeita].map(t => taskCard(t, appts, t.vencimento < today ? 'overdue' : t.vencimento === today ? 'today' : '')).join('')}
+        ${[...rotina,...rotinaFeita].map(t=>taskCard(t,appts,t.vencimento<today?'overdue':t.vencimento===today?'today':'')).join('')}
       </div>` : ''}
 
-    ${recorrentes.filter(t => t.vencimento > today).length ? `
+    ${recorrentes.filter(t=>t.vencimento>today).length ? `
       <div class="sec-lbl" style="margin-bottom:8px;color:var(--txt3)">🔁 Próximas rotinas<span>${recorrentes.filter(t=>t.vencimento>today).length}</span></div>
       <div class="task-list" style="margin-bottom:18px">
         ${recorrentes.filter(t=>t.vencimento>today).map(t=>taskCard(t,appts,'')).join('')}
@@ -47,40 +46,41 @@ async function renderTarefas() {
 
     ${vencidas.length ? `
       <div class="sec-lbl" style="color:var(--red)">⚠ Vencidas<span>${vencidas.length}</span></div>
-      <div class="task-list">${vencidas.map(t => taskCard(t, appts, 'overdue')).join('')}</div>` : ''}
+      <div class="task-list">${vencidas.map(t=>taskCard(t,appts,'overdue')).join('')}</div>` : ''}
     ${hoje.length ? `
       <div class="sec-lbl" style="margin-top:16px">Hoje<span>${hoje.length}</span></div>
-      <div class="task-list">${hoje.map(t => taskCard(t, appts, 'today')).join('')}</div>` : ''}
+      <div class="task-list">${hoje.map(t=>taskCard(t,appts,'today')).join('')}</div>` : ''}
     ${futuras.length ? `
       <div class="sec-lbl" style="margin-top:16px">Próximas<span>${futuras.length}</span></div>
-      <div class="task-list">${futuras.map(t => taskCard(t, appts, '')).join('')}</div>` : ''}
+      <div class="task-list">${futuras.map(t=>taskCard(t,appts,'')).join('')}</div>` : ''}
     ${!open.length && !rotina.length ? `<div class="empty-st"><i class="ti ti-checkbox"></i><p>Nenhuma tarefa em aberto!<br>Clique em "Nova tarefa" para criar.</p></div>` : ''}
     ${done.length ? `
       <div class="sec-lbl" style="margin-top:20px;color:var(--txt3)">Concluídas recentes<span>${done.length}</span></div>
-      <div class="task-list">${done.map(t => taskCard(t, appts, 'done')).join('')}</div>` : ''}`;
+      <div class="task-list">${done.map(t=>taskCard(t,appts,'done')).join('')}</div>` : ''}`;
 }
 
 function taskCard(t, appts, urgency) {
-  const appt  = appts.find(a => a.id === t.appt_id);
-  const icon  = TASK_ICONS[t.tipo]  || 'ti-checkbox';
-  const label = TASK_LABELS[t.tipo] || t.tipo;
+  const appt    = appts.find(a => a.id === t.appt_id);
+  const icon    = TASK_ICONS[t.tipo]  || 'ti-checkbox';
+  const label   = TASK_LABELS[t.tipo] || t.tipo;
   const isRecorr = t.recorrencia && t.recorrencia !== 'nao';
   const dateStr = t.vencimento ? fmtDate(t.vencimento) + (t.hora ? ' · ' + t.hora : '') : '—';
-  const bc = urgency === 'overdue' ? 'var(--red)' : urgency === 'today' ? 'var(--amb)' : t.concluida ? 'var(--txt3)' : isRecorr ? '#5856D6' : 'var(--ind)';
-  return `<div class="task-card${t.concluida ? ' done' : ''}" style="border-left-color:${bc}">
-    <button class="task-cb${t.concluida ? ' checked' : ''}" onclick="toggleTask('${t.id}')">
-      <i class="ti ${t.concluida ? 'ti-check' : 'ti-square'}"></i>
+  const bc = urgency==='overdue'?'var(--red)':urgency==='today'?'var(--amb)':t.concluida?'var(--txt3)':isRecorr?'#5856D6':'var(--ind)';
+  return `<div class="task-card${t.concluida?' done':''}" style="border-left-color:${bc}">
+    <button class="task-cb${t.concluida?' checked':''}" onclick="toggleTask('${t.id}')">
+      <i class="ti ${t.concluida?'ti-check':'ti-square'}"></i>
     </button>
     <div class="task-body">
       <div class="task-header">
         <span class="task-tipo"><i class="ti ${icon}"></i> ${label}</span>
-        ${isRecorr ? `<span style="font-size:10px;font-weight:700;color:#5856D6;background:rgba(88,86,214,.1);padding:1px 7px;border-radius:20px">${RECORR_LABELS[t.recorrencia]}</span>` : ''}
-        ${appt ? `<span onclick="openNeg('${appt.id}')" style="cursor:pointer;color:var(--ind);font-size:12px;font-weight:600">${appt.cli}</span>` : ''}
+        ${isRecorr?`<span style="font-size:10px;font-weight:700;color:#5856D6;background:rgba(88,86,214,.1);padding:1px 7px;border-radius:20px">${RECORR_LABELS[t.recorrencia]}</span>`:''}
+        ${appt?`<span onclick="openNeg('${appt.id}')" style="cursor:pointer;color:var(--ind);font-size:12px;font-weight:600">${appt.cli}</span>`:''}
       </div>
-      <div class="task-desc">${t.descricao || '—'}</div>
+      <div class="task-desc">${t.descricao||'—'}</div>
+      ${t.resultado?`<div class="task-resultado">✅ ${t.resultado}</div>`:''}
       <div class="task-foot">
         <span><i class="ti ti-calendar" style="font-size:11px;vertical-align:-1px"></i> ${dateStr}</span>
-        ${t.responsavel ? `<span><i class="ti ti-user" style="font-size:11px;vertical-align:-1px"></i> ${t.responsavel}</span>` : ''}
+        ${t.responsavel?`<span><i class="ti ti-user" style="font-size:11px;vertical-align:-1px"></i> ${t.responsavel}</span>`:''}
       </div>
     </div>
     <div style="display:flex;gap:5px;flex:none">
@@ -103,22 +103,19 @@ async function openTask(id, apptId) {
   document.getElementById('task-hora').value    = t?.hora || '';
   document.getElementById('task-recorr').value  = t?.recorrencia || 'nao';
 
-  // Dropdown de responsável com todos os usuários
   const respSel = document.getElementById('task-resp');
   respSel.innerHTML = `<option value="">Selecione…</option>${
-    users.map(u => `<option value="${u.nome}">${u.nome} · ${ROLE_LABELS[u.role]||u.role}</option>`).join('')
+    users.map(u=>`<option value="${u.nome}">${u.nome} · ${ROLE_LABELS[u.role]||u.role}</option>`).join('')
   }`;
   respSel.value = t?.responsavel || CU.nome;
 
-  // Dropdown de lead vinculado
   const leadSel = document.getElementById('task-lead-sel');
   leadSel.innerHTML = `<option value="">Sem lead vinculado</option>${
-    appts.filter(a => !['venda_concluida','perdido','lead_frio'].includes(a.status))
-         .map(a => `<option value="${a.id}">${a.cli}${a.vnd ? ' · ' + a.vnd : ''}</option>`).join('')
+    appts.filter(a=>!['venda_concluida','perdido','lead_frio'].includes(a.status))
+         .map(a=>`<option value="${a.id}">${a.cli}${a.vnd?' · '+a.vnd:''}</option>`).join('')
   }`;
   leadSel.value = t?.appt_id || apptId || '';
 
-  // Mostrar/ocultar campo de data conforme recorrência
   _updateVencLabel();
   document.getElementById('ov-task').classList.add('on');
 }
@@ -158,27 +155,28 @@ async function saveTask() {
   if (document.querySelector('#v-tarefas.on')) renderTarefas();
 }
 
+// Concluir tarefa — se tiver lead vinculado, pede resultado primeiro
 async function toggleTask(id) {
   const tasks = await getTasks();
   const t = tasks.find(x => x.id === id);
   if (!t) return;
 
   const completing = !t.concluida;
+
+  // Se está concluindo uma tarefa com lead vinculado → abre modal de resultado
+  if (completing && t.appt_id) {
+    _openTaskResult(t);
+    return;
+  }
+
+  // Sem lead: conclui diretamente
   const { error } = await sb.from('eye_tasks').update({ concluida: completing }).eq('id', id);
   if (error) { toast('Erro', 'err'); return; }
 
-  // Se completou uma tarefa recorrente → cria próxima ocorrência
   if (completing && t.recorrencia && t.recorrencia !== 'nao') {
     const dias = t.recorrencia === 'diaria' ? 1 : 7;
     const proxData = shiftDate(new Date((t.vencimento || new Date().toISOString().split('T')[0]) + 'T12:00:00'), dias);
-    const proxTask = {
-      id: uid(), tipo: t.tipo, descricao: t.descricao, vencimento: proxData,
-      hora: t.hora, responsavel: t.responsavel, recorrencia: t.recorrencia,
-      appt_id: t.appt_id || null, concluida: false,
-      criado_por: t.criado_por, created_at: new Date().toISOString(),
-      unidade_id: t.unidade_id || null,
-    };
-    await sb.from('eye_tasks').insert(proxTask);
+    await sb.from('eye_tasks').insert({ id:uid(), tipo:t.tipo, descricao:t.descricao, vencimento:proxData, hora:t.hora, responsavel:t.responsavel, recorrencia:t.recorrencia, appt_id:t.appt_id||null, concluida:false, criado_por:t.criado_por, created_at:new Date().toISOString(), unidade_id:t.unidade_id||null });
     toast(`✅ Concluída! Próxima criada para ${fmtDate(proxData)}`);
   } else {
     toast(completing ? 'Tarefa concluída!' : 'Reaberta');
@@ -186,6 +184,49 @@ async function toggleTask(id) {
 
   _tasksCache = [];
   renderTarefas();
+}
+
+// ─── MODAL RESULTADO DE TAREFA ────────────────────────────────────────────────
+function _openTaskResult(t) {
+  document.getElementById('tr-task-id').value    = t.id;
+  document.getElementById('tr-appt-id').value    = t.appt_id;
+  document.getElementById('tr-task-desc').textContent = `${TASK_LABELS[t.tipo]||t.tipo}${t.descricao?' — '+t.descricao:''}`;
+  document.getElementById('tr-resultado').value  = '';
+  document.getElementById('ov-task-result').classList.add('on');
+}
+
+function closeTaskResult() { document.getElementById('ov-task-result').classList.remove('on'); }
+
+async function saveTaskResult() {
+  const taskId    = document.getElementById('tr-task-id').value;
+  const apptId    = document.getElementById('tr-appt-id').value;
+  const resultado = document.getElementById('tr-resultado').value.trim();
+  if (!resultado) { toast('Descreva o resultado', 'err'); return; }
+
+  const tasks = await getTasks();
+  const t     = tasks.find(x => x.id === taskId);
+
+  const { error } = await sb.from('eye_tasks').update({ concluida: true, resultado }).eq('id', taskId);
+  if (error) { toast('Erro', 'err'); return; }
+
+  // Registra resultado na timeline do lead
+  const label = TASK_LABELS[t?.tipo] || 'Tarefa';
+  const texto = `✅ ${label} concluída · ${resultado}`;
+  await sb.from('eye_comments').insert({ id:uid(), appt_id:apptId, user_nome:CU.nome, texto, created_at:new Date().toISOString() });
+
+  // Cria próxima ocorrência se recorrente
+  if (t?.recorrencia && t.recorrencia !== 'nao') {
+    const dias = t.recorrencia === 'diaria' ? 1 : 7;
+    const proxData = shiftDate(new Date((t.vencimento || new Date().toISOString().split('T')[0]) + 'T12:00:00'), dias);
+    await sb.from('eye_tasks').insert({ id:uid(), tipo:t.tipo, descricao:t.descricao, vencimento:proxData, hora:t.hora, responsavel:t.responsavel, recorrencia:t.recorrencia, appt_id:t.appt_id||null, concluida:false, criado_por:t.criado_por, created_at:new Date().toISOString(), unidade_id:t.unidade_id||null });
+    toast(`✅ Concluída e registrada no lead! Próxima criada para ${fmtDate(proxData)}`);
+  } else {
+    toast('Tarefa concluída e registrada na timeline do lead!');
+  }
+
+  _tasksCache = [];
+  closeTaskResult();
+  if (document.querySelector('#v-tarefas.on')) renderTarefas();
 }
 
 async function delTask(id) {
@@ -199,7 +240,7 @@ async function delTask(id) {
 // Cria sequência automática de follow-up quando lead é agendado 2+ dias à frente
 async function createFollowUpTasks(apptId, apptDate, vnd, cli) {
   const today = new Date().toISOString().split('T')[0];
-  const daysAhead = Math.floor((new Date(apptDate + 'T12:00:00') - new Date(today + 'T12:00:00')) / 86400000);
+  const daysAhead = Math.floor((new Date(apptDate+'T12:00:00') - new Date(today+'T12:00:00')) / 86400000);
   if (daysAhead < 2) return;
 
   const existing = (await getTasks()).filter(t => t.appt_id === apptId && !t.concluida);

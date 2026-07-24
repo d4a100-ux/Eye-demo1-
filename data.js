@@ -81,6 +81,11 @@ async function getAppts() {
   return _apptsCache;
 }
 
+async function getBriefing(apptId) {
+  const { data } = await sb.from('eye_briefings').select('*').eq('appt_id', apptId).maybeSingle();
+  return data || null;
+}
+
 async function refreshAll() {
   await getAppts();
   const active = document.querySelector('.view.on');

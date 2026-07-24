@@ -76,6 +76,7 @@ async function showApp() {
   buildNav();
   goTab('inicio');
   setTimeout(showHotLeadNotif, 8000);
+  setTimeout(checkTomorrowAppts, 14000); // item 6 — confirmação 24h
   requestNotifPerm();
   startRealtimeLeads();
 }
@@ -103,26 +104,28 @@ function canDelete() { return CU.role === 'gerencia' || CU.role === 'sdr' || CU.
 // ─── NAV ──────────────────────────────────────────────────────────────────────
 function navGroups() {
   const ALL = {
-    inicio:  { icon:'ti-home',           label:'Início'      },
-    conv:    { icon:'ti-message-2',      label:'Conversas'   },
-    crm:     { icon:'ti-layout-kanban',  label:'CRM'         },
-    tarefas: { icon:'ti-checkbox',       label:'Tarefas'     },
-    agenda:  { icon:'ti-calendar',       label:'Agenda'      },
-    cal:     { icon:'ti-calendar-month', label:'Calendário'  },
-    origem:  { icon:'ti-chart-pie',      label:'Origens'     },
-    negoc:   { icon:'ti-handshake',      label:'Pipeline'    },
-    base:    { icon:'ti-database',       label:'Base de Dados'},
-    bi:      { icon:'ti-chart-bar',      label:'BI'          },
-    ativos:  { icon:'ti-car',            label:'Ativos'      },
-    users:   { icon:'ti-users-group',    label:'Usuários'    },
-    config:  { icon:'ti-settings',       label:'Config'      },
+    inicio:  { icon:'ti-home',            label:'Início'       },
+    conv:    { icon:'ti-message-2',       label:'Conversas'    },
+    crm:     { icon:'ti-layout-kanban',   label:'CRM'          },
+    tarefas: { icon:'ti-checkbox',        label:'Tarefas'      },
+    agenda:  { icon:'ti-calendar',        label:'Agenda'       },
+    cal:     { icon:'ti-calendar-month',  label:'Calendário'   },
+    retrab:  { icon:'ti-refresh',         label:'Retrabalho'   },
+    origem:  { icon:'ti-chart-pie',       label:'Origens'      },
+    negoc:   { icon:'ti-handshake',       label:'Pipeline'     },
+    base:    { icon:'ti-database',        label:'Base de Dados'},
+    bi:      { icon:'ti-chart-bar',       label:'BI'           },
+    ativos:  { icon:'ti-car',             label:'Ativos'       },
+    conf:    { icon:'ti-clipboard-list',  label:'Conferência'  },
+    users:   { icon:'ti-users-group',     label:'Usuários'     },
+    config:  { icon:'ti-settings',        label:'Config'       },
   };
   const mk = id => ({ id, ...ALL[id] });
   const groups = [
-    { label:'Atendimento', ids:['inicio','conv','crm','tarefas','agenda','cal'], roles:null },
-    { label:'Comercial',   ids:['origem','negoc','base'],                        roles:['sdr','gerencia','master'] },
-    { label:'Gestão',      ids:['bi','ativos'],                                  roles:['gerencia','master'] },
-    { label:'Admin',       ids:CU.role==='master'?['users','config']:['users'],  roles:['gerencia','master'] },
+    { label:'Atendimento', ids:['inicio','conv','crm','tarefas','agenda','cal','retrab'], roles:null },
+    { label:'Comercial',   ids:['origem','negoc','base'],                                 roles:['sdr','gerencia','master'] },
+    { label:'Gestão',      ids:['bi','ativos','conf'],                                    roles:['gerencia','master'] },
+    { label:'Admin',       ids:CU.role==='master'?['users','config']:['users'],           roles:['gerencia','master'] },
   ];
   return groups
     .filter(g => !g.roles || g.roles.includes(CU.role))
@@ -153,11 +156,11 @@ function goTab(id) {
   // Breadcrumb no topbar
   const crumb = document.getElementById('top-crumb');
   if (crumb) {
-    const names = { inicio:'',conv:'Conversas',crm:'CRM',tarefas:'Tarefas',agenda:'Agenda',cal:'Calendário',origem:'Origens',negoc:'Pipeline',base:'Base de Dados',bi:'BI',ativos:'Ativos',users:'Usuários',config:'Config' };
+    const names = { inicio:'',conv:'Conversas',crm:'CRM',tarefas:'Tarefas',agenda:'Agenda',cal:'Calendário',retrab:'Retrabalho',origem:'Origens',negoc:'Pipeline',base:'Base de Dados',bi:'BI',ativos:'Ativos',conf:'Conferência',users:'Usuários',config:'Config' };
     const label = names[id] || id;
     crumb.textContent = label ? '/ ' + label : '';
     crumb.style.display = label ? 'inline' : 'none';
   }
-  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos, tarefas:renderTarefas, users:renderUsers, config:renderConfig };
+  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos, tarefas:renderTarefas, retrab:renderRetrab, conf:renderConf, users:renderUsers, config:renderConfig };
   if (renders[id]) renders[id]();
 }

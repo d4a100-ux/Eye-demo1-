@@ -1,13 +1,24 @@
-let _kbVndFilter = '';
-let _kbDragId = null;
+let _kbVndFilter  = '';
+let _kbDragId     = null;
+let _pendingKbDrop = null; // aguarda briefing antes de salvar
+
+const _ACTIVE_ST = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno'];
 
 function alertClass(a) {
-  const activeStatuses = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno'];
-  if (!a.em || !activeStatuses.includes(a.status)) return '';
+  if (!a.em || !_ACTIVE_ST.includes(a.status)) return '';
   const h = (Date.now() - new Date(a.em)) / 3600000;
-  if (h >= 4) return 'card-crit';
-  if (h >= 2) return 'card-warn';
+  if (h >= 24) return 'card-dead';
+  if (h >= 4)  return 'card-crit';
+  if (h >= 2)  return 'card-warn';
   return '';
+}
+
+function alertText(a) {
+  if (!a.em || !_ACTIVE_ST.includes(a.status)) return '';
+  const h = (Date.now() - new Date(a.em)) / 3600000;
+  if (h < 2) return '';
+  const hh = h >= 24 ? `${Math.round(h)}h` : `${Math.round(h)}h`;
+  return `Parado há ${hh}`;
 }
 
 async function renderCrm() {
@@ -34,10 +45,11 @@ function _drawKanban() {
   const vf = document.getElementById('kb-vnd-f')?.value || _kbVndFilter;
   const q  = (document.getElementById('kb-q')?.value || '').toLowerCase();
   if (vf) appts = appts.filter(a => a.vnd === vf);
-  if (q)  appts = appts.filter(a => (a.cli + ' ' + (a.tel||'')).toLowerCase().includes(q));
+  if (q)  appts = appts.filter(a => (a.cli+' '+(a.tel||'')).toLowerCase().includes(q));
+
   const hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
   let visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
-  // SDR vê só fase SDR + saídas; Vendedor vê passado_vendedor + fase Vendedor + saídas
+  // Colunas por papel
   if (CU.role === 'sdr') {
     visibleCols = visibleCols.filter(c => c.fase === 'sdr' || c.fase === 'exit');
   } else if (CU.role === 'vendedor') {
@@ -53,7 +65,7 @@ function _drawKanban() {
       lastFase = col.fase;
     }
     const cards = appts.filter(a => a.status === col.id);
-    const totalVal = cards.reduce((s, a) => {
+    const totalVal = cards.reduce((s,a) => {
       const n = parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));
       return s + (isNaN(n) ? 0 : n);
     }, 0);
@@ -85,8 +97,9 @@ function _drawKanban() {
 }
 
 function kbCard(a) {
-  const ac = userColor(a.vnd);
-  const al = alertClass(a);
+  const ac  = userColor(a.vnd);
+  const al  = alertClass(a);
+  const txt = alertText(a);
   return `
     <div class="kb-card${al?' '+al:''}" draggable="true"
       ondragstart="_kbDragId='${a.id}'"
@@ -100,6 +113,7 @@ function kbCard(a) {
         </div>
         ${scoreBadge(a)}
       </div>
+      ${txt ? `<div class="kb-card-alert">${al==='card-dead'?'🔴':'⚠'} ${txt}</div>` : ''}
       ${a.modelo ? `<div class="kb-card-model"><i class="ti ti-car"></i>${a.modelo}</div>` : ''}
       <div class="kb-card-foot">
         ${a.valor ? `<span class="kb-card-val">${a.valor}</span>` : '<span></span>'}
@@ -117,8 +131,15 @@ async function kbDrop(event, newStatus) {
   _kbDragId = null;
   const a = _apptsCache.find(x => x.id === id);
   if (!a || a.status === newStatus) return;
+
+  // Passado ao vendedor → abre briefing antes de salvar
+  if (newStatus === 'passado_vendedor') {
+    _pendingBriefing = { source: 'kb', apptId: id, oldStatus: a.status };
+    openBriefingModal(id);
+    return;
+  }
+
   const oldStatus = a.status;
-  // Atualiza cache local imediatamente — sem esperar o Supabase
   const now = new Date().toISOString();
   a.status = newStatus;
   a.em = now;
@@ -127,7 +148,7 @@ async function kbDrop(event, newStatus) {
   const { error } = await sb.from('eye_appts').update({ status: newStatus, em: now }).eq('id', id);
   if (error) {
     toast('Erro ao mover: ' + error.message, 'err');
-    a.status = oldStatus; // rollback
+    a.status = oldStatus;
     _drawKanban();
     return;
   }

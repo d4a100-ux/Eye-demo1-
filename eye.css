@@ -218,6 +218,34 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 /* Kanban card alerts */
 .kb-card.card-warn{border-left:3px solid var(--amb);border-color:rgba(255,159,10,.4);}
 .kb-card.card-crit{border-left:3px solid var(--red);border-color:rgba(255,59,48,.4);}
+@keyframes pulse-border{0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,.6);}50%{box-shadow:0 0 0 4px rgba(255,59,48,0);}}
+.kb-card.card-dead{border:1.5px solid var(--red);animation:pulse-border 1.8s ease-in-out infinite;}
+.kb-card-alert{font-size:10px;font-weight:600;color:var(--red);margin-top:5px;display:flex;align-items:center;gap:4px;}
+/* Agenda card alerts */
+.ac-alert-warn{border-left:3px solid var(--amb)!important;}
+.ac-alert-crit{border-left:3px solid var(--red)!important;}
+.ac-alert-dead{border-left:3px solid var(--red)!important;animation:pulse-border 1.8s ease-in-out infinite;}
+.ac-alert-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;}
+.ac-alert-badge.warn{background:var(--ambg);color:#CC7A00;}
+.ac-alert-badge.crit{background:var(--redg);color:var(--red);}
+.ac-alert-badge.dead{background:var(--redg);color:var(--red);}
+/* Timeline briefing card */
+.tl-briefing-card{background:linear-gradient(135deg,rgba(0,122,255,.06),rgba(0,122,255,.02));border:1px solid rgba(0,122,255,.25);border-radius:10px;padding:12px 14px;margin-top:4px;}
+.tl-briefing-card .tbf-title{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ind);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.tl-br-row{display:flex;gap:8px;margin-bottom:5px;font-size:12.5px;flex-wrap:wrap;}
+.tl-br-row .tbr-label{font-weight:600;color:var(--txt2);min-width:80px;flex:none;}
+.tl-br-row .tbr-val{color:var(--txt);flex:1;}
+.tl-br-row:last-child{margin-bottom:0;}
+/* Task resultado */
+.task-resultado{font-size:11.5px;color:var(--txt2);margin-top:5px;padding:6px 8px;background:var(--bg2);border-radius:6px;border-left:2px solid var(--ind);white-space:pre-wrap;}
+/* Tomorrow notification */
+#tomorrow-notif{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:200;background:rgba(255,255,255,.97);border:0.5px solid var(--bdr);border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.12);padding:14px 18px;max-width:440px;width:calc(100% - 32px);display:none;animation:slideup .3s ease both;}
+#tomorrow-notif.on{display:flex;align-items:flex-start;gap:12px;}
+#tomorrow-notif .tn-icon{font-size:22px;flex:none;}
+#tomorrow-notif .tn-body{flex:1;}
+#tomorrow-notif .tn-title{font-family:'Inter',sans-serif;font-weight:700;font-size:13px;margin-bottom:4px;}
+#tomorrow-notif .tn-sub{font-size:12px;color:var(--txt2);}
+#tomorrow-notif .tn-close{background:var(--bg2);border:none;color:var(--txt3);cursor:pointer;font-size:16px;line-height:1;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;}
 /* Kanban phase divider */
 .kb-phase-div{display:flex;align-items:center;writing-mode:vertical-lr;transform:rotate(180deg);padding:16px 6px;color:var(--txt3);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;align-self:stretch;flex:none;border-right:1px dashed var(--bdr2);margin-right:4px;}
 

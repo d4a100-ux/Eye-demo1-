@@ -81,6 +81,8 @@
     <div class="view" id="v-ativos"></div>
     <div class="view" id="v-tarefas"></div>
     <div class="view" id="v-config"></div>
+    <div class="view" id="v-retrab"></div>
+    <div class="view" id="v-conf"></div>
   </div>
 
   <!-- MOBILE NAV -->
@@ -458,6 +460,108 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════ MODAL: BRIEFING SDR → VENDEDOR -->
+<div class="overlay" id="ov-briefing">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-hd">
+      <div>
+        <h3>📋 Briefing de Passagem</h3>
+        <div style="font-size:13px;color:var(--txt2);margin-top:2px">Lead: <b id="br-appt-name"></b></div>
+      </div>
+      <button class="mc" onclick="closeBriefing()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="br-appt-id">
+    <div style="background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.35);border-radius:var(--rs);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--txt2)">
+      <i class="ti ti-alert-circle" style="color:var(--amb);vertical-align:-2px"></i>
+      Preencha o briefing completo antes de passar o lead ao vendedor. Todos os campos marcados com * são obrigatórios.
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="br-veiculo">Veículo de interesse *</label>
+        <input class="finput" id="br-veiculo" placeholder="Ex: HRV EXL 2022">
+      </div>
+      <div class="fg">
+        <label for="br-entrada">Entrada disponível</label>
+        <input class="finput" id="br-entrada" placeholder="R$ 0">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="br-troca">Possui troca? *</label>
+        <select class="finput fi-sel" id="br-troca" onchange="_toggleTrocaField()">
+          <option value="nao">Não</option>
+          <option value="sim">Sim</option>
+        </select>
+      </div>
+      <div class="fg" id="br-troca-detalhe-fg" style="display:none">
+        <label for="br-troca-detalhe">Troca (modelo e ano)</label>
+        <input class="finput" id="br-troca-detalhe" placeholder="Ex: Gol 2019">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="br-pagamento">Forma de pagamento *</label>
+        <select class="finput fi-sel" id="br-pagamento">
+          <option value="">Selecione…</option>
+          <option value="À vista">À vista</option>
+          <option value="Financiamento">Financiamento</option>
+          <option value="Consórcio">Consórcio</option>
+          <option value="Troca + diferença">Troca + diferença</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label for="br-urgencia">Urgência de compra *</label>
+        <select class="finput fi-sel" id="br-urgencia">
+          <option value="">Selecione…</option>
+          <option value="essa_semana">Essa semana</option>
+          <option value="esse_mes">Esse mês</option>
+          <option value="sem_prazo">Sem prazo definido</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg">
+      <label for="br-objecao">Principal objeção identificada *</label>
+      <select class="finput fi-sel" id="br-objecao">
+        <option value="">Selecione…</option>
+        <option value="preco">Preço</option>
+        <option value="pagamento">Condição de pagamento</option>
+        <option value="modelo">Modelo / versão</option>
+        <option value="pesquisando">Ainda pesquisando</option>
+        <option value="nenhuma">Nenhuma objeção</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label for="br-resumo">Resumo da conversa *</label>
+      <textarea class="finput" id="br-resumo" placeholder="Descreva o que o cliente falou, o que ele precisa, expectativas, condições…" style="height:80px"></textarea>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeBriefing()">Cancelar</button>
+      <button class="btn-prim" onclick="saveBriefing()"><i class="ti ti-clipboard-check"></i> Salvar e passar ao vendedor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ MODAL: RESULTADO DE TAREFA -->
+<div class="overlay" id="ov-task-result">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-hd">
+      <h3>✅ Resultado da tarefa</h3>
+      <button class="mc" onclick="closeTaskResult()"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="tr-task-id">
+    <input type="hidden" id="tr-appt-id">
+    <div style="font-size:13px;color:var(--txt2);margin-bottom:14px;padding:10px 12px;background:var(--bg);border-radius:var(--rs)">Tarefa: <b id="tr-task-desc"></b></div>
+    <div class="fg">
+      <label for="tr-resultado">O que aconteceu? *</label>
+      <textarea class="finput" id="tr-resultado" placeholder="Ex: Cliente confirmou visita para sábado às 14h — muito animado com o modelo branco" style="height:80px"></textarea>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeTaskResult()">Cancelar sem registrar</button>
+      <button class="btn-prim" onclick="saveTaskResult()"><i class="ti ti-send"></i> Concluir e registrar no lead</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════ MODAL: TASK -->
 <div class="overlay" id="ov-task">
   <div class="modal" style="max-width:460px">
@@ -561,6 +665,20 @@
       <button class="hn-close" onclick="closeHotLead()"><i class="ti ti-x"></i></button>
     </div>
     <div class="hn-drain"><div class="hn-drain-bar" id="hl-bar"></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ NOTIF: AMANHÃ -->
+<div class="hotlead-notif" id="tomorrow-notif" style="top:auto;bottom:20px">
+  <div class="hn-body">
+    <div class="hn-top">
+      <div class="hn-icon" style="background:#5856D6"><i class="ti ti-calendar-event"></i></div>
+      <div class="hn-text">
+        <div class="hn-title">Confirmar agendamentos de amanhã</div>
+        <div class="hn-sub" id="tn-sub"></div>
+      </div>
+      <button class="hn-close" onclick="closeTomorrowNotif()"><i class="ti ti-x"></i></button>
+    </div>
   </div>
 </div>
 
