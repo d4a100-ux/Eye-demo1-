@@ -1,4 +1,5 @@
 let CU = null;
+let _appLaunched = false;
 
 async function doLogin() {
   const loginVal = document.getElementById('li-user').value.trim();
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function doLogout() {
-  CU = null; _usersCache = null; _apptsCache = []; _activeUnit = null; _tasksCache = [];
+  CU = null; _usersCache = null; _apptsCache = []; _activeUnit = null; _tasksCache = []; _unidades = []; _appLaunched = false;
   localStorage.removeItem('eye_cu');
   document.getElementById('li-user').value = '';
   document.getElementById('li-pass').value = '';
@@ -48,21 +49,20 @@ function show(id) {
 }
 
 async function showApp() {
-  show('s-app');
   document.getElementById('top-username').textContent = CU.nome;
   const rb = document.getElementById('top-role-badge');
   rb.textContent = ROLE_LABELS[CU.role] || CU.role;
   rb.className = 'top-role-badge ' + (CU.role === 'master' ? 'rb-mst' : CU.role === 'gerencia' ? 'rb-ger' : CU.role === 'sdr' ? 'rb-sdr' : 'rb-vnd');
 
-  const unitWrap = document.getElementById('unit-selector-wrap');
   if (CU.role === 'master') {
-    const uns = await getUnidades();
-    unitWrap.innerHTML = `<select class="fi" style="height:32px;font-size:12px;margin:0" onchange="switchUnit(this.value)">
-        <option value="">Todas as unidades</option>
-        ${uns.map(u => `<option value="${u.id}">${u.nome}</option>`).join('')}
-      </select>`;
-    unitWrap.style.display = 'flex';
-  } else if (CU.unidade_id) {
+    show('s-units');
+    renderUnitsSelector();
+    return;
+  }
+
+  show('s-app');
+  const unitWrap = document.getElementById('unit-selector-wrap');
+  if (CU.unidade_id) {
     const uns = await getUnidades();
     const unit = uns.find(u => u.id === CU.unidade_id);
     if (unit) {
@@ -72,13 +72,88 @@ async function showApp() {
   } else {
     unitWrap.style.display = 'none';
   }
-
   buildNav();
   goTab('inicio');
   setTimeout(showHotLeadNotif, 8000);
-  setTimeout(checkTomorrowAppts, 14000); // item 6 — confirmação 24h
+  setTimeout(checkTomorrowAppts, 14000);
   requestNotifPerm();
   startRealtimeLeads();
+}
+
+async function renderUnitsSelector() {
+  const grid = document.getElementById('units-grid');
+  const subEl = document.getElementById('units-sel-sub');
+  grid.innerHTML = '<div class="units-loading">Carregando…</div>';
+
+  const uns = await getUnidades();
+  if (subEl) subEl.textContent = uns.length + ' unidade' + (uns.length !== 1 ? 's' : '');
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const duasHAtras = new Date(Date.now() - 7200000).toISOString();
+  const ACTIVE = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado'];
+
+  const cards = await Promise.all(uns.map(async u => {
+    const [r1, r2, r3] = await Promise.all([
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id', u.id).gte('criado_em', hoje + 'T00:00:00'),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id', u.id).eq('status','agendado').eq('data', hoje),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id', u.id).in('status', ACTIVE).lt('em', duasHAtras),
+    ]);
+    const alertas = r3.count || 0;
+    return { ...u, leadsHoje: r1.count||0, agendados: r2.count||0, alertas, cor: alertas>3?'red':alertas>0?'amb':'grn' };
+  }));
+
+  const totLeads = cards.reduce((s,c) => s+c.leadsHoje, 0);
+  const totAg    = cards.reduce((s,c) => s+c.agendados, 0);
+
+  grid.innerHTML = cards.map(u => `
+    <div class="unit-sel-card u-${u.cor}" onclick="enterUnit('${u.id}')">
+      <div class="usc-dot usc-dot-${u.cor}"></div>
+      <div class="usc-name">${u.nome}</div>
+      ${u.cidade ? `<div class="usc-city"><i class="ti ti-map-pin"></i> ${u.cidade}</div>` : '<div class="usc-city"></div>'}
+      <div class="usc-kpis">
+        <div class="usc-kpi"><span class="usc-val">${u.leadsHoje}</span><span class="usc-lbl">hoje</span></div>
+        <div class="usc-kpi"><span class="usc-val">${u.agendados}</span><span class="usc-lbl">agendados</span></div>
+        <div class="usc-kpi"><span class="usc-val">${u.alertas}</span><span class="usc-lbl">alertas</span></div>
+      </div>
+      ${u.alertas > 0 ? `<div class="usc-alert-tag">⚠ ${u.alertas} parado${u.alertas>1?'s':''}</div>` : ''}
+    </div>`).join('') + (uns.length > 1 ? `
+    <div class="unit-sel-card u-all" onclick="enterUnit(null)">
+      <div class="usc-dot" style="background:var(--ind)"></div>
+      <div class="usc-name" style="color:var(--ind)">Todas as unidades</div>
+      <div class="usc-city">Visão consolidada</div>
+      <div class="usc-kpis">
+        <div class="usc-kpi"><span class="usc-val">${totLeads}</span><span class="usc-lbl">hoje</span></div>
+        <div class="usc-kpi"><span class="usc-val">${totAg}</span><span class="usc-lbl">agendados</span></div>
+      </div>
+    </div>` : '');
+}
+
+async function enterUnit(unitId) {
+  _activeUnit = unitId || null;
+  _apptsCache = [];
+  show('s-app');
+
+  const unitWrap = document.getElementById('unit-selector-wrap');
+  const uns = _unidades.length ? _unidades : await getUnidades();
+  unitWrap.innerHTML = `
+    <button onclick="show('s-units');renderUnitsSelector()" title="Trocar unidade" class="usc-back-btn"><i class="ti ti-grid-dots"></i></button>
+    <select class="fi" style="height:32px;font-size:12px;margin:0" onchange="switchUnit(this.value)">
+      <option value="">Todas as unidades</option>
+      ${uns.map(u => `<option value="${u.id}" ${u.id === unitId ? 'selected' : ''}>${u.nome}</option>`).join('')}
+    </select>`;
+  unitWrap.style.display = 'flex';
+  unitWrap.style.gap = '6px';
+  unitWrap.style.alignItems = 'center';
+
+  buildNav();
+  goTab('inicio');
+  if (!_appLaunched) {
+    _appLaunched = true;
+    setTimeout(showHotLeadNotif, 8000);
+    setTimeout(checkTomorrowAppts, 14000);
+    requestNotifPerm();
+    startRealtimeLeads();
+  }
 }
 
 async function switchUnit(unitId) {
