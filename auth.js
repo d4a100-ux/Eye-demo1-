@@ -39,9 +39,11 @@ function show(id) {
   document.querySelectorAll('.screen').forEach(s => { s.classList.remove('on'); s.style.display = 'none'; });
   const el = document.getElementById(id);
   el.classList.add('on'); el.style.display = 'flex';
+  if (id === 's-login')  history.replaceState({}, '', '/login');
+  if (id === 's-units')  history.replaceState({}, '', '/unidades');
 }
 
-async function showApp() {
+async function showApp(initialTab = 'inicio') {
   document.getElementById('top-username').textContent = CU.nome;
   const rb = document.getElementById('top-role-badge');
   rb.textContent = ROLE_LABELS[CU.role] || CU.role;
@@ -66,7 +68,7 @@ async function showApp() {
     unitWrap.style.display = 'none';
   }
   buildNav();
-  goTab('inicio');
+  goTab(initialTab);
   setTimeout(showHotLeadNotif, 8000);
   setTimeout(checkTomorrowAppts, 14000);
   requestNotifPerm();
@@ -210,6 +212,8 @@ function buildNav() {
 }
 
 function goTab(id) {
+  if (!_popStateNav) history.pushState({ tab: id }, '', '/' + id);
+  _popStateNav = false;
   const logo = document.getElementById('eye-logo');
   if (logo) {
     logo.classList.remove('blink');
