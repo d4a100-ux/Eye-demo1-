@@ -51,7 +51,7 @@ function _drawKanban() {
   let visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
   // Colunas por papel
   if (CU.role === 'sdr') {
-    visibleCols = visibleCols.filter(c => c.fase === 'sdr' || c.fase === 'exit');
+    visibleCols = visibleCols.filter(c => c.fase === 'sdr' || c.fase === 'exit' || c.id === 'credito_aprovado' || c.id === 'credito_reprovado');
   } else if (CU.role === 'vendedor') {
     visibleCols = visibleCols.filter(c => c.id === 'passado_vendedor' || c.fase === 'vnd' || c.fase === 'exit');
   }
