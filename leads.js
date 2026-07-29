@@ -20,24 +20,24 @@ function apptCard(a, opts = {}) {
     <div class="ac-head">
       <div class="ac-av" style="background:${ac}">${initials(a.vnd)}</div>
       <div class="ac-info">
-        <div class="ac-name">${a.cli}<span class="tag ${sm.cls}">${sm.l}</span>${alertH>=2?`<span class="ac-alert-badge">${alertH>=24?'🔴':'⚠'} Parado há ${Math.round(alertH)}h</span>`:''}</div>
+        <div class="ac-name">${esc(a.cli)}<span class="tag ${sm.cls}">${sm.l}</span>${alertH>=2?`<span class="ac-alert-badge">${alertH>=24?'🔴':'⚠'} Parado há ${Math.round(alertH)}h</span>`:''}</div>
         <div class="ac-sub">
-          <span><i class="ti ti-calendar"></i>${fmtDate(a.data)}${a.hora?' · '+a.hora:''}</span>
-          <span><i class="ti ti-user"></i>${a.vnd||'—'}</span>
-          ${a.orig?`<span><i class="ti ti-map-pin"></i>${a.orig}</span>`:''}
-          ${a.tel ?`<span><i class="ti ti-phone"></i>${a.tel}</span>` :''}
+          <span><i class="ti ti-calendar"></i>${fmtDate(a.data)}${a.hora?' · '+esc(a.hora):''}</span>
+          <span><i class="ti ti-user"></i>${esc(a.vnd)||'—'}</span>
+          ${a.orig?`<span><i class="ti ti-map-pin"></i>${esc(a.orig)}</span>`:''}
+          ${a.tel ?`<span><i class="ti ti-phone"></i>${esc(a.tel)}</span>` :''}
         </div>
       </div>
     </div>
     ${hasNeg?`<div class="ac-fields">
-      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${a.modelo}</div></div>`:''}
-      ${a.valor ?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${a.valor}</div></div>`:''}
-      ${a.pgto  ?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${a.pgto}</div></div>`:''}
+      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${esc(a.modelo)}</div></div>`:''}
+      ${a.valor ?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${esc(a.valor)}</div></div>`:''}
+      ${a.pgto  ?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${esc(a.pgto)}</div></div>`:''}
     </div>`:''}
     ${hasObs?`<div class="ac-neg">
       <div class="neg-lbl">Negociação</div>
-      ${a.obs ?`<div>${a.obs}</div>`:''}
-      ${a.prox?`<div class="next"><i class="ti ti-arrow-right" style="font-size:12px;vertical-align:-1px"></i> ${a.prox}</div>`:''}
+      ${a.obs ?`<div>${esc(a.obs)}</div>`:''}
+      ${a.prox?`<div class="next"><i class="ti ti-arrow-right" style="font-size:12px;vertical-align:-1px"></i> ${esc(a.prox)}</div>`:''}
     </div>`:''}
     ${opts.noActs?'':canEdit(a)?`<div class="ac-acts">
       <button class="btn-s p" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i>${CU.role==='vendedor'?'Atualizar':'Negociação'}</button>
@@ -223,20 +223,20 @@ function pipelineCard(a) {
     <div class="ac-head">
       <div class="ac-av" style="background:${ac}">${initials(a.vnd)}</div>
       <div class="ac-info">
-        <div class="ac-name">${a.cli}<span class="tag ${sm.cls}">${sm.l}</span></div>
+        <div class="ac-name">${esc(a.cli)}<span class="tag ${sm.cls}">${sm.l}</span></div>
         <div class="ac-sub">
-          <span><i class="ti ti-user"></i>${a.vnd}</span>
-          ${a.tel?`<span><i class="ti ti-phone"></i>${a.tel}</span>`:''}
-          ${a.orig?`<span><i class="ti ti-map-pin"></i>${a.orig}</span>`:''}
+          <span><i class="ti ti-user"></i>${esc(a.vnd)}</span>
+          ${a.tel?`<span><i class="ti ti-phone"></i>${esc(a.tel)}</span>`:''}
+          ${a.orig?`<span><i class="ti ti-map-pin"></i>${esc(a.orig)}</span>`:''}
         </div>
       </div>
     </div>
     ${a.modelo||a.valor?`<div class="ac-fields">
-      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${a.modelo}</div></div>`:''}
-      ${a.valor?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${a.valor}</div></div>`:''}
-      ${a.pgto?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${a.pgto}</div></div>`:''}
+      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${esc(a.modelo)}</div></div>`:''}
+      ${a.valor?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${esc(a.valor)}</div></div>`:''}
+      ${a.pgto?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${esc(a.pgto)}</div></div>`:''}
     </div>`:''}
-    ${a.obs?`<div class="ac-neg"><div class="neg-lbl">Negociação</div><div>${a.obs}</div>${a.prox?`<div class="next"><i class="ti ti-arrow-right" style="font-size:12px;vertical-align:-1px"></i> ${a.prox}</div>`:''}</div>`:''}
+    ${a.obs?`<div class="ac-neg"><div class="neg-lbl">Negociação</div><div>${esc(a.obs)}</div>${a.prox?`<div class="next"><i class="ti ti-arrow-right" style="font-size:12px;vertical-align:-1px"></i> ${esc(a.prox)}</div>`:''}</div>`:''}
     <div class="ac-acts" style="justify-content:space-between;align-items:center;flex-wrap:wrap">
       <span style="font-size:11px;color:var(--txt3)"><i class="ti ti-clock" style="vertical-align:-1px"></i> ${lastUpd}</span>
       <div style="display:flex;gap:6px">
@@ -267,14 +267,14 @@ async function openLeadTimeline(id) {
     <div style="display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:0.5px solid var(--bdr);margin-bottom:14px">
       <div class="ac-av" style="background:${ac};width:40px;height:40px;font-size:14px">${initials(a.vnd)}</div>
       <div>
-        <div style="font-weight:700;font-size:15px">${a.cli}</div>
-        <div style="font-size:12px;color:var(--txt2);margin-top:3px">${[a.vnd,a.tel,a.orig].filter(Boolean).join(' · ')}</div>
+        <div style="font-weight:700;font-size:15px">${esc(a.cli)}</div>
+        <div style="font-size:12px;color:var(--txt2);margin-top:3px">${[a.vnd,a.tel,a.orig].filter(Boolean).map(esc).join(' · ')}</div>
       </div>
     </div>
     ${a.modelo||a.valor?`<div class="ac-fields" style="margin-bottom:14px">
-      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${a.modelo}</div></div>`:''}
-      ${a.valor?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${a.valor}</div></div>`:''}
-      ${a.pgto?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${a.pgto}</div></div>`:''}
+      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${esc(a.modelo)}</div></div>`:''}
+      ${a.valor?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${esc(a.valor)}</div></div>`:''}
+      ${a.pgto?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${esc(a.pgto)}</div></div>`:''}
     </div>`:''}`;
 
   drawJourney(a.status, logs, document.getElementById('tl-journey'));
@@ -286,7 +286,7 @@ async function openLeadTimeline(id) {
           return `<div class="tl-item">
             <div class="tl-dot" style="background:${to.c}"><i class="ti ti-arrow-right" style="font-size:10px;color:#fff"></i></div>
             <div class="tl-body">
-              <div class="tl-user">${ev.user}</div>
+              <div class="tl-user">${esc(ev.user)}</div>
               <div class="tl-action">
                 <span class="tag ${from.cls}" style="font-size:10px">${from.l}</span>
                 <i class="ti ti-chevron-right" style="font-size:11px;color:var(--txt3)"></i>
@@ -302,16 +302,16 @@ async function openLeadTimeline(id) {
           return `<div class="tl-item">
             <div class="tl-dot" style="background:#FF9F0A"><i class="ti ti-clipboard" style="font-size:10px;color:#fff"></i></div>
             <div class="tl-body">
-              <div class="tl-user">${b.criado_por}</div>
+              <div class="tl-user">${esc(b.criado_por)}</div>
               <div class="tl-briefing-card">
                 <div style="font-weight:700;margin-bottom:8px;font-size:13px">📋 Briefing de passagem ao vendedor</div>
-                <div class="tl-br-row"><span>Veículo</span>${b.veiculo||'—'}</div>
-                <div class="tl-br-row"><span>Entrada</span>${b.entrada||'Não informado'}</div>
-                <div class="tl-br-row"><span>Troca</span>${b.troca?('Sim — '+(b.troca_detalhe||'n/i')):'Não'}</div>
-                <div class="tl-br-row"><span>Pagamento</span>${b.pagamento||'—'}</div>
-                <div class="tl-br-row"><span>Urgência</span>${urgLabels[b.urgencia]||b.urgencia||'—'}</div>
-                <div class="tl-br-row"><span>Objeção</span>${objLabels[b.objecao]||b.objecao||'—'}</div>
-                ${b.resumo?`<div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--bdr);font-style:italic;font-size:12px;color:var(--txt2)">${b.resumo}</div>`:''}
+                <div class="tl-br-row"><span>Veículo</span>${esc(b.veiculo)||'—'}</div>
+                <div class="tl-br-row"><span>Entrada</span>${esc(b.entrada)||'Não informado'}</div>
+                <div class="tl-br-row"><span>Troca</span>${b.troca?('Sim — '+esc(b.troca_detalhe||'n/i')):'Não'}</div>
+                <div class="tl-br-row"><span>Pagamento</span>${esc(b.pagamento)||'—'}</div>
+                <div class="tl-br-row"><span>Urgência</span>${esc(urgLabels[b.urgencia]||b.urgencia||'—')}</div>
+                <div class="tl-br-row"><span>Objeção</span>${esc(objLabels[b.objecao]||b.objecao||'—')}</div>
+                ${b.resumo?`<div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--bdr);font-style:italic;font-size:12px;color:var(--txt2)">${esc(b.resumo)}</div>`:''}
               </div>
               <div class="tl-time">${fmtLogTime(ev.ts)}</div>
             </div>
@@ -320,8 +320,8 @@ async function openLeadTimeline(id) {
           return `<div class="tl-item">
             <div class="tl-dot" style="background:var(--ind)"><i class="ti ti-message" style="font-size:10px;color:#fff"></i></div>
             <div class="tl-body">
-              <div class="tl-user">${ev.user}</div>
-              <div class="tl-text">${ev.texto}</div>
+              <div class="tl-user">${esc(ev.user)}</div>
+              <div class="tl-text">${esc(ev.texto)}</div>
               <div class="tl-time">${fmtLogTime(ev.ts)}</div>
             </div>
           </div>`;
@@ -367,7 +367,7 @@ async function saveLead() {
   const now=new Date().toISOString();
   const obj=withUnit({id:uid(),cli,tel,orig,status:'pendente',data:today,criado_por:CU.login,em:now,criado_em:now});
   const{error}=await sb.from('eye_appts').insert(obj);
-  if(error){toast('Erro ao criar lead: '+error.message,'err');return;}
+  if(error){toast('Erro ao criar lead. Tente novamente.','err');return;}
   closeLead(); toast('Lead criado!'); await refreshAll();
 }
 
@@ -436,7 +436,7 @@ async function saveAppt() {
   let error;
   if(eid){({error}=await sb.from('eye_appts').update(obj).eq('id',eid));}
   else   {({error}=await sb.from('eye_appts').insert(obj));}
-  if(error){toast('Erro ao salvar: '+error.message,'err');return;}
+  if(error){toast('Erro ao salvar. Tente novamente.','err');return;}
   closeAppt(); toast(eid?'Agendamento atualizado':'Lead criado com sucesso'); await refreshAll();
 }
 
@@ -519,7 +519,7 @@ async function saveNeg(){
 
   const oldStatus=a?.status;
   const{error}=await sb.from('eye_appts').update(upd).eq('id',id);
-  if(error){toast('Erro ao salvar: '+error.message,'err');return;}
+  if(error){toast('Erro ao salvar. Tente novamente.','err');return;}
   if(oldStatus&&oldStatus!==newStatus) await logStatus(id,oldStatus,newStatus);
   if(newStatus==='agendado'&&upd.data){
     const daysAhead=Math.floor((new Date(upd.data+'T12:00:00')-new Date())/86400000);
@@ -532,7 +532,7 @@ async function saveNeg(){
 async function delAppt(id){
   if(!confirm('Excluir este agendamento?')) return;
   const{error}=await sb.from('eye_appts').delete().eq('id',id);
-  if(error){toast('Erro: '+error.message,'err');return;}
+  if(error){toast('Erro ao excluir. Tente novamente.','err');return;}
   toast('Agendamento excluído','warn'); await refreshAll();
 }
 
@@ -559,10 +559,10 @@ function drawComments(apptId,comments){
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px" id="comment-list">
       ${comments.length?comments.map(c=>`<div style="background:var(--bg);border-radius:var(--rs);padding:9px 12px">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-          <span style="font-size:12px;font-weight:700;color:${userColor(c.user_nome)}">${c.user_nome}</span>
+          <span style="font-size:12px;font-weight:700;color:${userColor(c.user_nome)}">${esc(c.user_nome)}</span>
           <span style="font-size:10px;color:var(--txt3)">${fmtLogTime(c.created_at)}</span>
         </div>
-        <div style="font-size:13px;color:var(--txt);line-height:1.45">${c.texto}</div>
+        <div style="font-size:13px;color:var(--txt);line-height:1.45">${esc(c.texto)}</div>
       </div>`).join(''):`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:8px">Nenhum comentário ainda</div>`}
     </div>
     <div style="display:flex;gap:8px;align-items:center">
@@ -710,7 +710,7 @@ async function saveBriefing() {
     toast('📋 Lead passado ao vendedor com briefing!');
   } else if (pending.source === 'neg') {
     const { error } = await sb.from('eye_appts').update(pending.upd).eq('id', pending.apptId);
-    if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+    if (error) { toast('Erro ao salvar. Tente novamente.', 'err'); return; }
     if (pending.oldStatus && pending.oldStatus !== 'passado_vendedor')
       await logStatus(pending.apptId, pending.oldStatus, 'passado_vendedor');
     closeNeg();

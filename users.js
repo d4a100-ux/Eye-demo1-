@@ -76,13 +76,13 @@ async function saveUser() {
     if(exists){toast('Login já existe','err');return;}
     ({error}=await sb.from('eye_users').insert({id:uid(),nome,login,senha,role,cor,unidade_id,unidades_ids}));
   }
-  if(error){toast('Erro: '+error.message,'err');return;}
+  if(error){toast('Erro ao salvar. Tente novamente.','err');return;}
   _usersCache=null; closeUser(); toast(eid?'Usuário atualizado':'Usuário criado'); renderUsers();
 }
 
 async function delUser(id){
   if(!confirm('Excluir este usuário?')) return;
   const{error}=await sb.from('eye_users').delete().eq('id',id);
-  if(error){toast('Erro: '+error.message,'err');return;}
+  if(error){toast('Erro ao salvar. Tente novamente.','err');return;}
   _usersCache=null; toast('Usuário removido','warn'); renderUsers();
 }

@@ -148,7 +148,7 @@ async function saveTask() {
   } else {
     ({ error } = await sb.from('eye_tasks').insert({ ...obj, id: uid(), concluida: false, created_at: new Date().toISOString() }));
   }
-  if (error) { toast('Erro ao salvar: ' + error.message, 'err'); return; }
+  if (error) { toast('Erro ao salvar. Tente novamente.', 'err'); return; }
   _tasksCache = [];
   closeTask();
   toast(id ? 'Tarefa atualizada' : 'Tarefa criada');

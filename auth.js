@@ -7,13 +7,6 @@ async function doLogin() {
   const btn = document.getElementById('btn-login');
   btn.disabled = true; btn.textContent = 'Entrando…';
 
-  // Conta de recuperação master
-  if (loginVal === 'eye' && senhaVal === 'eye@master2025') {
-    CU = { id:'master', nome:'Master', login:'eye', role:'master', cor:'#1C1C1E', unidade_id: null, loginTs: Date.now() };
-    localStorage.setItem('eye_cu', JSON.stringify(CU));
-    showApp(); return;
-  }
-
   // Busca apenas o usuário solicitado — não carrega senhas de todos para memória
   const { data: u } = await sb.from('eye_users').select('*').eq('login', loginVal).maybeSingle();
   if (!u || u.senha !== senhaVal) {

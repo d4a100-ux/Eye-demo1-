@@ -1,4 +1,5 @@
 function uid()        { return Date.now() + '-' + Math.random().toString(36).slice(2, 6); }
+function esc(s)       { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;'); }
 function fmtDate(d)   { if (!d) return '—'; const [y,m,dd] = d.split('-'); return `${dd}/${m}/${y}`; }
 function initials(n)  { return (n||'?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase(); }
 function userColor(nome) { return (_usersCache||[]).find(x => x.nome === nome)?.cor || '#5B6EFF'; }

@@ -108,15 +108,15 @@ function kbCard(a) {
       <div class="kb-card-top">
         <div class="kb-card-av" style="background:${ac}">${initials(a.vnd)}</div>
         <div class="kb-card-info">
-          <div class="kb-card-name">${a.cli}</div>
-          <div class="kb-card-vnd">${a.vnd||'—'}</div>
+          <div class="kb-card-name">${esc(a.cli)}</div>
+          <div class="kb-card-vnd">${esc(a.vnd)||'—'}</div>
         </div>
         ${scoreBadge(a)}
       </div>
-      ${txt ? `<div class="kb-card-alert">${al==='card-dead'?'🔴':'⚠'} ${txt}</div>` : ''}
-      ${a.modelo ? `<div class="kb-card-model"><i class="ti ti-car"></i>${a.modelo}</div>` : ''}
+      ${txt ? `<div class="kb-card-alert">${al==='card-dead'?'🔴':'⚠'} ${esc(txt)}</div>` : ''}
+      ${a.modelo ? `<div class="kb-card-model"><i class="ti ti-car"></i>${esc(a.modelo)}</div>` : ''}
       <div class="kb-card-foot">
-        ${a.valor ? `<span class="kb-card-val">${a.valor}</span>` : '<span></span>'}
+        ${a.valor ? `<span class="kb-card-val">${esc(a.valor)}</span>` : '<span></span>'}
         ${a.data  ? `<span class="kb-card-date"><i class="ti ti-calendar"></i>${fmtDate(a.data)}</span>` : ''}
       </div>
     </div>`;
@@ -147,7 +147,7 @@ async function kbDrop(event, newStatus) {
   toast('Lead movido!');
   const { error } = await sb.from('eye_appts').update({ status: newStatus, em: now }).eq('id', id);
   if (error) {
-    toast('Erro ao mover: ' + error.message, 'err');
+    toast('Erro ao mover lead. Tente novamente.', 'err');
     a.status = oldStatus;
     _drawKanban();
     return;
