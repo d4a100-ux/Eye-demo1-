@@ -18,6 +18,15 @@
 <!-- ══════════════════════════════════════════════════════════ LOGIN -->
 <div class="screen" id="s-login">
   <div class="login-card">
+    <div class="login-eye-wrap">
+      <svg class="login-eye-svg" viewBox="0 0 72 48" width="72" height="48">
+        <defs><clipPath id="lec"><path d="M2,24 Q18,2 36,2 Q54,2 70,24 Q54,46 36,46 Q18,46 2,24 Z"/></clipPath></defs>
+        <path d="M2,24 Q18,2 36,2 Q54,2 70,24 Q54,46 36,46 Q18,46 2,24 Z" fill="white" stroke="rgba(0,0,0,.1)" stroke-width="1"/>
+        <circle clip-path="url(#lec)" cx="36" cy="24" r="14" fill="#007AFF"/>
+        <circle clip-path="url(#lec)" cx="36" cy="24" r="7" fill="#07070f"/>
+        <circle clip-path="url(#lec)" cx="41" cy="19" r="2.4" fill="white" opacity="0.8"/>
+      </svg>
+    </div>
     <div class="login-logo">
       <div>
         <div class="lname ff">Eye</div>
@@ -80,27 +89,32 @@
     </div>
   </div>
 
-  <!-- TAB NAV (desktop) -->
-  <nav class="tab-nav" id="tab-nav"></nav>
+  <!-- APP BODY -->
+  <div class="app-body">
 
-  <!-- MAIN -->
-  <div class="main">
-    <div class="view" id="v-inicio"></div>
-    <div class="view" id="v-conv"></div>
-    <div class="view" id="v-crm"></div>
-    <div class="view" id="v-agenda"></div>
-    <div class="view" id="v-cal"></div>
-    <div class="view" id="v-origem"></div>
-    <div class="view" id="v-negoc"></div>
-    <div class="view" id="v-users"></div>
-    <div class="view" id="v-base"></div>
-    <div class="view" id="v-bi"></div>
-    <div class="view" id="v-ativos"></div>
-    <div class="view" id="v-tarefas"></div>
-    <div class="view" id="v-config"></div>
-    <div class="view" id="v-retrab"></div>
-    <div class="view" id="v-conf"></div>
-  </div>
+    <!-- SIDEBAR NAV (desktop) -->
+    <nav class="tab-nav" id="tab-nav"></nav>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="view" id="v-inicio"></div>
+      <div class="view" id="v-conv"></div>
+      <div class="view" id="v-crm"></div>
+      <div class="view" id="v-agenda"></div>
+      <div class="view" id="v-cal"></div>
+      <div class="view" id="v-origem"></div>
+      <div class="view" id="v-negoc"></div>
+      <div class="view" id="v-users"></div>
+      <div class="view" id="v-base"></div>
+      <div class="view" id="v-bi"></div>
+      <div class="view" id="v-ativos"></div>
+      <div class="view" id="v-tarefas"></div>
+      <div class="view" id="v-config"></div>
+      <div class="view" id="v-retrab"></div>
+      <div class="view" id="v-conf"></div>
+    </div>
+
+  </div><!-- /app-body -->
 
   <!-- MOBILE NAV -->
   <nav class="mob-nav" id="mob-nav"></nav>
@@ -697,6 +711,60 @@
       <button class="hn-close" onclick="closeTomorrowNotif()"><i class="ti ti-x"></i></button>
     </div>
   </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ MODAL: NOVA UNIDADE -->
+<div class="overlay" id="ov-nova-unidade">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-hd">
+      <h3>Nova unidade</h3>
+      <button class="mc" onclick="closeNewUnit()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="nu-nome">Nome *</label>
+        <input class="finput" id="nu-nome" placeholder="Ex: Carros Online Centro">
+      </div>
+      <div class="fg">
+        <label for="nu-cidade">Cidade</label>
+        <input class="finput" id="nu-cidade" placeholder="Ex: Recife">
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label for="nu-bairro">Bairro</label>
+        <input class="finput" id="nu-bairro" placeholder="Ex: Boa Viagem">
+      </div>
+      <div class="fg">
+        <label for="nu-wpp">WhatsApp</label>
+        <input class="finput" id="nu-wpp" type="tel" placeholder="(81) 99999-0000">
+      </div>
+    </div>
+    <div class="fg">
+      <label for="nu-end">Endereço</label>
+      <input class="finput" id="nu-end" placeholder="Rua, número">
+    </div>
+    <div class="fg">
+      <label for="nu-gerente">Gerente responsável</label>
+      <select class="finput fi-sel" id="nu-gerente"></select>
+    </div>
+    <div class="modal-acts">
+      <button class="btn-cancel" onclick="closeNewUnit()">Cancelar</button>
+      <button class="btn-prim" onclick="saveNewUnit()">Criar unidade</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ KANBAN TRAINING PANEL -->
+<div class="kb-train-panel" id="kb-train-panel">
+  <div class="kbt-hd">
+    <div>
+      <h4 id="kbt-title">Guia da coluna</h4>
+      <div class="kbt-col" id="kbt-col-label"></div>
+    </div>
+    <button class="mc" onclick="closeKbTraining()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="kbt-body" id="kbt-body"></div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════ TOAST -->

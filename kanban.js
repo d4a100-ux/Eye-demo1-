@@ -1,6 +1,55 @@
 let _kbVndFilter  = '';
 let _kbDragId     = null;
-let _pendingKbDrop = null; // aguarda briefing antes de salvar
+let _pendingKbDrop = null;
+
+const KB_TRAINING = {
+  pendente:           { desc:'Lead novo que acabou de chegar, sem contato ainda.', fazer:'Ligar ou enviar WhatsApp em até 5 minutos. Cada minuto conta!', script:'Oi [nome]! Vi que você tem interesse em veículos. Posso te ajudar a encontrar o carro ideal hoje?', erro:'Deixar passar mais de 30 minutos sem contato — a concorrência vai agir antes.' },
+  em_atendimento:     { desc:'Lead que está sendo atendido agora — conversa ativa.', fazer:'Identificar necessidade, qualificar o interesse e agendar ou avançar na jornada.', script:'Perfeito [nome]! Para eu te ajudar melhor: qual modelo você tem mais interesse? E qual seria sua forma de pagamento preferida?', erro:'Ficar apenas no WhatsApp sem avançar para agendamento ou passagem ao vendedor.' },
+  qualificado:        { desc:'Lead qualificado com interesse confirmado e dados coletados.', fazer:'Agendar visita ou passar ao vendedor com briefing completo preenchido.', script:'Ótimo [nome]! Com base no que me disse, temos exatamente o que você procura. Quando você pode vir conhecer pessoalmente?', erro:'Qualificar e não dar o próximo passo — lead fica travado aqui.' },
+  agendado:           { desc:'Cliente com visita marcada na loja.', fazer:'Confirmar o agendamento no dia anterior e avisar o vendedor responsável.', script:'Olá [nome], passando para confirmar sua visita amanhã às [hora]. Estamos te esperando com o [modelo] separado!', erro:'Não confirmar e o cliente não comparecer sem aviso.' },
+  passado_vendedor:   { desc:'Lead já está com o vendedor para negociação presencial.', fazer:'Garantir que o vendedor recebeu o briefing e está atendendo o cliente.', script:'Já passei todas as informações para o [vendedor]. Ele vai te atender com toda atenção que você merece!', erro:'Passar sem briefing — vendedor fica sem contexto e perde oportunidade.' },
+  em_negociacao:      { desc:'Cliente na loja negociando, proposta em andamento.', fazer:'Manter ritmo, apresentar opções e trabalhar objeções sem pressão excessiva.', script:'Entendo sua preocupação com [objeção]. Posso verificar uma condição especial para você? Deixa eu falar com o gerente.', erro:'Deixar o cliente ir embora sem fechar ou sem próximo passo definido.' },
+  test_drive:         { desc:'Cliente fazendo ou agendado para test drive.', fazer:'Preparar o veículo, acompanhar a experiência e conectar emocionalmente.', script:'Como foi a experiência com o [modelo]? Se sentiu bem no veículo? Quer que eu verifique uma proposta personalizada?', erro:'Deixar o cliente sair sem fazer uma proposta após o test drive.' },
+  ficha_enviada:      { desc:'Ficha de crédito enviada para análise.', fazer:'Acompanhar o prazo e manter o cliente informado sobre o andamento.', script:'[nome], sua ficha está em análise. Normalmente leva [prazo]. Posso te avisar assim que tiver retorno?', erro:'Deixar o cliente sem notícias — gera ansiedade e desistência.' },
+  credito_aprovado:   { desc:'Crédito aprovado! Momento de fechar negócio.', fazer:'Entrar em contato imediatamente e agilizar a conclusão da venda.', script:'ÓTIMA NOTÍCIA, [nome]! Seu crédito foi aprovado! Quando podemos fechar o contrato? Podemos adiantar o processo ainda hoje?', erro:'Demorar para avisar — cliente pode ir para concorrente enquanto espera.' },
+  credito_reprovado:  { desc:'Crédito reprovado — buscar alternativas para o cliente.', fazer:'Apresentar alternativas: co-participante, entrada maior, outro modelo, outro banco.', script:'[nome], aconteceu um contratempo com a aprovação, mas temos soluções. Podemos tentar com um co-participante ou ajustar a entrada. Posso verificar?', erro:'Simplesmente informar que foi reprovado sem oferecer nenhuma alternativa.' },
+  ag_retorno:         { desc:'Cliente quer retornar ou aguarda mais informações.', fazer:'Definir data e hora exatas de retorno e cumprir o prazo.', script:'Perfeito [nome]! Então me fala: até quando você pretende tomar a decisão? Assim consigo manter a oferta reservada para você.', erro:'Não definir um prazo concreto — lead fica em aberto indefinidamente.' },
+  venda_concluida:    { desc:'Venda fechada! Fidelização e indicação.', fazer:'Agradecer, pedir indicação e manter contato pós-venda.', script:'Parabéns [nome] pelo seu novo carro! Se tiver algum amigo que também procura veículo, ficaria feliz em atender com a mesma atenção!', erro:'Nunca mais entrar em contato após a venda — oportunidade de indicação perdida.' },
+  lead_frio:          { desc:'Lead que perdeu interesse ou ficou sem resposta por muito tempo.', fazer:'Tentar reativação com nova abordagem ou oferta diferente.', script:'Oi [nome]! Sei que faz um tempo — mas acabou de chegar um modelo incrível que lembrei de você. Posso te mandar mais detalhes?', erro:'Não tentar reativar — lead descartado prematuramente.' },
+  sem_resposta:       { desc:'Lead que não respondeu as tentativas de contato.', fazer:'Tentar por canais diferentes (ligação, WhatsApp, e-mail) em horários variados.', script:'Oi [nome], tentei falar com você em outro momento. Ainda tem interesse em encontrar um bom veículo? Posso ajudar!', erro:'Insistir no mesmo horário e canal — mudar a abordagem.' },
+  perdido:            { desc:'Lead descartado ou que foi para a concorrência.', fazer:'Registrar o motivo da perda e tentar reativação futura estratégica.', script:'Entendemos, [nome]. Se mudar de ideia ou quiser comparar, estaremos aqui. Posso te colocar em nossa lista VIP?', erro:'Não registrar o motivo da perda — informação valiosa para melhorar o processo.' },
+};
+
+function showKbTraining(colId) {
+  const t = KB_TRAINING[colId];
+  const col = KB_COLS.find(c => c.id === colId);
+  if (!t) return;
+  const panel = document.getElementById('kb-train-panel');
+  document.getElementById('kbt-title').textContent = col?.label || colId;
+  document.getElementById('kbt-col-label').textContent = 'Guia de abordagem';
+  document.getElementById('kbt-body').innerHTML = `
+    <div class="kbt-section">
+      <h5>O que é</h5>
+      <p>${t.desc}</p>
+    </div>
+    <div class="kbt-section">
+      <h5>O que fazer agora</h5>
+      <p>${t.fazer}</p>
+    </div>
+    <div class="kbt-section">
+      <h5>Script sugerido</h5>
+      <p class="kbt-script">"${t.script}"</p>
+    </div>
+    <div class="kbt-section">
+      <h5>Erro comum</h5>
+      <p class="kbt-err">⚠ ${t.erro}</p>
+    </div>`;
+  panel.classList.add('on');
+}
+
+function closeKbTraining() {
+  document.getElementById('kb-train-panel')?.classList.remove('on');
+}
 
 const _ACTIVE_ST = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno'];
 
@@ -85,6 +134,7 @@ function _drawKanban() {
           <div style="display:flex;align-items:center;gap:5px">
             <span class="kb-count">${cards.length}</span>
             ${valStr ? `<span class="kb-val">${valStr}</span>` : ''}
+            <button class="kb-train-btn" onclick="event.stopPropagation();showKbTraining('${col.id}')" title="Guia">?</button>
           </div>
         </div>
         <div class="kb-col-body">

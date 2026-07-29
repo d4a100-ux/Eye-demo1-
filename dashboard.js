@@ -39,8 +39,7 @@ async function renderInicio() {
     { id:'tarefas',icon:'ti-checkbox',       label:'Tarefas',        sub:'Follow-ups e alertas', color:'#5856D6', roles:null },
     { id:'agenda', icon:'ti-calendar',       label:'Agenda',         sub:'Agendamentos',         color:'#2DD4A7', roles:null },
     { id:'conv',   icon:'ti-message-2',      label:'Conversas',      sub:'Histórico de leads',   color:'#FF9F0A', roles:null },
-    { id:'negoc',  icon:'ti-handshake',      label:'Pipeline',       sub:'Leads em negociação',  color:'#5856D6', roles:['sdr','gerencia','master'] },
-    { id:'origem', icon:'ti-chart-pie',      label:'Origens',        sub:'Fonte dos leads',      color:'#34C759', roles:['sdr','gerencia','master'] },
+    { id:'negoc',  icon:'ti-handshake',      label:'Pipeline',       sub:'Leads em negociação',  color:'#5856D6', roles:['gerencia','master'] },
     { id:'bi',     icon:'ti-chart-bar',      label:'BI',             sub:'Relatórios e dados',   color:'#FF3B30', roles:['gerencia','master'] },
     { id:'ativos',  icon:'ti-car',             label:'Ativos',       sub:'Gestão de veículos',  color:'#FF9F0A', roles:['gerencia','master'] },
     { id:'retrab',  icon:'ti-refresh',         label:'Retrabalho',   sub:'Leads para reconquistar',color:'#FF3B30', roles:null },
@@ -70,7 +69,7 @@ async function renderInicio() {
       <div class="kpi-c" style="--kc:var(--ind)"><div class="kl">Total de leads</div><div class="kv" style="color:var(--ind)">${myAppts.length}</div></div>
       <div class="kpi-c" style="--kc:var(--amb)"><div class="kl">Agendamentos hoje</div><div class="kv" style="color:var(--amb)">${todayAppts.length}</div></div>
       <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Vendas no mês</div><div class="kv" style="color:var(--grn)">${realizedMonth.length}</div></div>
-      <div class="kpi-c" style="--kc:#9b59b6"><div class="kl">Potencial R$</div><div class="kv" style="color:#9b59b6;font-size:${potential>=1000?'20':'26'}px">${potFmt}</div></div>
+      <div class="kpi-c" style="--kc:var(--red)"><div class="kl">Leads parados</div><div class="kv" style="color:var(--red)">${hotLeads.length}</div></div>
     </div>
     <div class="dash-row">
       <div class="dash-box">
@@ -175,50 +174,64 @@ function closeTomorrowNotif() {
 }
 
 // ─── DASHBOARD DE CONFERÊNCIA DIÁRIA (item 3) ─────────────────────────────────
+let _confRefreshTimer = null;
+
 async function renderConf() {
   const el = document.getElementById('v-conf');
-  loading(el);
+  if (!el.querySelector('.dash-greeting')) loading(el);
+  if (_confRefreshTimer) clearTimeout(_confRefreshTimer);
+
+  _apptsCache = [];
   const appts = await getAppts();
   const now = new Date();
   const today = now.toISOString().split('T')[0];
-  const yesterday = new Date(now - 864e5).toISOString().split('T')[0];
   const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
   const ACTIVE_ST = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno'];
-  const receivedToday   = appts.filter(a => (a.criado_em||a.em||'').startsWith(today));
-  const respondedToday  = appts.filter(a => a.em?.startsWith(today) && a.status !== 'pendente');
-  const noContact       = appts.filter(a => a.status==='pendente' && a.em && (Date.now()-new Date(a.em))/60000>30);
-  const agendados       = appts.filter(a => ['agendado','passado_vendedor','em_negociacao','test_drive'].includes(a.status) && a.data===today);
-  const stopped2h       = appts.filter(a => a.em && ACTIVE_ST.includes(a.status) && (Date.now()-new Date(a.em))/3600000>=2);
-  const meta            = parseInt(localStorage.getItem('eye_meta')||'10');
-  const vendidos        = appts.filter(a => a.status==='venda_concluida' && (a.data||'').startsWith(monthKey));
-  const pct             = Math.min(100,Math.round(vendidos.length/meta*100));
-  const todayAppts      = appts.filter(a=>a.data===today).sort((a,b)=>(a.hora||'')>(b.hora||'')?1:-1);
+  const receivedToday  = appts.filter(a => (a.criado_em||a.em||'').startsWith(today));
+  const respondedToday = appts.filter(a => a.em?.startsWith(today) && a.status !== 'pendente');
+  const noContact      = appts.filter(a => a.status==='pendente' && a.em && (Date.now()-new Date(a.em))/60000>30);
+  const agendados      = appts.filter(a => ['agendado','passado_vendedor','em_negociacao','test_drive'].includes(a.status) && a.data===today);
+  const stopped2h      = appts.filter(a => a.em && ACTIVE_ST.includes(a.status) && (Date.now()-new Date(a.em))/3600000>=2)
+                              .sort((a,b) => new Date(a.em)-new Date(b.em));
+  const meta           = parseInt(localStorage.getItem('eye_meta')||'10');
+  const vendidos       = appts.filter(a => a.status==='venda_concluida' && (a.data||'').startsWith(monthKey));
+  const pct            = Math.min(100,Math.round(vendidos.length/meta*100));
+  const todayAppts     = appts.filter(a=>a.data===today).sort((a,b)=>(a.hora||'')>(b.hora||'')?1:-1);
+
+  const tsStr = now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
   el.innerHTML = `
-    <div class="dash-greeting">
-      <div class="dg-title">📋 Conferência diária</div>
-      <div class="dg-sub">${today.split('-').reverse().join('/')}</div>
+    <div class="dash-greeting" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <div class="dg-title">📋 Conferência diária</div>
+        <div class="dg-sub">${today.split('-').reverse().join('/')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="conf-refresh-badge" id="conf-ts">Atualizado às ${tsStr}</span>
+        <button class="btn-s" onclick="renderConf()"><i class="ti ti-refresh"></i>Atualizar</button>
+      </div>
     </div>
 
     <div class="kpi-grid">
       <div class="kpi-c" style="--kc:var(--ind)"><div class="kl">Leads hoje</div><div class="kv" style="color:var(--ind)">${receivedToday.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Respondidos hoje</div><div class="kv" style="color:var(--grn)">${respondedToday.length}</div></div>
+      <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Respondidos</div><div class="kv" style="color:var(--grn)">${respondedToday.length}</div></div>
       <div class="kpi-c" style="--kc:var(--red)"><div class="kl">Sem contato +30min</div><div class="kv" style="color:var(--red)">${noContact.length}</div></div>
       <div class="kpi-c" style="--kc:var(--amb)"><div class="kl">Agend. hoje</div><div class="kv" style="color:var(--amb)">${agendados.length}</div></div>
     </div>
 
     <div class="dash-box" style="margin-top:20px">
-      <div class="dash-box-title">⚠ Leads parados</div>
-      ${stopped2h.length ? stopped2h.slice(0,8).map(a=>{
+      <div class="dash-box-title">🚨 Leads parados (${stopped2h.length})</div>
+      ${stopped2h.length ? stopped2h.slice(0,10).map(a=>{
         const h=Math.round((Date.now()-new Date(a.em))/3600000);
         const sm=fmtStatus(a.status);
+        const col=h>=24?'var(--red)':h>=4?'var(--red)':'var(--amb)';
         return `<div class="alert-item" onclick="openNeg('${a.id}')" style="cursor:pointer">
-          <div class="alert-dot" style="background:${h>=4?'var(--red)':'var(--amb)'}"></div>
-          <div class="alert-txt">${a.cli} · ${a.vnd||'—'} · <span class="tag ${sm.cls}" style="font-size:10px">${sm.l}</span></div>
-          <div class="alert-count" style="color:${h>=4?'var(--red)':'var(--amb)'}">${h}h</div>
+          <div class="alert-dot" style="background:${col}"></div>
+          <div class="alert-txt">${esc(a.cli)} · ${esc(a.vnd||'—')} · <span class="tag ${sm.cls}" style="font-size:10px">${sm.l}</span></div>
+          <div class="alert-count" style="color:${col}">${h}h</div>
         </div>`;
-      }).join('')+( stopped2h.length>8?`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:6px">e mais ${stopped2h.length-8} leads parados</div>`:'')
+      }).join('')+(stopped2h.length>10?`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:6px">e mais ${stopped2h.length-10}</div>`:'')
       :`<div class="alert-empty">✅ Nenhum lead parado acima de 2h</div>`}
     </div>
 
@@ -230,12 +243,12 @@ async function renderConf() {
         <div class="meta-label">${pct}% · faltam ${Math.max(0,meta-vendidos.length)}</div>
       </div>
       <div class="dash-box">
-        <div class="dash-box-title">Sem contato (${noContact.length})</div>
-        ${noContact.length?noContact.slice(0,5).map(a=>{
+        <div class="dash-box-title">⏱ Sem contato (${noContact.length})</div>
+        ${noContact.length?noContact.slice(0,6).map(a=>{
           const m=Math.round((Date.now()-new Date(a.em))/60000);
           return `<div class="alert-item" onclick="openNeg('${a.id}')" style="cursor:pointer">
             <div class="alert-dot" style="background:var(--red)"></div>
-            <div class="alert-txt">${a.cli} · ${a.orig||'—'}</div>
+            <div class="alert-txt">${esc(a.cli)} · ${esc(a.orig||'—')}</div>
             <div class="alert-count" style="color:var(--red)">${m}min</div>
           </div>`;
         }).join(''):`<div class="alert-empty">✅ Todos respondidos</div>`}
@@ -243,16 +256,22 @@ async function renderConf() {
     </div>
 
     <div class="dash-box" style="margin-top:16px">
-      <div class="dash-box-title">Agenda de hoje · ${todayAppts.length} agendamento${todayAppts.length!==1?'s':''}</div>
+      <div class="dash-box-title">📅 Agenda de hoje · ${todayAppts.length} agend.</div>
       ${todayAppts.length?`<div class="today-list">${todayAppts.map(a=>{
         const sm=fmtStatus(a.status);
         return `<div class="today-item" onclick="openNeg('${a.id}')">
           <div class="ti-av" style="background:${userColor(a.vnd)}">${initials(a.vnd)}</div>
-          <div class="ti-info"><div class="ti-name">${a.cli}</div><div class="ti-sub">${a.hora||'—'} · ${a.vnd}</div></div>
+          <div class="ti-info"><div class="ti-name">${esc(a.cli)}</div><div class="ti-sub">${a.hora||'—'} · ${esc(a.vnd)}</div></div>
           <span class="tag ${sm.cls}">${sm.l}</span>
         </div>`;
       }).join('')}</div>`:`<div class="alert-empty">Sem agendamentos para hoje</div>`}
     </div>`;
+
+  // Auto-refresh a cada 2 minutos se a aba estiver ativa
+  _confRefreshTimer = setTimeout(() => {
+    const active = document.querySelector('.view.on');
+    if (active && active.id === 'v-conf') renderConf();
+  }, 120000);
 }
 
 let _leadNotifSub=null;

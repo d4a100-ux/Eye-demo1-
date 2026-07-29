@@ -7,17 +7,20 @@ async function doLogin() {
   const btn = document.getElementById('btn-login');
   btn.disabled = true; btn.textContent = 'Entrando…';
 
-  // Busca apenas o usuário solicitado — não carrega senhas de todos para memória
   const { data: u } = await sb.from('eye_users').select('*').eq('login', loginVal).maybeSingle();
   if (!u || u.senha !== senhaVal) {
     document.getElementById('li-err').style.display = 'block';
+    const card = document.querySelector('.login-card');
+    card.classList.remove('login-error'); void card.offsetWidth; card.classList.add('login-error');
     btn.disabled = false; btn.textContent = 'Entrar'; return;
   }
   document.getElementById('li-err').style.display = 'none';
+  const eyeSvg = document.querySelector('.login-eye-svg');
+  if (eyeSvg) { eyeSvg.classList.add('login-success'); }
   const { senha: _stripped, ...cuSafe } = u;
   CU = { ...cuSafe, loginTs: Date.now() };
   localStorage.setItem('eye_cu', JSON.stringify(CU));
-  showApp();
+  setTimeout(showApp, 500);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -103,8 +106,8 @@ async function renderUnitsSelector() {
   grid.innerHTML = cards.map(u => `
     <div class="unit-sel-card u-${u.cor}" onclick="enterUnit('${u.id}')">
       <div class="usc-dot usc-dot-${u.cor}"></div>
-      <div class="usc-name">${u.nome}</div>
-      ${u.cidade ? `<div class="usc-city"><i class="ti ti-map-pin"></i> ${u.cidade}</div>` : '<div class="usc-city"></div>'}
+      <div class="usc-name">${esc(u.nome)}</div>
+      ${u.cidade ? `<div class="usc-city"><i class="ti ti-map-pin"></i> ${esc(u.cidade)}</div>` : '<div class="usc-city"></div>'}
       <div class="usc-kpis">
         <div class="usc-kpi"><span class="usc-val">${u.leadsHoje}</span><span class="usc-lbl">hoje</span></div>
         <div class="usc-kpi"><span class="usc-val">${u.agendados}</span><span class="usc-lbl">agendados</span></div>
@@ -120,7 +123,47 @@ async function renderUnitsSelector() {
         <div class="usc-kpi"><span class="usc-val">${totLeads}</span><span class="usc-lbl">hoje</span></div>
         <div class="usc-kpi"><span class="usc-val">${totAg}</span><span class="usc-lbl">agendados</span></div>
       </div>
-    </div>` : '');
+    </div>` : '') + `
+    <div class="unit-sel-card u-add" onclick="openNewUnit()">
+      <div class="usc-name" style="color:var(--ind)"><i class="ti ti-plus"></i> Nova unidade</div>
+      <div class="usc-city">Adicionar unidade</div>
+    </div>`;
+}
+
+async function openNewUnit() {
+  const users = await getUsers();
+  const mgrs = users.filter(u => u.role === 'gerencia' || u.role === 'master');
+  document.getElementById('nu-nome').value = '';
+  document.getElementById('nu-cidade').value = '';
+  document.getElementById('nu-bairro').value = '';
+  document.getElementById('nu-wpp').value = '';
+  document.getElementById('nu-end').value = '';
+  document.getElementById('nu-gerente').innerHTML =
+    '<option value="">Sem gerente definido</option>' +
+    mgrs.map(u => `<option value="${u.id}">${esc(u.nome)}</option>`).join('');
+  document.getElementById('ov-nova-unidade').classList.add('on');
+}
+
+function closeNewUnit() { document.getElementById('ov-nova-unidade').classList.remove('on'); }
+
+async function saveNewUnit() {
+  const nome = document.getElementById('nu-nome').value.trim();
+  if (!nome) { toast('Informe o nome da unidade', 'err'); return; }
+  const payload = {
+    id: uid(), nome,
+    cidade: document.getElementById('nu-cidade').value.trim() || null,
+    bairro: document.getElementById('nu-bairro').value.trim() || null,
+    whatsapp: document.getElementById('nu-wpp').value.trim() || null,
+    endereco: document.getElementById('nu-end').value.trim() || null,
+    gerente_id: document.getElementById('nu-gerente').value || null,
+    ativa: true,
+  };
+  const { error } = await sb.from('eye_unidades').insert(payload);
+  if (error) { toast('Erro ao criar unidade. Tente novamente.', 'err'); return; }
+  _unidades = [];
+  closeNewUnit();
+  toast('Unidade criada!');
+  renderUnitsSelector();
 }
 
 async function enterUnit(unitId) {
@@ -181,7 +224,6 @@ function navGroups() {
     agenda:  { icon:'ti-calendar',        label:'Agenda'       },
     cal:     { icon:'ti-calendar-month',  label:'Calendário'   },
     retrab:  { icon:'ti-refresh',         label:'Retrabalho'   },
-    origem:  { icon:'ti-chart-pie',       label:'Origens'      },
     negoc:   { icon:'ti-handshake',       label:'Pipeline'     },
     base:    { icon:'ti-database',        label:'Base de Dados'},
     bi:      { icon:'ti-chart-bar',       label:'BI'           },
@@ -193,22 +235,35 @@ function navGroups() {
   const mk = id => ({ id, ...ALL[id] });
   const groups = [
     { label:'Atendimento', ids:['inicio','conv','crm','tarefas','agenda','cal','retrab'], roles:null },
-    { label:'Comercial',   ids:['origem','negoc','base'],                                 roles:['sdr','gerencia','master'] },
-    { label:'Gestão',      ids:['bi','ativos','conf'],                                    roles:['gerencia','master'] },
+    { label:'Comercial',   ids:['base'],                                                  roles:['sdr','gerencia','master'] },
+    { label:'Gestão',      ids:['negoc','bi','ativos','conf'],                            roles:['gerencia','master'] },
     { label:'Admin',       ids:CU.role==='master'?['users','config']:['users'],           roles:['gerencia','master'] },
   ];
   return groups
     .filter(g => !g.roles || g.roles.includes(CU.role))
-    .map(g => ({ label:g.label, tabs:g.ids.map(mk) }));
+    .map(g => ({ label:g.label, tabs:g.ids.filter(id=>ALL[id]).map(mk) }));
 }
 
 function buildNav() {
   const groups = navGroups();
-  const mkTab  = t => `<button onclick="goTab('${t.id}')" data-t="${t.id}"><i class="ti ${t.icon}"></i>${t.label}</button>`;
-  const mkGrp  = g => `<div class="nav-group"><span class="nav-gl">${g.label}</span><div class="nav-tabs">${g.tabs.map(mkTab).join('')}</div></div>`;
-  document.getElementById('tab-nav').innerHTML  = groups.map(mkGrp).join('');
-  document.getElementById('mob-nav').innerHTML  = groups.flatMap(g => g.tabs).map(mkTab).join('');
+  const sb = document.getElementById('tab-nav');
+  const collapsed = localStorage.getItem('eye_sb') === '0';
+  sb.classList.toggle('sb-collapsed', collapsed);
+
+  const mkTab = t => `<button onclick="goTab('${t.id}')" data-t="${t.id}" title="${t.label}"><i class="ti ${t.icon}"></i><span class="nav-label">${t.label}</span></button>`;
+  const mkGrp = g => `<div class="nav-group"><span class="nav-gl">${g.label}</span><div class="nav-tabs">${g.tabs.map(mkTab).join('')}</div></div>`;
+  sb.innerHTML = groups.map(mkGrp).join('') +
+    `<button class="sb-toggle" onclick="toggleSidebar()" title="${collapsed?'Expandir menu':'Recolher menu'}"><i class="ti ${collapsed?'ti-chevron-right':'ti-chevron-left'}"></i></button>`;
+
+  document.getElementById('mob-nav').innerHTML = groups.flatMap(g => g.tabs).map(mkTab).join('');
   setTimeout(refreshTaskBadge, 1500);
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('tab-nav');
+  const nowCollapsed = !sb.classList.contains('sb-collapsed');
+  localStorage.setItem('eye_sb', nowCollapsed ? '0' : '1');
+  buildNav();
 }
 
 function goTab(id) {

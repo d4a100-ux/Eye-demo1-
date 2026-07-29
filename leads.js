@@ -99,7 +99,63 @@ function _filterAgenda() {
   appts.forEach(a => { if (!byDate[a.data]) byDate[a.data]=[]; byDate[a.data].push(a); });
   el.innerHTML = Object.entries(byDate).map(([d,arr])=>`
     <div class="sec-lbl" style="margin-top:18px">${fmtDate(d)}<span>${arr.length} agendamento${arr.length!==1?'s':''}</span></div>
-    <div class="appt-list">${arr.map(a=>apptCard(a)).join('')}</div>`).join('');
+    <div style="display:flex;flex-direction:column;gap:8px">${arr.map(a=>agendaCard(a)).join('')}</div>`).join('');
+}
+
+function agendaQuickActs(a) {
+  const st = a.status;
+  const acts = [];
+  if (st === 'agendado') {
+    acts.push(`<button class="ag-qa-btn g" onclick="agQa('${a.id}','passado_vendedor')"><i class="ti ti-check"></i> Confirmou</button>`);
+    acts.push(`<button class="ag-qa-btn r" onclick="agQa('${a.id}','perdido')"><i class="ti ti-x"></i> Cancelou</button>`);
+    acts.push(`<button class="ag-qa-btn a" onclick="openNeg('${a.id}')"><i class="ti ti-calendar-event"></i> Reagendar</button>`);
+  } else if (st === 'passado_vendedor') {
+    acts.push(`<button class="ag-qa-btn g" onclick="agQa('${a.id}','em_negociacao')"><i class="ti ti-user-check"></i> Cliente chegou</button>`);
+    acts.push(`<button class="ag-qa-btn r" onclick="agQa('${a.id}','lead_frio')"><i class="ti ti-user-off"></i> Não compareceu</button>`);
+  } else if (st === 'em_negociacao' || st === 'test_drive') {
+    acts.push(`<button class="ag-qa-btn g" onclick="agQa('${a.id}','venda_concluida')"><i class="ti ti-trophy"></i> Venda feita!</button>`);
+    acts.push(`<button class="ag-qa-btn a" onclick="agQa('${a.id}','ag_retorno')"><i class="ti ti-clock"></i> Ag. retorno</button>`);
+  } else if (st === 'pendente' || st === 'em_atendimento') {
+    acts.push(`<button class="ag-qa-btn g" onclick="agQa('${a.id}','qualificado')"><i class="ti ti-check"></i> Qualificado</button>`);
+    acts.push(`<button class="ag-qa-btn a" onclick="agQa('${a.id}','agendado')"><i class="ti ti-calendar-plus"></i> Agendar</button>`);
+    acts.push(`<button class="ag-qa-btn r" onclick="agQa('${a.id}','sem_resposta')"><i class="ti ti-phone-off"></i> Sem resposta</button>`);
+  }
+  acts.push(`<button class="ag-qa-btn b" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i> Editar</button>`);
+  return acts.join('');
+}
+
+function agendaCard(a) {
+  const sm = fmtStatus(a.status);
+  const ac = userColor(a.vnd);
+  return `<div class="ag-card" style="--c:${sm.c}">
+    <div class="ag-card-top">
+      <div class="ac-av" style="background:${ac};width:36px;height:36px;font-size:12px;flex:none">${initials(a.vnd)}</div>
+      <div class="ag-card-info">
+        <div class="ag-card-name">${esc(a.cli)}<span class="tag ${sm.cls}">${sm.l}</span></div>
+        <div class="ag-card-sub">
+          ${a.hora?`<span><i class="ti ti-clock"></i>${a.hora}</span>`:''}
+          <span><i class="ti ti-user"></i>${esc(a.vnd||'—')}</span>
+          ${a.tel?`<span><i class="ti ti-phone"></i>${esc(a.tel)}</span>`:''}
+          ${a.modelo?`<span><i class="ti ti-car"></i>${esc(a.modelo)}</span>`:''}
+        </div>
+      </div>
+      <button class="btn-s" style="flex:none" onclick="openLeadTimeline('${a.id}')"><i class="ti ti-timeline"></i></button>
+    </div>
+    <div class="ag-quick-acts">${agendaQuickActs(a)}</div>
+  </div>`;
+}
+
+async function agQa(id, newStatus) {
+  const a = _apptsCache.find(x => x.id === id);
+  if (!a) return;
+  const old = a.status;
+  const now = new Date().toISOString();
+  a.status = newStatus; a.em = now;
+  _filterAgenda();
+  const { error } = await sb.from('eye_appts').update({ status: newStatus, em: now }).eq('id', id);
+  if (error) { toast('Erro ao atualizar', 'err'); a.status = old; _filterAgenda(); return; }
+  if (old !== newStatus) await logStatus(id, old, newStatus);
+  toast('Status atualizado!');
 }
 
 // ─── CALENDAR ─────────────────────────────────────────────────────────────────
@@ -720,6 +776,14 @@ async function saveBriefing() {
 }
 
 // ─── RETRABALHO ───────────────────────────────────────────────────────────────
+const _RETRAB_SCRIPTS = {
+  lead_frio:        'Oi [nome]! Tudo bem? Sei que faz um tempo — mas acabou de chegar um [modelo] incrível que lembrei de você. Posso te mandar mais detalhes?',
+  sem_resposta:     'Oi [nome]! Tentei falar com você anteriormente sobre um veículo de interesse. Ainda tem interesse? Posso ajudar a encontrar a melhor condição.',
+  perdido:          'Olá [nome]! Passando para ver se posso ajudar com algo. Nossa equipe tem novas ofertas que talvez se encaixem no seu orçamento.',
+  credito_reprovado:'Oi [nome]! Temos alternativas de financiamento que podem funcionar para o seu caso. Posso verificar outras opções com você?',
+  ag_retorno:       'Oi [nome]! Estou seguindo nosso combinado de retorno. Conseguiu decidir sobre o veículo? Estou disponível para ajudar.',
+};
+
 async function renderRetrab() {
   const el = document.getElementById('v-retrab');
   loading(el);
@@ -741,12 +805,7 @@ async function renderRetrab() {
     return;
   }
 
-  const groups = {};
-  leads.forEach(a => {
-    const resp = RETRAB_VND.includes(a.status) ? (a.vnd||'Sem vendedor') : (a.criado_por||'SDR');
-    if (!groups[resp]) groups[resp] = [];
-    groups[resp].push(a);
-  });
+  leads.sort((a,b) => (a.em||'') < (b.em||'') ? -1 : 1);
 
   el.innerHTML = `
     <div class="stats">
@@ -754,15 +813,33 @@ async function renderRetrab() {
       <div class="stat-c"><div class="sv" style="color:var(--ind)">${sdrTotal}</div><div class="sl">SDR</div></div>
       <div class="stat-c"><div class="sv" style="color:var(--amb)">${vndTotal}</div><div class="sl">Vendedor</div></div>
     </div>
-    ${Object.entries(groups).map(([resp,arr])=>`
-      <div class="sec-lbl" style="margin-top:18px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="ti-av" style="background:${userColor(resp)};width:24px;height:24px;font-size:9px">${initials(resp)}</div>${resp}
-        </div>
-        <span>${arr.length}</span>
-      </div>
-      <div class="appt-list">${arr.map(a=>apptCard(a)).join('')}</div>
-    `).join('')}`;
+    <div style="display:flex;flex-direction:column;gap:0">
+      ${leads.map(a => {
+        const sm = fmtStatus(a.status);
+        const ac = userColor(a.vnd||'?');
+        const dias = a.em ? Math.floor((Date.now()-new Date(a.em))/86400000) : '?';
+        const script = (_RETRAB_SCRIPTS[a.status]||'').replace('[nome]',a.cli.split(' ')[0]).replace('[modelo]',a.modelo||'veículo');
+        return `<div class="rq-card">
+          <div class="rq-top">
+            <div class="ac-av" style="background:${ac};width:36px;height:36px;font-size:12px;flex:none">${initials(a.vnd||'?')}</div>
+            <div class="rq-info">
+              <div class="rq-name">${esc(a.cli)}<span class="tag ${sm.cls}" style="margin-left:6px">${sm.l}</span></div>
+              <div class="rq-sub">${esc(a.vnd||'—')} · ${dias}d parado${a.tel?` · <a href="tel:${esc(a.tel)}" style="color:var(--ind)">${esc(a.tel)}</a>`:''}</div>
+            </div>
+            <div style="flex:none;font-size:20px;font-weight:800;color:var(--red);opacity:.5">${dias}d</div>
+          </div>
+          ${script?`<div class="rq-script"><b>Script:</b> ${esc(script)}</div>`:''}
+          <div class="rq-acts">
+            ${RETRAB_SDR.includes(a.status)?`<button class="ag-qa-btn g" onclick="agQa('${a.id}','em_atendimento')"><i class="ti ti-phone-check"></i> Retomou contato</button>`:''}
+            ${RETRAB_VND.includes(a.status)&&a.status!=='ag_retorno'?`<button class="ag-qa-btn g" onclick="agQa('${a.id}','em_negociacao')"><i class="ti ti-refresh"></i> Retomou negociação</button>`:''}
+            ${a.status==='ag_retorno'?`<button class="ag-qa-btn g" onclick="agQa('${a.id}','em_negociacao')"><i class="ti ti-phone-check"></i> Retornou</button>`:''}
+            <button class="ag-qa-btn r" onclick="agQa('${a.id}','perdido')"><i class="ti ti-trash"></i> Descartar</button>
+            <button class="ag-qa-btn b" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i> Editar</button>
+            <button class="btn-s" onclick="openLeadTimeline('${a.id}')"><i class="ti ti-timeline"></i> Histórico</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
 
 function checkGate(a, newStatus) {
