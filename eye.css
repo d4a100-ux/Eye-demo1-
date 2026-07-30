@@ -677,3 +677,19 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .bi-hour-cell[title]:hover::after{content:attr(title);position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);background:#1c1c1e;color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:5px;white-space:nowrap;pointer-events:none;z-index:10;}
 .bi-hour-labels{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-top:3px;}
 .bi-hour-label{text-align:center;font-size:9px;color:var(--txt3);font-weight:500;}
+
+/* ── SUPORTE FLUTUANTE ── */
+.suporte-btn{position:fixed;bottom:24px;right:24px;width:48px;height:48px;border-radius:50%;background:#007AFF;box-shadow:0 4px 16px rgba(0,122,255,.35);cursor:pointer;z-index:500;transition:.2s ease;display:flex;align-items:center;justify-content:center;border:none;}
+.suporte-btn:hover{transform:scale(1.12);box-shadow:0 6px 22px rgba(0,122,255,.48);}
+.suporte-btn:hover .sb-eye-svg{animation:eye-blink .22s ease-in-out;}
+.suporte-btn::after{content:'Precisa de ajuda?';position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);background:#1c1c1e;color:#fff;font-size:11px;font-weight:600;font-family:'Inter',sans-serif;padding:4px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s ease;}
+.suporte-btn:hover::after{opacity:1;}
+.sb-eye-svg{display:block;transform-origin:center center;}
+.suporte-card{position:fixed;bottom:84px;right:24px;width:240px;background:rgba(255,255,255,.95);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border:0.5px solid rgba(255,255,255,.85);border-radius:16px;padding:16px;box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:500;display:none;animation:pop .2s ease both;}
+.suporte-card.on{display:block;}
+.sc-title{display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:14px;color:var(--txt);margin-bottom:6px;}
+.sc-title svg{flex:none;}
+.sc-body{font-size:12px;color:var(--txt2);line-height:1.55;}
+.sc-wpp{display:flex;align-items:center;gap:8px;background:#25D366;color:#fff;border:none;border-radius:12px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-top:12px;text-decoration:none;font-family:inherit;justify-content:center;transition:.15s;}
+.sc-wpp:hover{background:#1fba58;}
+@media(max-width:600px){.suporte-btn{bottom:90px;}.suporte-card{bottom:150px;right:16px;width:calc(100vw - 32px);}}
