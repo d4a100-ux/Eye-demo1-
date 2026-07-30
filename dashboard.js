@@ -1,32 +1,37 @@
 function _renderFunnelSVG(funnel) {
-  const W = 600, H = 180, pad = 10;
+  const W = 640, H = 130, PAD_BOT = 52, SVG_H = H + PAD_BOT;
   const n = funnel.length;
-  const segW = (W - pad * (n - 1)) / n;
-  const colors = ['#5B6EFF','#8A98FF','#FF9F0A','#34C759'];
+  const segW = W / n;
   const maxN = Math.max(...funnel.map(f => f.n), 1);
+  const MIN_H = 16, MAX_H = H - 10;
+  const colors = ['#5B6EFF','#8B9DFF','#FF9F0A','#34C759'];
+
+  const hs = funnel.map(f => Math.round(MIN_H + (f.n / maxN) * (MAX_H - MIN_H)));
+
+  const defs = funnel.map((f, i) => {
+    const c = colors[i] || '#5B6EFF';
+    return `<linearGradient id="fg${i}" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="${c}" stop-opacity=".92"/>
+      <stop offset="100%" stop-color="${c}" stop-opacity=".72"/>
+    </linearGradient>`;
+  }).join('');
 
   const segs = funnel.map((f, i) => {
-    const x = i * (segW + pad);
-    const fillH = Math.max(28, Math.round((f.n / maxN) * (H - 60)));
-    const barY = H - 36 - fillH;
-    const c = colors[i] || '#5B6EFF';
-    const pct = maxN > 0 ? Math.round(f.n / funnel[0].n * 100) : 0;
-    return `<g>
-      <rect x="${x}" y="${H-36}" width="${segW}" height="${fillH}" rx="0" ry="0" fill="${c}" opacity=".10" transform="translate(0,${fillH}) scale(1,-1) translate(0,-${H-36+fillH})"/>
-      <rect x="${x}" y="${barY}" width="${segW}" height="${fillH}" rx="8" ry="8" fill="${c}" opacity=".18"/>
-      <rect x="${x}" y="${barY}" width="${segW}" height="4" rx="2" ry="2" fill="${c}"/>
-      <text x="${x + segW/2}" y="${H-20}" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="#1C1C1E" letter-spacing="-0.8">${f.n}</text>
-      <text x="${x + segW/2}" y="${H-6}" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="10" font-weight="500" fill="#C7C7CC" letter-spacing="0.4">${f.l.toUpperCase()}</text>
-      ${i > 0 && funnel[0].n > 0 ? `<text x="${x + segW/2}" y="${barY - 6}" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="10" font-weight="600" fill="${c}">${pct}%</text>` : ''}
-    </g>`;
+    const x = i * segW;
+    const h1 = hs[i];
+    const h2 = i < n - 1 ? hs[i + 1] : Math.round(hs[i] * 0.62);
+    const y1t = (H - h1) / 2, y1b = y1t + h1;
+    const y2t = (H - h2) / 2, y2b = y2t + h2;
+    const cx = x + segW / 2;
+    const pct = i === 0 ? 100 : (funnel[0].n > 0 ? Math.round(f.n / funnel[0].n * 100) : 0);
+    const txtY = H / 2 + 4;
+    return `<path d="M${x},${y1t} L${x+segW},${y2t} L${x+segW},${y2b} L${x},${y1b}Z" fill="url(#fg${i})"/>
+      <text x="${cx}" y="${txtY}" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="rgba(255,255,255,.95)" letter-spacing=".2">${pct}%</text>
+      <text x="${cx}" y="${H + 22}" text-anchor="middle" font-family="Inter,sans-serif" font-size="26" font-weight="800" fill="#1C1C1E" letter-spacing="-1">${f.n}</text>
+      <text x="${cx}" y="${H + 42}" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="#8E8E93" letter-spacing=".4">${f.l.toUpperCase()}</text>`;
   }).join('');
 
-  const arrows = funnel.slice(0,-1).map((_,i) => {
-    const ax = (i+1) * (segW + pad) - pad/2;
-    return `<text x="${ax}" y="${H-20}" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="12" fill="#C7C7CC">›</text>`;
-  }).join('');
-
-  return `<div class="funnel-svg-wrap"><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${segs}${arrows}</svg></div>`;
+  return `<div class="funnel-svg-wrap"><svg viewBox="0 0 ${W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%"><defs>${defs}</defs>${segs}</svg></div>`;
 }
 
 async function renderInicio() {
@@ -85,10 +90,10 @@ async function renderInicio() {
     </div>
 
     <div class="kpi-grid" style="margin-top:8px">
-      <div class="kpi-c" style="--kc:var(--ind)"><div class="kl">Total de leads</div><div class="kv" style="color:var(--ind)">${myAppts.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--amb)"><div class="kl">Agendamentos hoje</div><div class="kv" style="color:var(--amb)">${todayAppts.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Vendas no mês</div><div class="kv" style="color:var(--grn)">${realizedMonth.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--red)"><div class="kl">Leads parados</div><div class="kv" style="color:var(--red)">${hotLeads.length}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Total de leads</div><div class="kpi-icon">📋</div></div><div class="kv">${myAppts.length}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Agendamentos hoje</div><div class="kpi-icon">📅</div></div><div class="kv">${todayAppts.length}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Vendas no mês</div><div class="kpi-icon">✅</div></div><div class="kv">${realizedMonth.length}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Leads parados</div><div class="kpi-icon">⚠️</div></div><div class="kv${hotLeads.length>0?' alert':''}">${hotLeads.length}</div></div>
     </div>
     <div class="dash-row">
       <div class="dash-box">
@@ -234,10 +239,10 @@ async function renderConf() {
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi-c" style="--kc:var(--ind)"><div class="kl">Leads hoje</div><div class="kv" style="color:var(--ind)">${receivedToday.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Respondidos</div><div class="kv" style="color:var(--grn)">${respondedToday.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--red)"><div class="kl">Sem contato +30min</div><div class="kv" style="color:var(--red)">${noContact.length}</div></div>
-      <div class="kpi-c" style="--kc:var(--amb)"><div class="kl">Agend. hoje</div><div class="kv" style="color:var(--amb)">${agendados.length}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Leads hoje</div><div class="kpi-icon">📥</div></div><div class="kv">${receivedToday.length}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Respondidos</div><div class="kpi-icon">💬</div></div><div class="kv">${respondedToday.length}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Sem contato +30min</div><div class="kpi-icon">⚠️</div></div><div class="kv${noContact.length>0?' alert':''}">${noContact.length}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Agend. hoje</div><div class="kpi-icon">📅</div></div><div class="kv">${agendados.length}</div></div>
     </div>
 
     <div class="dash-box" style="margin-top:20px">
