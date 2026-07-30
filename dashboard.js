@@ -1,3 +1,34 @@
+function _renderFunnelSVG(funnel) {
+  const W = 600, H = 180, pad = 10;
+  const n = funnel.length;
+  const segW = (W - pad * (n - 1)) / n;
+  const colors = ['#5B6EFF','#8A98FF','#FF9F0A','#34C759'];
+  const maxN = Math.max(...funnel.map(f => f.n), 1);
+
+  const segs = funnel.map((f, i) => {
+    const x = i * (segW + pad);
+    const fillH = Math.max(28, Math.round((f.n / maxN) * (H - 60)));
+    const barY = H - 36 - fillH;
+    const c = colors[i] || '#5B6EFF';
+    const pct = maxN > 0 ? Math.round(f.n / funnel[0].n * 100) : 0;
+    return `<g>
+      <rect x="${x}" y="${H-36}" width="${segW}" height="${fillH}" rx="0" ry="0" fill="${c}" opacity=".10" transform="translate(0,${fillH}) scale(1,-1) translate(0,-${H-36+fillH})"/>
+      <rect x="${x}" y="${barY}" width="${segW}" height="${fillH}" rx="8" ry="8" fill="${c}" opacity=".18"/>
+      <rect x="${x}" y="${barY}" width="${segW}" height="4" rx="2" ry="2" fill="${c}"/>
+      <text x="${x + segW/2}" y="${H-20}" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="20" font-weight="700" fill="#1C1C1E" letter-spacing="-0.8">${f.n}</text>
+      <text x="${x + segW/2}" y="${H-6}" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="10" font-weight="500" fill="#C7C7CC" letter-spacing="0.4">${f.l.toUpperCase()}</text>
+      ${i > 0 && funnel[0].n > 0 ? `<text x="${x + segW/2}" y="${barY - 6}" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="10" font-weight="600" fill="${c}">${pct}%</text>` : ''}
+    </g>`;
+  }).join('');
+
+  const arrows = funnel.slice(0,-1).map((_,i) => {
+    const ax = (i+1) * (segW + pad) - pad/2;
+    return `<text x="${ax}" y="${H-20}" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-size="12" fill="#C7C7CC">›</text>`;
+  }).join('');
+
+  return `<div class="funnel-svg-wrap"><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${segs}${arrows}</svg></div>`;
+}
+
 async function renderInicio() {
   const el=document.getElementById('v-inicio');
   loading(el);
@@ -77,25 +108,26 @@ async function renderInicio() {
     </div>
     <div class="dash-box">
       <div class="dash-box-title">Funil do mês</div>
-      <div class="funnel">${funnel.map(f=>`<div class="funnel-seg" style="background:${f.bg}"><div class="fs-n">${f.n}</div><div>${f.l}</div></div>`).join('')}</div>
+      ${_renderFunnelSVG(funnel)}
     </div>
     ${ranking.length?`<div class="dash-box">
       <div class="dash-box-title">Ranking de vendedores</div>
       <div style="display:flex;flex-direction:column;gap:7px">
         ${ranking.map((v,i)=>{
           const barW=ranking[0].vendidos>0?Math.round(v.vendidos/ranking[0].vendidos*100):0;
-          return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:var(--rs)">
-            <div style="font-size:16px;width:22px;text-align:center">${['🥇','🥈','🥉'][i]||'#'+(i+1)}</div>
-            <div class="ti-av" style="background:${userColor(v.nome)};width:30px;height:30px;font-size:10px">${initials(v.nome)}</div>
+          const medals=['🥇','🥈','🥉'];
+          return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg2);border-radius:var(--radius-lg);transition:.2s" onmouseover="this.style.background='rgba(91,110,255,.06)'" onmouseout="this.style.background='var(--bg2)'">
+            <div style="font-size:15px;width:22px;text-align:center;flex:none">${medals[i]||('<span style="font-size:11px;color:var(--txt3);font-weight:600">#'+(i+1)+'</span>')}</div>
+            <div style="width:32px;height:32px;border-radius:var(--rs);background:${userColor(v.nome)};display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-weight:700;font-size:10px;color:#fff;flex:none">${initials(v.nome)}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600">${v.nome}</div>
-              <div style="height:4px;background:var(--bg2);border-radius:2px;margin-top:4px;overflow:hidden">
-                <div style="height:100%;width:${barW}%;background:var(--grn);border-radius:2px;transition:.4s"></div>
+              <div style="font-size:13px;font-weight:600;color:var(--txt)">${esc(v.nome)}</div>
+              <div style="height:4px;background:var(--bdr);border-radius:4px;margin-top:5px;overflow:hidden">
+                <div style="height:100%;width:${barW}%;background:var(--grn);border-radius:4px;transition:.5s cubic-bezier(.34,1.56,.64,1)"></div>
               </div>
             </div>
             <div style="text-align:right;flex:none">
-              <div style="font-size:16px;font-weight:800;color:var(--grn)">${v.vendidos}</div>
-              <div style="font-size:10px;color:var(--txt3)">${v.realizados} passados · ${v.conv}%</div>
+              <div style="font-size:18px;font-weight:800;color:var(--grn);letter-spacing:-.5px;line-height:1">${v.vendidos}</div>
+              <div style="font-size:10px;color:var(--txt3);margin-top:2px">${v.conv}% conv.</div>
             </div>
           </div>`;
         }).join('')}
