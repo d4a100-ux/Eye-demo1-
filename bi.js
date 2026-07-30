@@ -364,7 +364,7 @@ async function renderBi() {
       <button class="bi-rp-btn" onclick="biRepPeriod('hoje',this)">Hoje</button>
       <button class="bi-rp-btn" onclick="biRepPeriod('semana',this)">Esta semana</button>
       <button class="bi-rp-btn on" onclick="biRepPeriod('mes',this)">Este mês</button>
-      <button class="bi-rp-btn" onclick="window.print()" style="margin-left:auto"><i class="ti ti-printer" style="font-size:13px"></i> Exportar</button>
+      <button class="bi-rp-btn" onclick="biExport()" style="margin-left:auto"><i class="ti ti-printer" style="font-size:13px"></i> Exportar</button>
     </div>
     <div id="bi-rep-content">
       <!-- populado por biRepPeriod() -->
@@ -518,5 +518,69 @@ function biRepPeriod(period, btn) {
         </tbody>
       </table>
     </div>`:''}`;
+}
+
+function biExport() {
+  const content = document.getElementById('bi-rep-content');
+  if (!content || !content.innerHTML.trim()) {
+    toast('Gere um relatório primeiro', 'err'); return;
+  }
+  const period = window._biRepPeriod || 'mes';
+  const periodLabel = {hoje:'Hoje', semana:'Esta semana', mes:'Este mês'}[period] || period;
+  const unit = document.querySelector('.unit-badge')?.textContent || '';
+  const now = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  // Resolve CSS vars to real values for print
+  const html = content.innerHTML
+    .replace(/var\(--grn\)/g,'#34C759')
+    .replace(/var\(--red\)/g,'#FF3B30')
+    .replace(/var\(--amb\)/g,'#FF9F0A')
+    .replace(/var\(--ind\)/g,'#5B6EFF')
+    .replace(/var\(--txt3?\)/g,'#8E8E93')
+    .replace(/var\(--txt2\)/g,'#8E8E93')
+    .replace(/color:var\([^)]+\)/g, c => c); // leave unknowns as-is
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { toast('Permita popups para exportar', 'err'); return; }
+
+  win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Eye CRM — Relatório ${periodLabel}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;background:#fff;color:#1C1C1E;padding:32px 40px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .print-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:1.5px solid #E5E5EA;}
+  .print-header h1{font-size:22px;font-weight:800;letter-spacing:-.5px;color:#1C1C1E;}
+  .print-header .ph-meta{font-size:12px;color:#8E8E93;margin-top:4px;}
+  .print-header .ph-date{font-size:11px;color:#C7C7CC;text-align:right;}
+  .dash-box{background:#fff;border:1px solid #E5E5EA;border-radius:14px;padding:18px 20px;margin-bottom:16px;}
+  .dash-box-title{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:#C7C7CC;margin-bottom:14px;}
+  .bi-rep-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:0;}
+  .bi-rep-kpi{background:#F8F8FA;border-radius:10px;padding:12px 14px;text-align:center;}
+  .brkv{font-size:22px;font-weight:800;letter-spacing:-.8px;font-family:-apple-system,sans-serif;}
+  .brkl{font-size:10px;color:#8E8E93;margin-top:4px;font-weight:500;text-transform:uppercase;letter-spacing:.4px;}
+  .bi-rep-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .bi-rep-table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:#8E8E93;border-bottom:1.5px solid #E5E5EA;}
+  .bi-rep-table td{padding:10px 12px;border-bottom:1px solid #F2F2F7;color:#1C1C1E;}
+  .bi-rep-table tr:last-child td{border:none;}
+  .bi-rep-table tr:nth-child(even) td{background:#F8F8FA;}
+  @media print{body{padding:20px 24px;}.print-header{margin-bottom:20px;}button{display:none!important;}}
+</style>
+</head>
+<body>
+<div class="print-header">
+  <div>
+    <h1>Eye CRM — Relatório</h1>
+    <div class="ph-meta">${periodLabel}${unit ? ' · ' + unit : ''}</div>
+  </div>
+  <div class="ph-date">Gerado em ${now}</div>
+</div>
+${html}
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`);
+  win.document.close();
 }
 
