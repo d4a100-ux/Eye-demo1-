@@ -268,8 +268,9 @@ function buildNav() {
 
   const mkTab = t => `<button onclick="goTab('${t.id}')" data-t="${t.id}" title="${t.label}"><i class="ti ${t.icon}"></i><span class="nav-label">${t.label}</span></button>`;
   const mkGrp = g => `<div class="nav-group"><span class="nav-gl">${g.label}</span><div class="nav-tabs">${g.tabs.map(mkTab).join('')}</div></div>`;
-  sb.innerHTML = groups.map(mkGrp).join('') +
-    `<button class="sb-toggle" onclick="toggleSidebar()" title="${collapsed?'Expandir menu':'Recolher menu'}"><i class="ti ${collapsed?'ti-chevron-right':'ti-chevron-left'}"></i></button>`;
+  sb.innerHTML =
+    `<button class="sb-ham" onclick="toggleSidebar()" title="Menu"><i class="ti ti-menu-2"></i><span class="sb-ham-label">eye</span></button>` +
+    groups.map(mkGrp).join('');
 
   document.getElementById('mob-nav').innerHTML = groups.flatMap(g => g.tabs).map(mkTab).join('');
   setTimeout(refreshTaskBadge, 1500);
