@@ -554,7 +554,7 @@ function biExport() {
   const { appts } = window._biRepData(period);
   if (!appts || !appts.length) { toast('Nenhum lead no período', 'err'); return; }
 
-  const statusLabel = {
+  const stLbl = {
     pendente:'Pendente',em_atendimento:'Em atendimento',qualificado:'Qualificado',
     agendado:'Agendado',passado_vendedor:'Passado ao vendedor',em_negociacao:'Em negociação',
     test_drive:'Test drive',ficha_enviada:'Ficha enviada',credito_aprovado:'Crédito aprovado',
@@ -562,40 +562,105 @@ function biExport() {
     lead_frio:'Lead frio',sem_resposta:'Sem resposta',perdido:'Perdido',
   };
 
-  const csvCell = v => {
-    const s = (v||'').toString().replace(/"/g,'""');
-    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
-  };
+  // Ordena por data
+  const sorted = [...appts].sort((a,b) => (a.data||a.em||'').localeCompare(b.data||b.em||''));
+
+  // Resumo por vendedor
+  const vndMap = {};
+  sorted.forEach(a => {
+    if (!a.vnd) return;
+    if (!vndMap[a.vnd]) vndMap[a.vnd] = {total:0, vendidos:0};
+    vndMap[a.vnd].total++;
+    if (a.status === 'venda_concluida') vndMap[a.vnd].vendidos++;
+  });
 
   const now = new Date().toLocaleDateString('pt-BR');
-  const rows = [
-    [`Eye CRM — Relatório ${periodLabel} — ${now}`],
-    [],
-    ['#','Cliente','Telefone','Vendedor','Status','Modelo','Valor','Data','Origem'],
-    ...appts.sort((a,b)=>(a.cli||'').localeCompare(b.cli||'')).map((a,i) => [
-      i+1,
-      a.cli||'',
-      a.tel||'',
-      a.vnd||'',
-      statusLabel[a.status]||a.status||'',
-      a.modelo||'',
-      a.valor||'',
-      a.data?fmtDate(a.data):'',
-      a.orig||'',
-    ]),
-  ];
+  const xe = s => (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-  const csv = '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  // Gera HTML que o Excel lê nativamente com formatação
+  const xls = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+  <Style ss:ID="title"><Font ss:Bold="1" ss:Size="14"/></Style>
+  <Style ss:ID="sub"><Font ss:Color="#8E8E93" ss:Size="10"/></Style>
+  <Style ss:ID="hdr"><Font ss:Bold="1"/><Interior ss:Color="#F2F2F7" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#C7C7CC"/></Borders></Style>
+  <Style ss:ID="vnd"><Font ss:Bold="1"/></Style>
+  <Style ss:ID="grn"><Font ss:Bold="1" ss:Color="#1A7A3A"/></Style>
+  <Style ss:ID="red"><Font ss:Bold="1" ss:Color="#CC2020"/></Style>
+  <Style ss:ID="amb"><Font ss:Bold="1" ss:Color="#996000"/></Style>
+  <Style ss:ID="sec"><Font ss:Bold="1" ss:Size="11"/><Interior ss:Color="#EEF2FF" ss:Pattern="Solid"/></Style>
+</Styles>
+<Worksheet ss:Name="Relatório">
+<Table ss:DefaultColumnWidth="120">
+  <Column ss:Width="30"/>
+  <Column ss:Width="110"/>
+  <Column ss:Width="110"/>
+  <Column ss:Width="120"/>
+  <Column ss:Width="110"/>
+  <Column ss:Width="140"/>
+  <Column ss:Width="120"/>
+  <Column ss:Width="100"/>
+  <Column ss:Width="90"/>
+  <Row><Cell ss:MergeAcross="8" ss:StyleID="title"><Data ss:Type="String">Eye CRM — Relatório ${xe(periodLabel)}</Data></Cell></Row>
+  <Row><Cell ss:MergeAcross="8" ss:StyleID="sub"><Data ss:Type="String">Gerado em ${now} · ${sorted.length} leads</Data></Cell></Row>
+  <Row/>
+  <Row><Cell ss:MergeAcross="3" ss:StyleID="sec"><Data ss:Type="String">RESUMO POR VENDEDOR — ${xe(periodLabel)}</Data></Cell></Row>
+  <Row>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Vendedor</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Leads</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Vendidos</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Conversão</Data></Cell>
+  </Row>
+  ${Object.entries(vndMap).sort((a,b)=>b[1].vendidos-a[1].vendidos).map(([nome,d])=>{
+    const conv = d.total ? Math.round(d.vendidos/d.total*100) : 0;
+    const cs = conv>=20?'grn':conv>=10?'amb':'red';
+    return `<Row>
+    <Cell ss:StyleID="vnd"><Data ss:Type="String">${xe(nome)}</Data></Cell>
+    <Cell><Data ss:Type="Number">${d.total}</Data></Cell>
+    <Cell ss:StyleID="grn"><Data ss:Type="Number">${d.vendidos}</Data></Cell>
+    <Cell ss:StyleID="${cs}"><Data ss:Type="String">${conv}%</Data></Cell>
+  </Row>`;
+  }).join('')}
+  <Row/>
+  <Row><Cell ss:MergeAcross="8" ss:StyleID="sec"><Data ss:Type="String">TODOS OS CLIENTES — ${xe(periodLabel)} (${sorted.length})</Data></Cell></Row>
+  <Row>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">#</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Data</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Cliente</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Telefone</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Vendedor</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Status</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Modelo</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Valor</Data></Cell>
+    <Cell ss:StyleID="hdr"><Data ss:Type="String">Origem</Data></Cell>
+  </Row>
+  ${sorted.map((a,i)=>`<Row>
+    <Cell><Data ss:Type="Number">${i+1}</Data></Cell>
+    <Cell><Data ss:Type="String">${a.data?fmtDate(a.data):''}</Data></Cell>
+    <Cell><Data ss:Type="String">${xe(a.cli||'')}</Data></Cell>
+    <Cell><Data ss:Type="String">${xe(a.tel||'')}</Data></Cell>
+    <Cell ss:StyleID="vnd"><Data ss:Type="String">${xe(a.vnd||'')}</Data></Cell>
+    <Cell><Data ss:Type="String">${xe(stLbl[a.status]||a.status||'')}</Data></Cell>
+    <Cell><Data ss:Type="String">${xe(a.modelo||'')}</Data></Cell>
+    <Cell><Data ss:Type="String">${xe(a.valor||'')}</Data></Cell>
+    <Cell><Data ss:Type="String">${xe(a.orig||'')}</Data></Cell>
+  </Row>`).join('')}
+</Table>
+</Worksheet>
+</Workbook>`;
+
+  const blob = new Blob([xls], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url;
-  a.download = `eye-relatorio-${period}-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `eye-relatorio-${period}-${new Date().toISOString().slice(0,10)}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  toast(`Excel exportado — ${appts.length} leads`);
+  toast(`Excel exportado — ${sorted.length} leads`);
 }
 
 function biPrint() {
