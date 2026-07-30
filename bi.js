@@ -364,7 +364,8 @@ async function renderBi() {
       <button class="bi-rp-btn" onclick="biRepPeriod('hoje',this)">Hoje</button>
       <button class="bi-rp-btn" onclick="biRepPeriod('semana',this)">Esta semana</button>
       <button class="bi-rp-btn on" onclick="biRepPeriod('mes',this)">Este mês</button>
-      <button class="bi-rp-btn" onclick="biExport()" style="margin-left:auto"><i class="ti ti-printer" style="font-size:13px"></i> Exportar</button>
+      <button class="bi-rp-btn" onclick="biExport()" style="margin-left:auto"><i class="ti ti-table-export" style="font-size:13px"></i> Excel</button>
+      <button class="bi-rp-btn" onclick="biPrint()" style="margin-left:4px"><i class="ti ti-printer" style="font-size:13px"></i> Imprimir</button>
     </div>
     <div id="bi-rep-content">
       <!-- populado por biRepPeriod() -->
@@ -494,9 +495,17 @@ function biRepPeriod(period, btn) {
     if (a.status==='venda_concluida') vndBrk[a.vnd].vendidos++;
   });
 
+  const statusLabel = {
+    pendente:'Pendente',em_atendimento:'Em atendimento',qualificado:'Qualificado',
+    agendado:'Agendado',passado_vendedor:'Passado ao vendedor',em_negociacao:'Em negociação',
+    test_drive:'Test drive',ficha_enviada:'Ficha enviada',credito_aprovado:'Crédito aprovado',
+    credito_reprovado:'Crédito reprovado',ag_retorno:'Ag. retorno',venda_concluida:'Venda concluída',
+    lead_frio:'Lead frio',sem_resposta:'Sem resposta',perdido:'Perdido',
+  };
+
   el.innerHTML = `
     <div class="dash-box" style="margin-bottom:14px">
-      <div class="dash-box-title">${label}</div>
+      <div class="dash-box-title">${label} · ${totalLeads} lead${totalLeads!==1?'s':''}</div>
       <div class="bi-rep-kpis">
         <div class="bi-rep-kpi"><div class="brkv" style="color:var(--ind)">${totalLeads}</div><div class="brkl">Leads</div></div>
         <div class="bi-rep-kpi"><div class="brkv" style="color:#5856D6">${agendados}</div><div class="brkl">Agendados</div></div>
@@ -506,7 +515,7 @@ function biRepPeriod(period, btn) {
         <div class="bi-rep-kpi"><div class="brkv" style="color:var(--grn);font-size:16px">${faturamento?'R$'+Math.round(faturamento).toLocaleString('pt-BR'):'—'}</div><div class="brkl">Faturamento</div></div>
       </div>
     </div>
-    ${Object.keys(vndBrk).length?`<div class="dash-box">
+    ${Object.keys(vndBrk).length?`<div class="dash-box" style="margin-bottom:14px">
       <div class="dash-box-title">Por vendedor — ${label}</div>
       <table class="bi-rep-table">
         <thead><tr><th>Vendedor</th><th>Leads</th><th>Vendidos</th><th>Conversão</th></tr></thead>
@@ -517,31 +526,92 @@ function biRepPeriod(period, btn) {
           </tr>`).join('')}
         </tbody>
       </table>
-    </div>`:''}`;
+    </div>`:''}
+    <div class="dash-box">
+      <div class="dash-box-title">Todos os clientes — ${label} (${totalLeads})</div>
+      ${appts.length ? `<table class="bi-rep-table">
+        <thead><tr><th>#</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th>Modelo</th><th>Valor</th><th>Data</th><th>Telefone</th></tr></thead>
+        <tbody>${appts.sort((a,b)=>(a.cli||'').localeCompare(b.cli||'')).map((a,i)=>`
+          <tr>
+            <td style="color:var(--txt3)">${i+1}</td>
+            <td style="font-weight:600">${esc(a.cli||'—')}</td>
+            <td>${esc(a.vnd||'—')}</td>
+            <td>${esc(statusLabel[a.status]||a.status||'—')}</td>
+            <td>${esc(a.modelo||'—')}</td>
+            <td style="color:var(--grn);font-weight:600">${esc(a.valor||'—')}</td>
+            <td>${a.data?fmtDate(a.data):'—'}</td>
+            <td>${esc(a.tel||'—')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : `<div style="text-align:center;padding:20px;color:var(--txt3)">Nenhum lead no período</div>`}
+    </div>`;
 }
 
 function biExport() {
-  const content = document.getElementById('bi-rep-content');
-  if (!content || !content.innerHTML.trim()) {
-    toast('Gere um relatório primeiro', 'err'); return;
-  }
+  if (!window._biRepData) { toast('Gere um relatório primeiro', 'err'); return; }
   const period = window._biRepPeriod || 'mes';
   const periodLabel = {hoje:'Hoje', semana:'Esta semana', mes:'Este mês'}[period] || period;
+  const { appts } = window._biRepData(period);
+  if (!appts || !appts.length) { toast('Nenhum lead no período', 'err'); return; }
+
+  const statusLabel = {
+    pendente:'Pendente',em_atendimento:'Em atendimento',qualificado:'Qualificado',
+    agendado:'Agendado',passado_vendedor:'Passado ao vendedor',em_negociacao:'Em negociação',
+    test_drive:'Test drive',ficha_enviada:'Ficha enviada',credito_aprovado:'Crédito aprovado',
+    credito_reprovado:'Crédito reprovado',ag_retorno:'Ag. retorno',venda_concluida:'Venda concluída',
+    lead_frio:'Lead frio',sem_resposta:'Sem resposta',perdido:'Perdido',
+  };
+
+  const csvCell = v => {
+    const s = (v||'').toString().replace(/"/g,'""');
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+  };
+
+  const now = new Date().toLocaleDateString('pt-BR');
+  const rows = [
+    [`Eye CRM — Relatório ${periodLabel} — ${now}`],
+    [],
+    ['#','Cliente','Telefone','Vendedor','Status','Modelo','Valor','Data','Origem'],
+    ...appts.sort((a,b)=>(a.cli||'').localeCompare(b.cli||'')).map((a,i) => [
+      i+1,
+      a.cli||'',
+      a.tel||'',
+      a.vnd||'',
+      statusLabel[a.status]||a.status||'',
+      a.modelo||'',
+      a.valor||'',
+      a.data?fmtDate(a.data):'',
+      a.orig||'',
+    ]),
+  ];
+
+  const csv = '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `eye-relatorio-${period}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`Excel exportado — ${appts.length} leads`);
+}
+
+function biPrint() {
+  if (!window._biRepData) { toast('Gere um relatório primeiro', 'err'); return; }
+  const period = window._biRepPeriod || 'mes';
+  const periodLabel = {hoje:'Hoje', semana:'Esta semana', mes:'Este mês'}[period] || period;
+  const content = document.getElementById('bi-rep-content');
+  if (!content || !content.innerHTML.trim()) { toast('Gere um relatório primeiro', 'err'); return; }
   const unit = document.querySelector('.unit-badge')?.textContent || '';
-  const now = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-
-  // Resolve CSS vars to real values for print
+  const now  = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const html = content.innerHTML
-    .replace(/var\(--grn\)/g,'#34C759')
-    .replace(/var\(--red\)/g,'#FF3B30')
-    .replace(/var\(--amb\)/g,'#FF9F0A')
-    .replace(/var\(--ind\)/g,'#5B6EFF')
-    .replace(/var\(--txt3?\)/g,'#8E8E93')
-    .replace(/var\(--txt2\)/g,'#8E8E93')
-    .replace(/color:var\([^)]+\)/g, c => c); // leave unknowns as-is
-
+    .replace(/var\(--grn\)/g,'#34C759').replace(/var\(--red\)/g,'#FF3B30')
+    .replace(/var\(--amb\)/g,'#FF9F0A').replace(/var\(--ind\)/g,'#5B6EFF')
+    .replace(/var\(--txt3?\)/g,'#8E8E93').replace(/var\(--txt2\)/g,'#8E8E93');
   const win = window.open('', '_blank', 'width=900,height=700');
-  if (!win) { toast('Permita popups para exportar', 'err'); return; }
+  if (!win) { toast('Permita popups para imprimir', 'err'); return; }
 
   win.document.write(`<!DOCTYPE html>
 <html lang="pt-BR">
