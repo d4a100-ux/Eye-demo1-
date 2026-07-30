@@ -98,11 +98,13 @@ function _drawKanban() {
 
   const hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
   let visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
-  // Colunas por papel
-  if (CU.role === 'sdr') {
-    visibleCols = visibleCols.filter(c => c.fase === 'sdr' || c.fase === 'exit' || c.id === 'credito_aprovado' || c.id === 'credito_reprovado');
-  } else if (CU.role === 'vendedor') {
-    visibleCols = visibleCols.filter(c => c.id === 'passado_vendedor' || c.fase === 'vnd' || c.fase === 'exit');
+
+  // Determina quais colunas são acessíveis por papel
+  function _colLocked(col) {
+    if (CU.role === 'gerencia' || CU.role === 'master') return false;
+    if (CU.role === 'sdr') return col.fase === 'vnd'; // SDR não acessa fase vnd
+    if (CU.role === 'vendedor') return col.fase === 'sdr' && col.id !== 'passado_vendedor'; // vendedor não acessa sdr (exceto passado_vendedor)
+    return false;
   }
 
   const phaseLabels = { sdr:'— SDR', vnd:'— Vendedor', exit:'— Saídas' };
@@ -121,15 +123,19 @@ function _drawKanban() {
     const valStr = totalVal >= 1000 ? `R$${(totalVal/1000).toFixed(1)}k`
                  : totalVal > 0    ? `R$${Math.round(totalVal)}`
                  : '';
+    const locked = _colLocked(col);
+    const lockLabel = col.fase === 'sdr' ? 'Esta fase pertence ao SDR' : 'Esta fase pertence ao vendedor';
     html += `
-      <div class="kb-col" data-status="${col.id}"
-        ondragover="event.preventDefault();this.classList.add('kb-over')"
+      <div class="kb-col${locked?' kb-locked':''}" data-status="${col.id}"
+        ${locked ? `title="${lockLabel}"` : ''}
+        ondragover="if(!${locked})event.preventDefault();if(!${locked})this.classList.add('kb-over')"
         ondragleave="this.classList.remove('kb-over')"
-        ondrop="kbDrop(event,'${col.id}')">
+        ondrop="if(!${locked})kbDrop(event,'${col.id}')">
         <div class="kb-col-hd" style="border-top:3px solid ${col.color}">
           <div style="display:flex;align-items:center;gap:7px">
             <span style="width:8px;height:8px;border-radius:50%;background:${col.color};flex:none;display:inline-block"></span>
             <span style="font-size:12px;font-weight:700">${col.label}</span>
+            ${locked ? `<span style="font-size:9px;background:var(--bg2);color:var(--txt3);padding:1px 6px;border-radius:10px;font-weight:600">🔒</span>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:5px">
             <span class="kb-count">${cards.length}</span>
@@ -138,7 +144,7 @@ function _drawKanban() {
           </div>
         </div>
         <div class="kb-col-body">
-          ${cards.length ? cards.map(a => kbCard(a)).join('') : `<div class="kb-empty">Nenhum lead</div>`}
+          ${cards.length ? cards.map(a => kbCard(a, locked)).join('') : `<div class="kb-empty">Nenhum lead</div>`}
         </div>
       </div>`;
   });
@@ -146,15 +152,17 @@ function _drawKanban() {
   document.getElementById('kb-board').innerHTML = html;
 }
 
-function kbCard(a) {
+function kbCard(a, locked) {
   const ac  = userColor(a.vnd);
   const al  = alertClass(a);
   const txt = alertText(a);
+  const col = KB_COLS.find(c => c.id === a.status);
+  const borderCol = col?.color || 'var(--ind)';
   return `
-    <div class="kb-card${al?' '+al:''}" draggable="true"
-      ondragstart="_kbDragId='${a.id}'"
+    <div class="kb-card${al?' '+al:''}" style="border-left-color:${borderCol}" draggable="${!locked}"
+      ondragstart="${locked?'void 0':("_kbDragId='"+a.id+"'")}"
       ondragend="document.querySelectorAll('.kb-col').forEach(c=>c.classList.remove('kb-over'))"
-      onclick="openNeg('${a.id}')">
+      onclick="${locked?'void 0':("openNeg('"+a.id+"')")}">
       <div class="kb-card-top">
         <div class="kb-card-av" style="background:${ac}">${initials(a.vnd)}</div>
         <div class="kb-card-info">
@@ -181,6 +189,12 @@ async function kbDrop(event, newStatus) {
   _kbDragId = null;
   const a = _apptsCache.find(x => x.id === id);
   if (!a || a.status === newStatus) return;
+  // Bloqueia drop em coluna de fase restrita
+  const destCol = KB_COLS.find(c => c.id === newStatus);
+  if (destCol) {
+    const isLocked = (CU.role === 'sdr' && destCol.fase === 'vnd') || (CU.role === 'vendedor' && destCol.fase === 'sdr' && newStatus !== 'passado_vendedor');
+    if (isLocked) { toast('Esta fase pertence a outro papel', 'err'); return; }
+  }
 
   // Passado ao vendedor → abre briefing antes de salvar
   if (newStatus === 'passado_vendedor') {

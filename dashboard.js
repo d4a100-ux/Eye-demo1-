@@ -53,19 +53,7 @@ async function renderInicio() {
       <div class="dg-sub">${DAYS[now.getDay()]}, ${now.getDate()} de ${MONTHS[now.getMonth()]}</div>
     </div>
 
-    <div class="mod-question">Qual módulo você deseja acessar?</div>
-    <div class="mod-grid">
-      ${mods.map(m=>`
-        <div class="mod-card" onclick="goTab('${m.id}')">
-          <div class="mod-icon" style="background:${m.color}1a;color:${m.color}">
-            <i class="ti ${m.icon}"></i>
-          </div>
-          <div class="mod-label">${m.label}</div>
-          <div class="mod-sub">${m.sub}</div>
-        </div>`).join('')}
-    </div>
-
-    <div class="kpi-grid" style="margin-top:24px">
+    <div class="kpi-grid" style="margin-top:8px">
       <div class="kpi-c" style="--kc:var(--ind)"><div class="kl">Total de leads</div><div class="kv" style="color:var(--ind)">${myAppts.length}</div></div>
       <div class="kpi-c" style="--kc:var(--amb)"><div class="kl">Agendamentos hoje</div><div class="kv" style="color:var(--amb)">${todayAppts.length}</div></div>
       <div class="kpi-c" style="--kc:var(--grn)"><div class="kl">Vendas no mês</div><div class="kv" style="color:var(--grn)">${realizedMonth.length}</div></div>
@@ -275,12 +263,64 @@ async function renderConf() {
 }
 
 let _leadNotifSub=null;
+let _crmBadgeCount=0;
+
+function showVndPassNotif(a){
+  const sub=`${esc(a.cli||a.tel)} · ${a.modelo?esc(a.modelo)+' · ':''}Briefing disponível`;
+  const el=document.getElementById('vnd-pass-notif');
+  const subEl=document.getElementById('vpn-sub');
+  if(!el||!subEl) return;
+  subEl.textContent=`${a.cli||a.tel}${a.modelo?' · '+a.modelo:''}`;
+  el.classList.remove('hide'); el.classList.add('show');
+  // Sound
+  try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const g=ctx.createGain();osc.connect(g);g.connect(ctx.destination);osc.frequency.setValueAtTime(880,ctx.currentTime);g.gain.setValueAtTime(.18,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.35);osc.start();osc.stop(ctx.currentTime+.35);}catch(e){}
+  // Badge
+  _crmBadgeCount++;
+  _updateCrmBadge();
+  // Auto-hide
+  const bar=document.getElementById('vpn-bar');
+  if(bar){bar.style.animation='none';bar.style.width='100%';void bar.offsetWidth;bar.style.transition='width 7s linear';bar.style.width='0%';}
+  setTimeout(()=>closeVndNotif(),7200);
+}
+
+function closeVndNotif(){
+  const el=document.getElementById('vnd-pass-notif');
+  if(el){el.classList.remove('show');el.classList.add('hide');}
+}
+
+function _updateCrmBadge(){
+  const btn=document.querySelector('#tab-nav button[onclick*="crm"]');
+  if(!btn) return;
+  let b=btn.querySelector('.crm-badge');
+  if(_crmBadgeCount<=0){if(b)b.remove();return;}
+  if(!b){b=document.createElement('span');b.className='crm-badge';btn.appendChild(b);}
+  b.textContent=_crmBadgeCount;
+}
+
 function startRealtimeLeads(){
   if(_leadNotifSub){try{sb.removeChannel(_leadNotifSub);}catch(e){}}
-  _leadNotifSub=sb.channel('eye-leads-rt')
+  _leadNotifSub=sb.channel('eye-leads-rt2')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'eye_appts'},payload=>{
-      const a=payload.new; if(CU.role==='vendedor') return;
+      const a=payload.new;
+      if(CU.role==='vendedor') return;
       pushNotif('Novo lead chegou!',`${a.cli||a.tel} · ${a.orig||''}`);
       toast(`Novo lead: ${a.cli||a.tel}`);
-    }).subscribe();
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'eye_appts'},payload=>{
+      const a=payload.new, old=payload.old;
+      // Notifica vendedor quando lead é passado para ele
+      if(CU.role==='vendedor'&&a.status==='passado_vendedor'&&old.status!=='passado_vendedor'&&a.vnd===CU.nome){
+        showVndPassNotif(a);
+        pushNotif('Lead passado para você!',`${a.cli||a.tel}${a.modelo?' · '+a.modelo:''}`);
+        // Atualiza cache local
+        const idx=_apptsCache.findIndex(x=>x.id===a.id);
+        if(idx>=0) _apptsCache[idx]={..._apptsCache[idx],...a};
+        else _apptsCache.push(a);
+      } else if(CU.role!=='vendedor'&&a.status!==old.status){
+        // Atualiza cache para gerência/sdr
+        const idx=_apptsCache.findIndex(x=>x.id===a.id);
+        if(idx>=0) _apptsCache[idx]={..._apptsCache[idx],...a};
+      }
+    })
+    .subscribe();
 }

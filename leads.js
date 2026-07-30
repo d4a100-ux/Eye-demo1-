@@ -535,9 +535,66 @@ async function openNeg(id){
     const troca = document.getElementById('n-troca');
     if (troca) troca.value = a.troca||'';
   }
+  // Ações rápidas contextuais no modal
+  const qaEl=document.getElementById('neg-quick-acts');
+  if(qaEl) qaEl.innerHTML=_negQuickActs(a);
+
   document.getElementById('ov-neg').classList.add('on');
 }
 function closeNeg(){document.getElementById('ov-neg').classList.remove('on');}
+
+function _negQuickActs(a){
+  const st=a.status, id=a.id;
+  const acts=[];
+  if(st==='pendente'||st==='sem_resposta'){
+    acts.push(`<button class="nq-btn b" onclick="negQa('${id}','em_atendimento')"><i class="ti ti-phone"></i> Em atendimento</button>`);
+    acts.push(`<button class="nq-btn a" onclick="negQa('${id}','sem_resposta')"><i class="ti ti-phone-off"></i> Sem resposta</button>`);
+  } else if(st==='em_atendimento'){
+    acts.push(`<button class="nq-btn b" onclick="negQa('${id}','qualificado')"><i class="ti ti-check"></i> Qualificado</button>`);
+    acts.push(`<button class="nq-btn g" onclick="negQa('${id}','agendado')"><i class="ti ti-calendar-plus"></i> Agendar visita</button>`);
+    acts.push(`<button class="nq-btn a" onclick="negQa('${id}','sem_resposta')"><i class="ti ti-phone-off"></i> Sem resposta</button>`);
+  } else if(st==='qualificado'){
+    acts.push(`<button class="nq-btn g" onclick="negQa('${id}','agendado')"><i class="ti ti-calendar-plus"></i> Agendar visita</button>`);
+    acts.push(`<button class="nq-btn a" onclick="negQa('${id}','sem_resposta')"><i class="ti ti-phone-off"></i> Sem resposta</button>`);
+  } else if(st==='agendado'){
+    acts.push(`<button class="nq-btn g" onclick="negQa('${id}','passado_vendedor')"><i class="ti ti-check"></i> Cliente confirmou</button>`);
+    acts.push(`<button class="nq-btn r" onclick="negQa('${id}','sem_resposta')"><i class="ti ti-x"></i> Cancelou</button>`);
+    acts.push(`<button class="nq-btn a" onclick="negQa('${id}','agendado')"><i class="ti ti-calendar"></i> Reagendar</button>`);
+  } else if(st==='passado_vendedor'){
+    acts.push(`<button class="nq-btn g" onclick="negQa('${id}','em_negociacao')"><i class="ti ti-users"></i> Cliente chegou</button>`);
+    acts.push(`<button class="nq-btn r" onclick="negQa('${id}','sem_resposta')"><i class="ti ti-calendar-cancel"></i> Não compareceu</button>`);
+  } else if(st==='em_negociacao'||st==='test_drive'){
+    acts.push(`<button class="nq-btn g" onclick="negQa('${id}','ficha_enviada')"><i class="ti ti-file-text"></i> Ficha enviada</button>`);
+    acts.push(`<button class="nq-btn v" onclick="negQa('${id}','test_drive')"><i class="ti ti-car"></i> Test drive</button>`);
+    acts.push(`<button class="nq-btn a" onclick="negQa('${id}','ag_retorno')"><i class="ti ti-clock"></i> Ag. retorno</button>`);
+  } else if(st==='ficha_enviada'){
+    acts.push(`<button class="nq-btn g" onclick="negQa('${id}','credito_aprovado')"><i class="ti ti-check"></i> Crédito aprovado</button>`);
+    acts.push(`<button class="nq-btn r" onclick="negQa('${id}','credito_reprovado')"><i class="ti ti-x"></i> Crédito reprovado</button>`);
+  } else if(st==='credito_aprovado'){
+    acts.push(`<button class="nq-btn g" onclick="negQa('${id}','venda_concluida')"><i class="ti ti-trophy"></i> Venda fechada!</button>`);
+    acts.push(`<button class="nq-btn a" onclick="negQa('${id}','ag_retorno')"><i class="ti ti-clock"></i> Ag. retorno</button>`);
+  } else if(st==='ag_retorno'){
+    acts.push(`<button class="nq-btn b" onclick="negQa('${id}','em_negociacao')"><i class="ti ti-refresh"></i> Retomou negoc.</button>`);
+    acts.push(`<button class="nq-btn r" onclick="negQa('${id}','perdido')"><i class="ti ti-trash"></i> Perdido</button>`);
+  }
+  if(!acts.length) return '';
+  return `<div class="neg-qa-wrap"><div class="neg-qa-title">Ação rápida</div><div class="neg-qa-btns">${acts.join('')}</div></div>`;
+}
+
+async function negQa(id, newStatus){
+  const a=_apptsCache.find(x=>x.id===id); if(!a) return;
+  const oldStatus=a.status;
+  if(newStatus==='passado_vendedor'){
+    _pendingBriefing={source:'neg',apptId:id,upd:{status:newStatus,em:new Date().toISOString()},oldStatus};
+    openBriefingModal(id); return;
+  }
+  const now=new Date().toISOString();
+  const{error}=await sb.from('eye_appts').update({status:newStatus,em:now}).eq('id',id);
+  if(error){toast('Erro ao atualizar','err');return;}
+  if(oldStatus!==newStatus) await logStatus(id,oldStatus,newStatus);
+  a.status=newStatus; a.em=now;
+  closeNeg(); toast('Status atualizado'); await refreshAll();
+}
 
 async function saveNeg(){
   const id=document.getElementById('neg-id').value, newStatus=document.getElementById('n-status').value;
@@ -833,6 +890,7 @@ async function renderRetrab() {
             ${RETRAB_SDR.includes(a.status)?`<button class="ag-qa-btn g" onclick="agQa('${a.id}','em_atendimento')"><i class="ti ti-phone-check"></i> Retomou contato</button>`:''}
             ${RETRAB_VND.includes(a.status)&&a.status!=='ag_retorno'?`<button class="ag-qa-btn g" onclick="agQa('${a.id}','em_negociacao')"><i class="ti ti-refresh"></i> Retomou negociação</button>`:''}
             ${a.status==='ag_retorno'?`<button class="ag-qa-btn g" onclick="agQa('${a.id}','em_negociacao')"><i class="ti ti-phone-check"></i> Retornou</button>`:''}
+            ${(isMgr()||CU.role==='sdr')?`<button class="ag-qa-btn b" style="background:rgba(88,86,214,.12);color:#5856D6" onclick="openRenegoc('${a.id}')"><i class="ti ti-refresh"></i> Renegociar</button>`:''}
             <button class="ag-qa-btn r" onclick="agQa('${a.id}','perdido')"><i class="ti ti-trash"></i> Descartar</button>
             <button class="ag-qa-btn b" onclick="openNeg('${a.id}')"><i class="ti ti-pencil"></i> Editar</button>
             <button class="btn-s" onclick="openLeadTimeline('${a.id}')"><i class="ti ti-timeline"></i> Histórico</button>
@@ -840,6 +898,42 @@ async function renderRetrab() {
         </div>`;
       }).join('')}
     </div>`;
+}
+
+async function openRenegoc(id){
+  const a=_apptsCache.find(x=>x.id===id); if(!a) return;
+  document.getElementById('rn-appt-id').value=id;
+  document.getElementById('rn-lead-name').textContent=a.cli||a.tel||'Lead';
+  document.getElementById('rn-prox').value='';
+  document.getElementById('rn-abordagem').value='';
+  document.getElementById('rn-motivo').value='';
+  const vnds=vendedores();
+  document.getElementById('rn-vnd').innerHTML=`<option value="">Selecione…</option>${vnds.map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}`;
+  document.getElementById('rn-vnd').value=a.vnd||'';
+  const sdrs=(await getUsers()).filter(u=>u.role==='sdr');
+  document.getElementById('rn-sdr').innerHTML=`<option value="">Nenhum</option>${sdrs.map(s=>`<option value="${s.nome}">${s.nome}</option>`).join('')}`;
+  document.getElementById('ov-renegoc').classList.add('on');
+}
+
+function closeRenegoc(){document.getElementById('ov-renegoc').classList.remove('on');}
+
+async function saveRenegoc(){
+  const id=document.getElementById('rn-appt-id').value;
+  const novoVnd=document.getElementById('rn-vnd').value;
+  const motivo=document.getElementById('rn-motivo').value;
+  if(!novoVnd){toast('Selecione o vendedor','err');return;}
+  if(!motivo){toast('Selecione o motivo','err');return;}
+  const a=_apptsCache.find(x=>x.id===id); if(!a) return;
+  const abordagem=document.getElementById('rn-abordagem').value.trim();
+  const prox=document.getElementById('rn-prox').value;
+  const now=new Date().toISOString();
+  const obs=`🔄 Renegociação: ${motivo}${abordagem?'\nAbordagem: '+abordagem:''}`;
+  const upd={status:'em_negociacao',vnd:novoVnd,em:now,obs:(a.obs?a.obs+'\n\n':'')+obs,...(prox&&{prox:'Próx. contato: '+prox})};
+  const{error}=await sb.from('eye_appts').update(upd).eq('id',id);
+  if(error){toast('Erro ao salvar','err');return;}
+  await logStatus(id,a.status,'em_negociacao');
+  await sb.from('eye_logs').insert({id:uid(),appt_id:id,user_nome:CU.nome,acao:'renegociacao',de_status:a.status,para_status:'em_negociacao',created_at:now});
+  closeRenegoc(); toast('Renegociação iniciada!'); await refreshAll();
 }
 
 function checkGate(a, newStatus) {

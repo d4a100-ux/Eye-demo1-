@@ -16,11 +16,27 @@ async function doLogin() {
   }
   document.getElementById('li-err').style.display = 'none';
   const eyeSvg = document.querySelector('.login-eye-svg');
-  if (eyeSvg) { eyeSvg.classList.add('login-success'); }
+  if (eyeSvg) eyeSvg.classList.add('login-success');
   const { senha: _stripped, ...cuSafe } = u;
   CU = { ...cuSafe, loginTs: Date.now() };
   localStorage.setItem('eye_cu', JSON.stringify(CU));
-  setTimeout(showApp, 500);
+  // Iris fills screen then app appears
+  const ov = document.getElementById('iris-overlay');
+  if (ov) {
+    ov.classList.add('iris-fire');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        ov.classList.add('iris-expand');
+        setTimeout(() => {
+          showApp();
+          ov.classList.add('iris-done');
+          setTimeout(() => { ov.classList.remove('iris-fire','iris-expand','iris-done'); }, 600);
+        }, 520);
+      });
+    });
+  } else {
+    setTimeout(showApp, 500);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function doLogout() {
-  CU = null; _usersCache = null; _apptsCache = []; _activeUnit = null; _tasksCache = []; _unidades = []; _appLaunched = false;
+  CU = null; _usersCache = null; _apptsCache = []; _activeUnit = null; _tasksCache = []; _unidades = []; _appLaunched = false; if(typeof _crmBadgeCount!=='undefined') _crmBadgeCount=0;
   localStorage.removeItem('eye_cu');
   document.getElementById('li-user').value = '';
   document.getElementById('li-pass').value = '';
