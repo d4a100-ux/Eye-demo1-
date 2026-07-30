@@ -317,73 +317,103 @@ async function openLeadTimeline(id) {
     ...(briefing ? [{ type:'briefing', ts:briefing.criado_em, data:briefing }] : [])
   ].sort((a,b) => a.ts < b.ts ? -1 : 1);
 
-  document.getElementById('tl-title').textContent = a.cli;
-  document.getElementById('tl-status').innerHTML = `<span class="tag ${sm.cls}">${sm.l}</span>`;
+  const titleEl = document.getElementById('tl-title');
+  titleEl.style.cssText = 'font-size:22px;font-weight:800;color:var(--txt);letter-spacing:-.5px;line-height:1.1';
+  titleEl.textContent = a.cli;
+  document.getElementById('tl-status').innerHTML = `<span class="tag ${sm.cls}" style="margin-top:6px;display:inline-block">${sm.l}</span>`;
   document.getElementById('tl-info').innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:0.5px solid var(--bdr);margin-bottom:14px">
-      <div class="ac-av" style="background:${ac};width:40px;height:40px;font-size:14px">${initials(a.vnd)}</div>
-      <div>
-        <div style="font-weight:700;font-size:15px">${esc(a.cli)}</div>
-        <div style="font-size:12px;color:var(--txt2);margin-top:3px">${[a.vnd,a.tel,a.orig].filter(Boolean).map(esc).join(' · ')}</div>
+    <div style="background:rgba(255,255,255,.45);border:.5px solid rgba(255,255,255,.7);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${a.modelo||a.valor?'12':'0'}px">
+        <div class="ac-av" style="background:${ac};width:38px;height:38px;font-size:13px;flex:none">${initials(a.vnd)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;color:var(--txt2);display:flex;gap:8px;flex-wrap:wrap">
+            ${[a.vnd,a.tel,a.orig].filter(Boolean).map(v=>`<span>${esc(v)}</span>`).join('<span style="color:var(--txt3)">·</span>')}
+          </div>
+        </div>
       </div>
-    </div>
-    ${a.modelo||a.valor?`<div class="ac-fields" style="margin-bottom:14px">
-      ${a.modelo?`<div class="af"><div class="afl">Modelo</div><div class="afv">${esc(a.modelo)}</div></div>`:''}
-      ${a.valor?`<div class="af"><div class="afl">Valor</div><div class="afv" style="color:var(--grn)">${esc(a.valor)}</div></div>`:''}
-      ${a.pgto?`<div class="af"><div class="afl">Pagamento</div><div class="afv">${esc(a.pgto)}</div></div>`:''}
-    </div>`:''}`;
+      ${a.modelo||a.valor?`<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:.5px solid rgba(60,60,67,.08)">
+        ${a.modelo?`<div style="flex:1;min-width:80px"><div style="font-size:9px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Modelo</div><div style="font-size:13px;font-weight:600;color:var(--txt)">${esc(a.modelo)}</div></div>`:''}
+        ${a.valor?`<div style="flex:1;min-width:80px"><div style="font-size:9px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Valor</div><div style="font-size:13px;font-weight:700;color:var(--grn)">${esc(a.valor)}</div></div>`:''}
+        ${a.pgto?`<div style="flex:1;min-width:80px"><div style="font-size:9px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px">Pagamento</div><div style="font-size:13px;font-weight:600;color:var(--txt)">${esc(a.pgto)}</div></div>`:''}
+      </div>`:''}
+    </div>`;
 
   drawJourney(a.status, logs, document.getElementById('tl-journey'));
 
+  const _timeAgo = ts => {
+    const m = Math.floor((Date.now() - new Date(ts)) / 60000);
+    if (m < 1) return 'agora mesmo';
+    if (m < 60) return `há ${m} min`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `há ${h}h`;
+    const d = Math.floor(h / 24);
+    return d < 30 ? `há ${d} dia${d > 1 ? 's' : ''}` : fmtLogTime(ts);
+  };
+
   document.getElementById('tl-timeline').innerHTML = events.length
-    ? events.map(ev => {
+    ? `<div class="tl-list">${events.map((ev, idx) => {
+        const isLast = idx === events.length - 1;
+        const connector = isLast ? '' : '<div class="tl-connector-v"></div>';
         if (ev.type === 'status') {
           const from = fmtStatus(ev.de), to = fmtStatus(ev.para);
-          return `<div class="tl-item">
-            <div class="tl-dot" style="background:${to.c}"><i class="ti ti-arrow-right" style="font-size:10px;color:#fff"></i></div>
-            <div class="tl-body">
-              <div class="tl-user">${esc(ev.user)}</div>
-              <div class="tl-action">
+          return `<div class="tl-item-v2">
+            <div class="tl-item-left">
+              <div class="tl-dot-v2" style="background:${to.c}"><i class="ti ti-arrow-right" style="font-size:9px;color:#fff"></i></div>
+              ${connector}
+            </div>
+            <div class="tl-body-v2">
+              <div class="tl-user-v2">${esc(ev.user)}</div>
+              <div class="tl-text-v2" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
                 <span class="tag ${from.cls}" style="font-size:10px">${from.l}</span>
-                <i class="ti ti-chevron-right" style="font-size:11px;color:var(--txt3)"></i>
+                <i class="ti ti-chevron-right" style="font-size:10px;color:var(--txt3)"></i>
                 <span class="tag ${to.cls}" style="font-size:10px">${to.l}</span>
               </div>
-              <div class="tl-time">${fmtLogTime(ev.ts)}</div>
+              <div class="tl-time-v2"><i class="ti ti-clock" style="font-size:9px"></i>${_timeAgo(ev.ts)}</div>
             </div>
           </div>`;
         } else if (ev.type === 'briefing') {
           const b = ev.data;
           const urgLabels = {essa_semana:'Essa semana',esse_mes:'Esse mês',sem_prazo:'Sem prazo'};
           const objLabels = {preco:'Preço',pagamento:'Condição de pagamento',modelo:'Modelo',pesquisando:'Ainda pesquisando',nenhuma:'Nenhuma'};
-          return `<div class="tl-item">
-            <div class="tl-dot" style="background:#FF9F0A"><i class="ti ti-clipboard" style="font-size:10px;color:#fff"></i></div>
-            <div class="tl-body">
-              <div class="tl-user">${esc(b.criado_por)}</div>
+          return `<div class="tl-item-v2">
+            <div class="tl-item-left">
+              <div class="tl-dot-v2" style="background:#FF9F0A"><i class="ti ti-clipboard" style="font-size:9px;color:#fff"></i></div>
+              ${connector}
+            </div>
+            <div class="tl-body-v2">
+              <div class="tl-user-v2">${esc(b.criado_por)}</div>
               <div class="tl-briefing-card">
-                <div style="font-weight:700;margin-bottom:8px;font-size:13px">📋 Briefing de passagem ao vendedor</div>
-                <div class="tl-br-row"><span>Veículo</span>${esc(b.veiculo)||'—'}</div>
-                <div class="tl-br-row"><span>Entrada</span>${esc(b.entrada)||'Não informado'}</div>
-                <div class="tl-br-row"><span>Troca</span>${b.troca?('Sim — '+esc(b.troca_detalhe||'n/i')):'Não'}</div>
-                <div class="tl-br-row"><span>Pagamento</span>${esc(b.pagamento)||'—'}</div>
-                <div class="tl-br-row"><span>Urgência</span>${esc(urgLabels[b.urgencia]||b.urgencia||'—')}</div>
-                <div class="tl-br-row"><span>Objeção</span>${esc(objLabels[b.objecao]||b.objecao||'—')}</div>
-                ${b.resumo?`<div style="margin-top:8px;padding-top:8px;border-top:0.5px solid var(--bdr);font-style:italic;font-size:12px;color:var(--txt2)">${esc(b.resumo)}</div>`:''}
+                <div class="tbf-title"><i class="ti ti-clipboard-list"></i> Briefing — passagem ao vendedor</div>
+                <div class="tl-br-row"><span class="tbr-label">Veículo</span><span class="tbr-val">${esc(b.veiculo)||'—'}</span></div>
+                <div class="tl-br-row"><span class="tbr-label">Entrada</span><span class="tbr-val">${esc(b.entrada)||'Não informado'}</span></div>
+                <div class="tl-br-row"><span class="tbr-label">Troca</span><span class="tbr-val">${b.troca?('Sim — '+esc(b.troca_detalhe||'n/i')):'Não'}</span></div>
+                <div class="tl-br-row"><span class="tbr-label">Pagamento</span><span class="tbr-val">${esc(b.pagamento)||'—'}</span></div>
+                <div class="tl-br-row"><span class="tbr-label">Urgência</span><span class="tbr-val">${esc(urgLabels[b.urgencia]||b.urgencia||'—')}</span></div>
+                <div class="tl-br-row"><span class="tbr-label">Objeção</span><span class="tbr-val">${esc(objLabels[b.objecao]||b.objecao||'—')}</span></div>
+                ${b.resumo?`<div style="margin-top:7px;padding-top:7px;border-top:.5px solid rgba(91,110,255,.15);font-style:italic;font-size:12px;color:var(--txt2)">${esc(b.resumo)}</div>`:''}
               </div>
-              <div class="tl-time">${fmtLogTime(ev.ts)}</div>
+              <div class="tl-time-v2"><i class="ti ti-clock" style="font-size:9px"></i>${_timeAgo(ev.ts)}</div>
             </div>
           </div>`;
         } else {
-          return `<div class="tl-item">
-            <div class="tl-dot" style="background:var(--ind)"><i class="ti ti-message" style="font-size:10px;color:#fff"></i></div>
-            <div class="tl-body">
-              <div class="tl-user">${esc(ev.user)}</div>
-              <div class="tl-text">${esc(ev.texto)}</div>
-              <div class="tl-time">${fmtLogTime(ev.ts)}</div>
+          return `<div class="tl-item-v2">
+            <div class="tl-item-left">
+              <div class="tl-dot-v2" style="background:var(--ind)"><i class="ti ti-message" style="font-size:9px;color:#fff"></i></div>
+              ${connector}
+            </div>
+            <div class="tl-body-v2">
+              <div class="tl-user-v2">${esc(ev.user)}</div>
+              <div class="tl-text-v2">${esc(ev.texto)}</div>
+              <div class="tl-time-v2"><i class="ti ti-clock" style="font-size:9px"></i>${_timeAgo(ev.ts)}</div>
             </div>
           </div>`;
         }
-      }).join('')
-    : `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:13px">Nenhuma movimentação registrada ainda.</div>`;
+      }).join('')}</div>`
+    : `<div class="tl-empty-state">
+        <div class="tl-es-icon"><i class="ti ti-clock"></i></div>
+        <div class="tl-es-title">Sem histórico ainda</div>
+        <div class="tl-es-sub">Adicione o primeiro registro desta negociação no campo abaixo</div>
+      </div>`;
 
   document.getElementById('tl-appt-id').value = id;
   document.getElementById('ov-timeline').classList.add('on');
@@ -499,7 +529,8 @@ async function saveAppt() {
 // ─── MODAL NEGOCIAÇÃO ─────────────────────────────────────────────────────────
 async function openNeg(id){
   const a=_apptsCache.find(x=>x.id===id);if(!a)return;
-  document.getElementById('neg-modal-title').textContent='Negociação · '+a.cli;
+  const _negTitleEl = document.getElementById('neg-modal-title');
+  _negTitleEl.innerHTML = `<span style="font-size:20px;font-weight:800;letter-spacing:-.4px;display:block;line-height:1.1;color:var(--txt)">${esc(a.cli)}</span>`;
   document.getElementById('neg-id').value=id;
   document.getElementById('n-status').value=a.status||'pendente';
   // Mostrar datas de chegada e agendamento
@@ -716,41 +747,51 @@ async function loadApptLogs(apptId){
   catch(e){return[];}
 }
 
-// ─── JOURNEY STEPPER ──────────────────────────────────────────────────────────
+// ─── JOURNEY STEPPER V2 ───────────────────────────────────────────────────────
+const _CHECK_SVG = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const _X_SVG = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 2L8 8M8 2L2 8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>`;
+
 function drawJourney(currentStatus, logs, targetEl) {
   const el = targetEl || document.getElementById('appt-journey'); if (!el) return;
-  const steps=[
-    {key:'pendente',        icon:'🔔',label:'Novo Lead'  },
-    {key:'em_atendimento',  icon:'📞',label:'Atendimento'},
-    {key:'qualificado',     icon:'⭐',label:'Qualificado'},
-    {key:'agendado',        icon:'📅',label:'Agendado'   },
-    {key:'passado_vendedor',icon:'🤝',label:'Vendedor'   },
-    {key:'em_negociacao',   icon:'💬',label:'Negociação' },
-    {key:'test_drive',      icon:'🚗',label:'Test Drive' },
-    {key:'ficha_enviada',   icon:'📋',label:'Ficha'      },
-    {key:'credito_aprovado',icon:'✅',label:'Crédito'    },
-    {key:'venda_concluida', icon:'🏆',label:'Vendido'    },
+  const steps = [
+    {key:'pendente',        label:'Novo Lead'  },
+    {key:'em_atendimento',  label:'Atendimento'},
+    {key:'qualificado',     label:'Qualificado'},
+    {key:'agendado',        label:'Agendado'   },
+    {key:'passado_vendedor',label:'Vendedor'   },
+    {key:'em_negociacao',   label:'Negociação' },
+    {key:'test_drive',      label:'Test Drive' },
+    {key:'ficha_enviada',   label:'Ficha'      },
+    {key:'credito_aprovado',label:'Crédito'    },
+    {key:'venda_concluida', label:'Vendido'    },
   ];
-  const badKeys=['lead_frio','perdido','sem_resposta','credito_reprovado','ag_retorno'];
-  const isBad=badKeys.includes(currentStatus);
-  const currIdx=steps.findIndex(s=>s.key===currentStatus);
-  const logMap={};
-  (logs||[]).forEach(l=>{logMap[l.para_status]=l.created_at;});
-  let html='<div class="sec-divider">Jornada do lead</div><div class="journey">';
-  steps.forEach((s,i)=>{
-    const isDone=currIdx>i||(!isBad&&s.key===currentStatus);
-    const isCurr=!isBad&&s.key===currentStatus;
-    const cls=isCurr?'curr':isDone?'done':'';
-    const ts=logMap[s.key]?`<div style="font-size:8px;color:var(--txt3);margin-top:1px">${fmtLogTime(logMap[s.key]).split(' ')[0]}</div>`:'';
-    html+=`<div class="journey-step"><div class="journey-dot ${cls}">${isCurr||isDone?s.icon:''}</div><div class="journey-lbl ${cls}">${s.label}${ts}</div></div>`;
-    if(i<steps.length-1) html+=`<div class="journey-line ${currIdx>i&&!isBad?'done':''}"></div>`;
+  const badKeys = ['lead_frio','perdido','sem_resposta','credito_reprovado','ag_retorno'];
+  const isBad = badKeys.includes(currentStatus);
+  const currIdx = steps.findIndex(s => s.key === currentStatus);
+
+  let html = '<div class="sec-divider">Jornada do lead</div><div class="journey-v2">';
+  steps.forEach((s, i) => {
+    const isPast = currIdx > i;
+    const isCurr = !isBad && currIdx === i;
+    const nodeClass = isPast ? 'done' : isCurr ? 'curr' : 'future';
+    const lblClass  = isPast ? 'done' : isCurr ? 'curr' : '';
+    const icon = isPast ? _CHECK_SVG : isCurr ? `<div style="width:7px;height:7px;border-radius:50%;background:#fff"></div>` : '';
+    html += `<div class="journey-v2-step">
+      <div class="journey-v2-node ${nodeClass}">${icon}</div>
+      <div class="journey-v2-label ${lblClass}">${s.label}</div>
+    </div>`;
+    if (i < steps.length - 1)
+      html += `<div class="journey-v2-connector${isPast && !isBad ? ' done' : ''}"></div>`;
   });
-  if(isBad){
-    const badLabels={lead_frio:'Lead Frio',perdido:'Perdido',sem_resposta:'Sem Resposta',credito_reprovado:'Créd. Reprovado',ag_retorno:'Ag. Retorno'};
-    const badIcons={lead_frio:'🥶',perdido:'❌',sem_resposta:'😶',credito_reprovado:'🚫',ag_retorno:'⏸'};
-    html+=`<div class="journey-line"></div><div class="journey-step"><div class="journey-dot bad">${badIcons[currentStatus]||'❌'}</div><div class="journey-lbl bad">${badLabels[currentStatus]||currentStatus}</div></div>`;
+  if (isBad) {
+    const badLabels = {lead_frio:'Lead Frio',perdido:'Perdido',sem_resposta:'Sem Resposta',credito_reprovado:'Créd. Reprovado',ag_retorno:'Ag. Retorno'};
+    html += `<div class="journey-v2-connector"></div>
+    <div class="journey-v2-step">
+      <div class="journey-v2-node bad">${_X_SVG}</div>
+      <div class="journey-v2-label bad">${badLabels[currentStatus]||currentStatus}</div>
+    </div>`;
   }
-  el.innerHTML=html+'</div>';
+  el.innerHTML = html + '</div>';
 }
 
 // ─── BRIEFING MODAL ───────────────────────────────────────────────────────────
