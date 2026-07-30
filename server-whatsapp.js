@@ -133,6 +133,28 @@ app.post('/desconectar', async (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/qr', (req, res) => {
+  if (!qrCodeBase64) {
+    return res.send(`
+      <html><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5;flex-direction:column">
+        <h2>QR Code não disponível</h2>
+        <p>Status: ${connectionStatus}</p>
+        <p>${connectionStatus === 'conectado' ? '✅ WhatsApp já conectado!' : 'Aguarde o servidor gerar o QR Code...'}</p>
+        <button onclick="location.reload()" style="padding:10px 20px;margin-top:20px;cursor:pointer">Atualizar</button>
+      </body></html>
+    `);
+  }
+  res.send(`
+    <html><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5;flex-direction:column;gap:20px">
+      <h2 style="margin:0">Escaneie com o WhatsApp</h2>
+      <p style="margin:0;color:#666">Abra o WhatsApp → Aparelhos conectados → Conectar aparelho</p>
+      <img src="${qrCodeBase64}" style="width:300px;height:300px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+      <p style="margin:0;color:#999;font-size:13px">O QR Code expira em 60 segundos — atualize se necessário</p>
+      <button onclick="location.reload()" style="padding:10px 24px;background:#5B6EFF;color:white;border:none;border-radius:8px;cursor:pointer;font-size:15px">Atualizar QR Code</button>
+    </body></html>
+  `);
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log('Servidor WhatsApp rodando na porta', PORT);
