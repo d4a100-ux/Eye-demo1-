@@ -1,9 +1,12 @@
+let _wppPollTimer = null;
+
 function renderConfig() {
   if (CU.role !== 'master') return;
   const el = document.getElementById('v-config');
   const origins = activeOrigins();
   const vnds = vendedores();
   const goals = JSON.parse(localStorage.getItem('eye_goals') || '{}');
+  const uid = currentUnitId();
 
   el.innerHTML = `
     <div class="sec-lbl">Configurações do sistema</div>
@@ -48,7 +51,24 @@ function renderConfig() {
           </label>
         </div>`;
       }).join('')}
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title" style="display:flex;align-items:center;gap:8px">
+        <i class="ti ti-brand-whatsapp" style="color:#25D366;font-size:16px"></i> WhatsApp
+        ${uid ? `<span style="font-size:10px;color:var(--txt3);font-weight:400">Unidade: ${uid.slice(0,8)}…</span>` : ''}
+      </div>
+      ${!uid ? `<div style="font-size:13px;color:var(--txt2)">Selecione uma unidade no menu para configurar o WhatsApp.</div>` : `
+      <div id="cfg-wpp-content">
+        <div style="text-align:center;padding:20px;color:var(--txt3)">
+          <i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:22px;display:block;margin-bottom:8px"></i>
+          Verificando conexão…
+        </div>
+      </div>`}
     </div>`;
+
+  if (uid) _loadWppStatus();
+}
 }
 
 function addOrigin(){
@@ -77,4 +97,99 @@ function toggleKbCol(id,visible){
   if(visible) hidden=hidden.filter(x=>x!==id);
   else if(!hidden.includes(id)) hidden.push(id);
   localStorage.setItem('eye_kb_hidden',JSON.stringify(hidden)); toast('CRM atualizado');
+}
+
+/* ── WhatsApp connection management ── */
+async function _loadWppStatus() {
+  const uid = currentUnitId(); if (!uid) return;
+  const { data } = await sb.from('whatsapp_conexoes')
+    .select('status,qr_code,atualizado_em')
+    .eq('unidade_id', uid)
+    .maybeSingle();
+  _renderWppContent(data ? { status: data.status, qr: data.qr_code } : { status: 'desconectado' });
+}
+
+function _renderWppContent({ status, qr }) {
+  const el = document.getElementById('cfg-wpp-content'); if (!el) return;
+  if (status === 'conectado') {
+    _stopWppPoll();
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 0">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--grn)"></div>
+        <span style="font-size:14px;font-weight:600;color:var(--grn)">WhatsApp conectado</span>
+      </div>
+      <button class="btn-s d" onclick="wppDesconectar()">
+        <i class="ti ti-power"></i> Desconectar
+      </button>`;
+  } else if (status === 'aguardando_qr' && qr) {
+    el.innerHTML = `
+      <div style="text-align:center;padding:10px 0 4px">
+        <p style="font-size:12.5px;color:var(--txt2);margin-bottom:12px">
+          Abra o WhatsApp → <b>Aparelhos conectados</b> → Conectar aparelho
+        </p>
+        <img src="${qr}" style="width:220px;height:220px;border-radius:14px;box-shadow:var(--shadow-md)">
+        <p style="font-size:11px;color:var(--txt3);margin-top:10px">
+          O QR Code expira em 60s — atualizando automaticamente…
+        </p>
+      </div>`;
+    _startWppPoll();
+  } else if (status === 'reconectando') {
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 0">
+        <i class="ti ti-loader-2" style="animation:spin 1s linear infinite;color:var(--amb);font-size:18px"></i>
+        <span style="font-size:13px;color:var(--amb)">Reconectando automaticamente…</span>
+      </div>`;
+    _startWppPoll();
+  } else {
+    _stopWppPoll();
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0 14px">
+        <div style="width:10px;height:10px;border-radius:50%;background:var(--red)"></div>
+        <span style="font-size:13px;color:var(--txt2)">WhatsApp desconectado</span>
+      </div>
+      <button class="btn-prim" style="width:auto;height:44px;padding:0 22px" onclick="wppConectar()">
+        <i class="ti ti-brand-whatsapp" style="font-size:16px"></i> Conectar WhatsApp
+      </button>`;
+  }
+}
+
+function _startWppPoll() {
+  if (_wppPollTimer) return;
+  _wppPollTimer = setInterval(_loadWppStatus, 3000);
+}
+
+function _stopWppPoll() {
+  if (_wppPollTimer) { clearInterval(_wppPollTimer); _wppPollTimer = null; }
+}
+
+async function wppConectar() {
+  const uid = currentUnitId();
+  if (!uid) { toast('Selecione uma unidade primeiro', 'err'); return; }
+  const el = document.getElementById('cfg-wpp-content');
+  if (el) el.innerHTML = `
+    <div style="text-align:center;padding:24px;color:var(--txt2);font-size:13px">
+      <i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:24px;display:block;margin-bottom:10px;color:var(--ind)"></i>
+      Iniciando conexão…
+    </div>`;
+  try {
+    await fetch(`${WPP_SERVER}/conectar/${uid}`, { method: 'POST' });
+    _startWppPoll();
+  } catch(e) {
+    toast('Não foi possível alcançar o servidor WhatsApp', 'err');
+    _loadWppStatus();
+  }
+}
+
+async function wppDesconectar() {
+  if (!confirm('Desconectar o WhatsApp desta unidade?')) return;
+  try {
+    await fetch(`${WPP_SERVER}/desconectar`, { method: 'POST' });
+    const uid = currentUnitId();
+    if (uid) await sb.from('whatsapp_conexoes').upsert({ unidade_id:uid, status:'desconectado', qr_code:null, atualizado_em:new Date().toISOString() }, { onConflict:'unidade_id' });
+    _stopWppPoll();
+    _renderWppContent({ status: 'desconectado' });
+    toast('WhatsApp desconectado');
+  } catch(e) {
+    toast('Erro ao desconectar', 'err');
+  }
 }
