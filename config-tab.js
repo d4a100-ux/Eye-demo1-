@@ -69,7 +69,6 @@ function renderConfig() {
 
   if (uid) _loadWppStatus();
 }
-}
 
 function addOrigin(){
   const emoji=document.getElementById('cfg-orig-emoji').value.trim()||'📌';
