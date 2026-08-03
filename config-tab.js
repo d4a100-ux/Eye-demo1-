@@ -100,12 +100,14 @@ function toggleKbCol(id,visible){
 
 /* ── WhatsApp connection management ── */
 async function _loadWppStatus() {
-  const uid = currentUnitId(); if (!uid) return;
-  const { data } = await sb.from('whatsapp_conexoes')
-    .select('status,qr_code,atualizado_em')
-    .eq('unidade_id', uid)
-    .maybeSingle();
-  _renderWppContent(data ? { status: data.status, qr: data.qr_code } : { status: 'desconectado' });
+  if (!currentUnitId()) return;
+  try {
+    const res = await fetch(`${WPP_SERVER}/status`);
+    const data = await res.json();
+    _renderWppContent({ status: data.status, qr: data.qr || null });
+  } catch(e) {
+    _renderWppContent({ status: 'erro' });
+  }
 }
 
 function _renderWppContent({ status, qr }) {
@@ -141,10 +143,11 @@ function _renderWppContent({ status, qr }) {
     _startWppPoll();
   } else {
     _stopWppPoll();
+    const isErr = status === 'erro';
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 0 14px">
-        <div style="width:10px;height:10px;border-radius:50%;background:var(--red)"></div>
-        <span style="font-size:13px;color:var(--txt2)">WhatsApp desconectado</span>
+        <div style="width:10px;height:10px;border-radius:50%;background:${isErr?'var(--amb)':'var(--red)'}"></div>
+        <span style="font-size:13px;color:var(--txt2)">${isErr?'Servidor inacessível — verifique o Railway':'WhatsApp desconectado'}</span>
       </div>
       <button class="btn-prim" style="width:auto;height:44px;padding:0 22px" onclick="wppConectar()">
         <i class="ti ti-brand-whatsapp" style="font-size:16px"></i> Conectar WhatsApp
