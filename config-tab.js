@@ -100,12 +100,18 @@ function toggleKbCol(id,visible){
 
 /* ── WhatsApp connection management ── */
 async function _loadWppStatus() {
-  const uid = currentUnitId(); if (!uid) return;
-  const { data } = await sb.from('whatsapp_conexoes')
-    .select('status,qr_code')
-    .eq('unidade_id', uid)
-    .maybeSingle();
-  _renderWppContent(data ? { status: data.status, qr: data.qr_code } : { status: 'desconectado' });
+  if (!currentUnitId()) return;
+  try {
+    const res = await fetch(`${WPP_SERVER}/status`);
+    const data = await res.json();
+    _renderWppContent({ status: data.status, qr: data.qr || null });
+  } catch(e) {
+    /* CORS ainda não ativo — fallback Supabase */
+    const uid = currentUnitId();
+    const { data } = await sb.from('whatsapp_conexoes')
+      .select('status,qr_code').eq('unidade_id', uid).maybeSingle();
+    _renderWppContent(data ? { status: data.status, qr: data.qr_code } : { status: 'desconectado' });
+  }
 }
 
 function _renderWppContent({ status, qr }) {
