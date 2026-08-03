@@ -100,14 +100,12 @@ function toggleKbCol(id,visible){
 
 /* ── WhatsApp connection management ── */
 async function _loadWppStatus() {
-  if (!currentUnitId()) return;
-  try {
-    const res = await fetch(`${WPP_SERVER}/status`);
-    const data = await res.json();
-    _renderWppContent({ status: data.status, qr: data.qr || null });
-  } catch(e) {
-    _renderWppContent({ status: 'erro' });
-  }
+  const uid = currentUnitId(); if (!uid) return;
+  const { data } = await sb.from('whatsapp_conexoes')
+    .select('status,qr_code')
+    .eq('unidade_id', uid)
+    .maybeSingle();
+  _renderWppContent(data ? { status: data.status, qr: data.qr_code } : { status: 'desconectado' });
 }
 
 function _renderWppContent({ status, qr }) {
@@ -171,15 +169,13 @@ async function wppConectar() {
   if (el) el.innerHTML = `
     <div style="text-align:center;padding:24px;color:var(--txt2);font-size:13px">
       <i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:24px;display:block;margin-bottom:10px;color:var(--ind)"></i>
-      Iniciando conexão…
+      Aguardando QR Code…
     </div>`;
-  try {
-    await fetch(`${WPP_SERVER}/conectar/${uid}`, { method: 'POST' });
-    _startWppPoll();
-  } catch(e) {
-    toast('Não foi possível alcançar o servidor WhatsApp', 'err');
-    _loadWppStatus();
-  }
+  /* GET é "simple request" — o browser sempre envia ao servidor mesmo sem CORS.
+     O servidor dispara conectarWhatsApp() e salva o QR no Supabase.
+     Polled via Supabase abaixo — não depende de ler a resposta do Railway. */
+  fetch(`${WPP_SERVER}/conectar/${uid}`).catch(() => {});
+  _startWppPoll();
 }
 
 async function wppDesconectar() {
