@@ -140,7 +140,7 @@ async function openWppConv(numero) {
         <div class="ch-name">${esc(nome)}</div>
         <div class="ch-phone">${numero}</div>
       </div>
-      <button class="btn-s p" onclick="criarLeadDaWpp('${numero}','${esc(nome)}')">
+      <button class="btn-s p" data-num="${numero}" data-nome="${esc(nome)}" onclick="criarLeadDaWpp(this.dataset.num,this.dataset.nome)">
         <i class="ti ti-user-plus"></i>Criar lead
       </button>
     </div>
@@ -244,15 +244,18 @@ function startWppRealtime() {
       _wppConvs = _groupWppConvs(_wppMsgsCache);
       drawWppList();
       _updateConvBadge();
-      /* if this conv is open, append incoming message */
+      /* if this conv is open, append + mark read */
       if (m.numero_cliente === _activeWppNum && m.tipo === 'recebida') {
         const msgsEl = document.getElementById('conv-msgs');
-        if (msgsEl) { msgsEl.insertAdjacentHTML('beforeend', wppMsgBubble(m)); msgsEl.scrollTop = msgsEl.scrollHeight; }
-        /* mark read immediately */
+        if (msgsEl) {
+          msgsEl.insertAdjacentHTML('beforeend', wppMsgBubble(m));
+          msgsEl.scrollTop = msgsEl.scrollHeight;
+        }
         await sb.from('whatsapp_mensagens').update({lida:true}).eq('id', m.id);
         const conv = _wppConvs.find(c => c.numero === m.numero_cliente);
         if (conv) conv.unread = 0;
         _updateConvBadge();
+        drawWppList();
       }
     })
     .subscribe();
