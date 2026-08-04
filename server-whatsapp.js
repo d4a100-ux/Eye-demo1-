@@ -126,17 +126,19 @@ app.get('/conectar/:unidadeId', async (req, res) => {
 app.post('/enviar', async (req, res) => {
   const { numero, mensagem, unidadeId } = req.body;
   if (!sock) return res.status(400).json({ erro: 'WhatsApp não conectado' });
+  const numeroLimpo = (numero || '').split('@')[0];
   try {
-    await sock.sendMessage(`${numero}@s.whatsapp.net`, { text: mensagem });
+    await sock.sendMessage(`${numeroLimpo}@s.whatsapp.net`, { text: mensagem });
     await supabase.from('whatsapp_mensagens').insert({
       unidade_id: unidadeId,
-      numero_cliente: numero,
+      numero_cliente: numeroLimpo,
       mensagem: mensagem,
       tipo: 'enviada',
       timestamp: new Date().toISOString()
     });
     res.json({ ok: true });
   } catch (err) {
+    console.error('[wpp] erro ao enviar:', err.message);
     res.status(500).json({ erro: err.message });
   }
 });
