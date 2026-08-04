@@ -72,6 +72,7 @@ async function conectarWhatsApp(unidadeId) {
     });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
+      console.log('[wpp] messages.upsert type:', type, 'count:', messages.length);
       if (type !== 'notify') return;
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
@@ -79,17 +80,24 @@ async function conectarWhatsApp(unidadeId) {
         const texto = msg.message?.conversation
           || msg.message?.extendedTextMessage?.text
           || msg.message?.imageMessage?.caption || '';
+        console.log('[wpp] msg de:', numero, '| texto:', texto?.slice(0, 40));
         if (!texto) continue;
-        const { data: lead } = await supabase
-          .from('leads').select('id, nome')
-          .eq('unidade_id', unidadeId)
-          .eq('telefone', numero).maybeSingle();
-        await supabase.from('whatsapp_mensagens').insert({
-          unidade_id: unidadeId, lead_id: lead?.id || null,
-          numero_cliente: numero, nome_cliente: lead?.nome || numero,
-          mensagem: texto, tipo: 'recebida', lida: false,
-          timestamp: new Date().toISOString()
-        });
+        try {
+          const { data: lead } = await supabase
+            .from('leads').select('id, nome')
+            .eq('unidade_id', unidadeId)
+            .eq('telefone', numero).maybeSingle();
+          const { error } = await supabase.from('whatsapp_mensagens').insert({
+            unidade_id: unidadeId, lead_id: lead?.id || null,
+            numero_cliente: numero, nome_cliente: lead?.nome || numero,
+            mensagem: texto, tipo: 'recebida', lida: false,
+            timestamp: new Date().toISOString()
+          });
+          if (error) console.error('[wpp] erro ao salvar mensagem:', error.message, '| unidadeId:', unidadeId);
+          else console.log('[wpp] mensagem salva OK');
+        } catch (err) {
+          console.error('[wpp] exceção ao salvar mensagem:', err.message);
+        }
       }
     });
 
