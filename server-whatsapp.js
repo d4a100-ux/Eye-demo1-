@@ -1,7 +1,4 @@
 const express = require('express');
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const QRCode = require('qrcode');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -21,158 +18,142 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-let sock = null;
-let qrCodeBase64 = null;
-let connectionStatus = 'desconectado';
+const ACCESS_TOKEN    = process.env.META_ACCESS_TOKEN;
+const PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
+const VERIFY_TOKEN    = process.env.META_VERIFY_TOKEN || 'eye_crm_verify_2025';
+const UNIDADE_ID      = process.env.UNIDADE_ID_DEFAULT;
 
-async function conectarWhatsApp(unidadeId) {
-  try {
-    const { state, saveCreds } = await useMultiFileAuthState('./sessions/' + unidadeId);
+/* ── Webhook verification (Meta calls this to confirm the URL) ── */
+app.get('/webhook', (req, res) => {
+  const mode      = req.query['hub.mode'];
+  const token     = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    console.log('[meta] webhook verificado com sucesso');
+    return res.status(200).send(challenge);
+  }
+  console.warn('[meta] webhook verification falhou — token inválido');
+  res.sendStatus(403);
+});
 
-    sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: false,
-      logger: require('pino')({ level: 'silent' }),
-      browser: ['eye CRM', 'Chrome', '1.0.0'],
-      connectTimeoutMs: 60000,
-      keepAliveIntervalMs: 25000,
-    });
+/* ── Receive incoming messages (Meta sends here) ── */
+app.post('/webhook', async (req, res) => {
+  res.sendStatus(200); // responde imediatamente para Meta não reenviar
+  if (req.body.object !== 'whatsapp_business_account') return;
 
-    sock.ev.on('creds.update', saveCreds);
+  for (const entry of req.body.entry || []) {
+    for (const change of entry.changes || []) {
+      if (change.field !== 'messages') continue;
+      const val = change.value;
 
-    sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
-      if (qr) {
-        qrCodeBase64 = await QRCode.toDataURL(qr);
-        connectionStatus = 'aguardando_qr';
-        await supabase.from('whatsapp_conexoes').upsert({
-          unidade_id: unidadeId, status: 'aguardando_qr',
-          qr_code: qrCodeBase64, atualizado_em: new Date().toISOString()
-        }, { onConflict: 'unidade_id' });
-      }
-      if (connection === 'open') {
-        connectionStatus = 'conectado';
-        qrCodeBase64 = null;
-        await supabase.from('whatsapp_conexoes').upsert({
-          unidade_id: unidadeId, status: 'conectado',
-          qr_code: null, atualizado_em: new Date().toISOString()
-        }, { onConflict: 'unidade_id' });
-        console.log('WhatsApp conectado');
-      }
-      if (connection === 'close') {
-        const statusCode = new Boom(lastDisconnect?.error)?.output?.statusCode;
-        const deveReconectar = statusCode !== DisconnectReason.loggedOut;
-        connectionStatus = deveReconectar ? 'reconectando' : 'desconectado';
-        await supabase.from('whatsapp_conexoes').upsert({
-          unidade_id: unidadeId, status: connectionStatus,
-          atualizado_em: new Date().toISOString()
-        }, { onConflict: 'unidade_id' });
-        sock = null;
-        setTimeout(() => conectarWhatsApp(unidadeId), deveReconectar ? 3000 : 5000);
-      }
-    });
+      for (const msg of val.messages || []) {
+        if (msg.type !== 'text') continue;
 
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      console.log('[wpp] messages.upsert type:', type, 'count:', messages.length);
-      if (type !== 'notify') return;
-      for (const msg of messages) {
-        if (msg.key.fromMe) continue;
-        const numero = msg.key.remoteJid.split('@')[0];
-        const texto = msg.message?.conversation
-          || msg.message?.extendedTextMessage?.text
-          || msg.message?.imageMessage?.caption || '';
-        console.log('[wpp] msg de:', numero, '| texto:', texto?.slice(0, 40));
-        if (!texto) continue;
+        const numero = msg.from; // ex: "5581912345678"
+        const texto  = msg.text?.body || '';
+        const nome   = val.contacts?.find(c => c.wa_id === msg.from)?.profile?.name || numero;
+
+        console.log('[meta] msg de:', numero, '| texto:', texto.slice(0, 50));
+
         try {
           const { data: lead } = await supabase
             .from('leads').select('id, nome')
-            .eq('unidade_id', unidadeId)
+            .eq('unidade_id', UNIDADE_ID)
             .eq('telefone', numero).maybeSingle();
+
           const { error } = await supabase.from('whatsapp_mensagens').insert({
-            unidade_id: unidadeId, lead_id: lead?.id || null,
-            numero_cliente: numero, nome_cliente: lead?.nome || numero,
-            mensagem: texto, tipo: 'recebida', lida: false,
-            timestamp: new Date().toISOString()
+            unidade_id:     UNIDADE_ID,
+            lead_id:        lead?.id || null,
+            numero_cliente: numero,
+            nome_cliente:   lead?.nome || nome,
+            mensagem:       texto,
+            tipo:           'recebida',
+            lida:           false,
+            timestamp:      new Date().toISOString()
           });
-          if (error) console.error('[wpp] erro ao salvar mensagem:', error.message, '| unidadeId:', unidadeId);
-          else console.log('[wpp] mensagem salva OK');
+
+          if (error) console.error('[meta] erro ao salvar:', error.message);
+          else       console.log('[meta] mensagem salva OK');
         } catch (err) {
-          console.error('[wpp] exceção ao salvar mensagem:', err.message);
+          console.error('[meta] exceção:', err.message);
         }
       }
-    });
-
-  } catch (err) {
-    console.error('Erro ao conectar WhatsApp:', err);
-    setTimeout(() => conectarWhatsApp(unidadeId), 5000);
+    }
   }
-}
-
-app.get('/health', (req, res) => res.json({ ok: true }));
-
-app.get('/status', (req, res) => {
-  res.json({ status: connectionStatus, qr: qrCodeBase64 });
 });
 
-app.post('/conectar/:unidadeId', async (req, res) => {
-  await conectarWhatsApp(req.params.unidadeId);
-  res.json({ ok: true, message: 'Conectando...' });
-});
-
-app.get('/conectar/:unidadeId', async (req, res) => {
-  conectarWhatsApp(req.params.unidadeId);
-  res.json({ ok: true, message: 'Iniciando conexão...' });
-});
-
+/* ── Send message via Meta Graph API ── */
 app.post('/enviar', async (req, res) => {
   const { numero, mensagem, unidadeId } = req.body;
-  if (!sock) return res.status(400).json({ erro: 'WhatsApp não conectado' });
-  const numeroLimpo = (numero || '').split('@')[0];
+
+  if (!ACCESS_TOKEN || !PHONE_NUMBER_ID)
+    return res.status(400).json({ erro: 'META_ACCESS_TOKEN ou META_PHONE_NUMBER_ID não configurados no Railway' });
+
+  const to = (numero || '').replace(/\D/g, '');
+
   try {
-    await sock.sendMessage(`${numeroLimpo}@s.whatsapp.net`, { text: mensagem });
+    const r = await fetch(
+      `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ACCESS_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to,
+          type: 'text',
+          text: { body: mensagem }
+        })
+      }
+    );
+
+    const result = await r.json();
+    if (!r.ok) {
+      console.error('[meta] erro ao enviar:', result);
+      return res.status(400).json({ erro: result.error?.message || 'Erro Meta API' });
+    }
+
     await supabase.from('whatsapp_mensagens').insert({
-      unidade_id: unidadeId,
-      numero_cliente: numeroLimpo,
-      mensagem: mensagem,
-      tipo: 'enviada',
-      timestamp: new Date().toISOString()
+      unidade_id:     unidadeId || UNIDADE_ID,
+      numero_cliente: to,
+      mensagem,
+      tipo:           'enviada',
+      timestamp:      new Date().toISOString()
     });
+
     res.json({ ok: true });
   } catch (err) {
-    console.error('[wpp] erro ao enviar:', err.message);
+    console.error('[meta] erro ao enviar:', err.message);
     res.status(500).json({ erro: err.message });
   }
 });
 
-app.post('/desconectar', async (req, res) => {
-  if (sock) { await sock.logout(); sock = null; }
-  res.json({ ok: true });
+/* ── Status — frontend usa isso para mostrar "conectado" ── */
+app.get('/status', (req, res) => {
+  const ok = !!(ACCESS_TOKEN && PHONE_NUMBER_ID);
+  res.json({ status: ok ? 'conectado' : 'desconectado', provider: 'meta_cloud_api' });
 });
 
-app.get('/qr', (req, res) => {
-  if (!qrCodeBase64) {
-    return res.send(`
-      <html><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5;flex-direction:column">
-        <h2>QR Code não disponível</h2>
-        <p>Status: ${connectionStatus}</p>
-        <p>${connectionStatus === 'conectado' ? '✅ WhatsApp já conectado!' : 'Aguarde o servidor gerar o QR Code...'}</p>
-        <button onclick="location.reload()" style="padding:10px 20px;margin-top:20px;cursor:pointer">Atualizar</button>
-      </body></html>
-    `);
-  }
-  res.send(`
-    <html><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5;flex-direction:column;gap:20px">
-      <h2 style="margin:0">Escaneie com o WhatsApp</h2>
-      <p style="margin:0;color:#666">Abra o WhatsApp → Aparelhos conectados → Conectar aparelho</p>
-      <img src="${qrCodeBase64}" style="width:300px;height:300px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
-      <p style="margin:0;color:#999;font-size:13px">O QR Code expira em 60 segundos — atualize se necessário</p>
-      <button onclick="location.reload()" style="padding:10px 24px;background:#5B6EFF;color:white;border:none;border-radius:8px;cursor:pointer;font-size:15px">Atualizar QR Code</button>
-    </body></html>
-  `);
-});
+app.get('/health', (req, res) => res.json({ ok: true }));
+
+/* ── No-op endpoints (mantidos para compatibilidade com o frontend) ── */
+app.post('/conectar/:unidadeId', (req, res) => res.json({ ok: true, message: 'Meta Cloud API não precisa de QR Code' }));
+app.get('/conectar/:unidadeId',  (req, res) => res.json({ ok: true }));
+app.post('/desconectar',         (req, res) => res.json({ ok: true }));
+app.get('/qr', (req, res) => res.send(`
+  <html><body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px">
+    <h2>✅ Meta Cloud API</h2>
+    <p>Este servidor usa a API oficial do WhatsApp — sem QR Code.</p>
+    <p style="color:#666">Configure o webhook em developers.facebook.com</p>
+  </body></html>
+`));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log('Servidor WhatsApp rodando na porta', PORT);
-  const unidadeId = process.env.UNIDADE_ID_DEFAULT;
-  if (unidadeId) conectarWhatsApp(unidadeId);
+  console.log(`[eye] Servidor Meta Cloud API rodando na porta ${PORT}`);
+  if (!ACCESS_TOKEN)    console.warn('[eye] AVISO: META_ACCESS_TOKEN não configurado');
+  if (!PHONE_NUMBER_ID) console.warn('[eye] AVISO: META_PHONE_NUMBER_ID não configurado');
+  if (!UNIDADE_ID)      console.warn('[eye] AVISO: UNIDADE_ID_DEFAULT não configurado');
 });
