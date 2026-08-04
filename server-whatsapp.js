@@ -76,7 +76,7 @@ async function conectarWhatsApp(unidadeId) {
       if (type !== 'notify') return;
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
-        const numero = msg.key.remoteJid.replace('@s.whatsapp.net', '');
+        const numero = msg.key.remoteJid.split('@')[0];
         const texto = msg.message?.conversation
           || msg.message?.extendedTextMessage?.text
           || msg.message?.imageMessage?.caption || '';
