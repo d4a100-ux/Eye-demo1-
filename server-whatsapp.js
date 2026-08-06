@@ -179,6 +179,29 @@ app.post('/conectar-unidade', async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+/* ── Relatório SDR (enviado pela extensão Chrome) ── */
+app.post('/relatorio-sdr', async (req, res) => {
+  const { sdrName, date, conversations } = req.body;
+  if (!conversations) return res.status(400).json({ erro: 'dados inválidos' });
+
+  const novos    = (conversations || []).filter(c => c.isNewLead).length;
+  const resumo   = JSON.stringify({ date, sdrName, total: conversations.length, novosLeads: novos, conversations });
+
+  const { error } = await supabase.from('whatsapp_mensagens').insert({
+    unidade_id:     UNIT_DEFAULT,
+    numero_cliente: 'RELATORIO_SDR',
+    nome_cliente:   sdrName || 'SDR',
+    mensagem:       resumo,
+    tipo:           'relatorio_sdr',
+    lida:           false,
+    timestamp:      new Date().toISOString()
+  });
+
+  if (error) { console.error('[relatorio]', error.message); return res.status(500).json({ erro: error.message }); }
+  console.log(`[relatorio] ${sdrName} — ${conversations.length} contatos em ${date}`);
+  res.json({ ok: true });
+});
+
 /* ── Desconectar ── */
 app.post('/desconectar', async (req, res) => {
   const { unidadeId } = req.body;
