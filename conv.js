@@ -123,12 +123,14 @@ async function renderRelatorios() {
 }
 
 function openRelatorio(idx) {
-  const r    = (window._relats || [])[idx];
+  const r     = (window._relats || [])[idx];
   if (!r) return;
-  const d    = r.dados;
-  const dia  = d?.date ? new Date(d.date).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'}) : '—';
+  const d     = r.dados;
   const convs = d?.conversations || [];
-  const novos = convs.filter(c=>c.isNewLead).length;
+  const novos = convs.filter(c => c.isNewLead).length;
+  const diaFmt = d?.date
+    ? new Date(d.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
+    : new Date(r.timestamp).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   const right = document.getElementById('conv-right');
 
   right.innerHTML = `
@@ -136,44 +138,129 @@ function openRelatorio(idx) {
       <div class="ci-av2" style="background:var(--ind);width:36px;height:36px;font-size:12px">${(r.nome_cliente||'SDR').split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
       <div class="ch-info">
         <div class="ch-name">${esc(r.nome_cliente||'SDR')}</div>
-        <div class="ch-phone">${dia}</div>
+        <div class="ch-phone" style="text-transform:capitalize">${diaFmt}</div>
       </div>
+      <button onclick="exportarRelatorioPDF(${idx})" style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:none;background:var(--ind);color:#fff;font-size:12px;font-weight:600;cursor:pointer">
+        <i class="ti ti-file-type-pdf"></i> Exportar PDF
+      </button>
     </div>
     <div class="conv-msgs" style="padding:16px;overflow-y:auto">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">
-        <div style="background:var(--bg2);border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--ind)">${convs.length}</div>
-          <div style="font-size:10px;color:var(--txt3);margin-top:2px">Atendidos</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div style="background:var(--bg2);border-radius:14px;padding:14px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:var(--ind)">${convs.length}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:4px">Atendidos</div>
         </div>
-        <div style="background:var(--bg2);border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--amb)">${novos}</div>
-          <div style="font-size:10px;color:var(--txt3);margin-top:2px">Novos leads</div>
+        <div style="background:var(--bg2);border-radius:14px;padding:14px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:var(--amb)">${novos}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:4px">Novos leads</div>
         </div>
-        <div style="background:var(--bg2);border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--grn)">${convs.length - novos}</div>
-          <div style="font-size:10px;color:var(--txt3);margin-top:2px">Leads exist.</div>
+        <div style="background:var(--bg2);border-radius:14px;padding:14px;text-align:center">
+          <div style="font-size:28px;font-weight:700;color:var(--grn)">${convs.length - novos}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:4px">Já cadastrados</div>
         </div>
       </div>
-      <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Contatos atendidos</div>
-      ${convs.length === 0 ? `<div style="color:var(--txt3);font-size:13px;text-align:center;padding:20px">Nenhum contato registrado</div>` :
-        convs.map(c => `
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--bdr)">
-            <div style="font-size:11px;color:var(--txt3);width:38px;flex-shrink:0">${c.hora||'—'}</div>
+      <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Contatos atendidos</div>
+      ${convs.length === 0
+        ? `<div style="color:var(--txt3);font-size:13px;text-align:center;padding:20px">Nenhum contato registrado</div>`
+        : convs.map((c, i) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid var(--bdr)">
+            <div style="font-size:12px;color:var(--txt3);width:14px;text-align:right;flex-shrink:0;font-weight:600">${i+1}</div>
+            <div style="font-size:11px;color:var(--txt3);width:36px;flex-shrink:0">${c.hora||'—'}</div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:13px;font-weight:600;color:var(--txt1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.nome||c.telefone)}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--txt1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.nome||c.telefone||'Desconhecido')}</div>
               <div style="font-size:11px;color:var(--txt3)">${c.telefone||''}</div>
             </div>
-            <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;background:${c.isNewLead?'#fff3e0':'#e8f0ff'};color:${c.isNewLead?'#e65100':'#3a4acc'}">${c.isNewLead?'NOVO':'LEAD'}</span>
+            <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;flex-shrink:0;background:${c.isNewLead?'#fff3e0':'#e8f0ff'};color:${c.isNewLead?'#e65100':'#3a4acc'}">${c.isNewLead?'NOVO LEAD':'JÁ CADASTRADO'}</span>
           </div>`).join('')}
     </div>`;
 
-  document.querySelectorAll('#conv-list .conv-item').forEach((el,i) => el.classList.toggle('on', i===idx));
+  document.querySelectorAll('#conv-list .conv-item').forEach((el, i) => el.classList.toggle('on', i === idx));
+}
+
+function exportarRelatorioPDF(idx) {
+  const r     = (window._relats || [])[idx];
+  if (!r) return;
+  const d     = r.dados;
+  const convs = d?.conversations || [];
+  const novos = convs.filter(c => c.isNewLead).length;
+  const sdr   = r.nome_cliente || 'SDR';
+  const diaFmt = d?.date
+    ? new Date(d.date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })
+    : new Date(r.timestamp).toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+  const rows = convs.map((c, i) => `
+    <tr>
+      <td style="color:#8e8e93;text-align:center">${i+1}</td>
+      <td style="color:#8e8e93;text-align:center">${c.hora||'—'}</td>
+      <td style="font-weight:600">${c.nome||c.telefone||'Desconhecido'}</td>
+      <td style="color:#8e8e93">${c.telefone||'—'}</td>
+      <td style="text-align:center">
+        <span style="padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;background:${c.isNewLead?'#fff3e0':'#e8f0ff'};color:${c.isNewLead?'#e65100':'#3a4acc'}">${c.isNewLead?'NOVO LEAD':'JÁ CADASTRADO'}</span>
+      </td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Relatório SDR — ${sdr}</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif; background:#fff; color:#1c1c1e; padding:40px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px; padding-bottom:20px; border-bottom:2px solid #f2f2f7; }
+    .logo { font-size:22px; font-weight:800; color:#5B6EFF; letter-spacing:-0.5px; }
+    .logo span { color:#1c1c1e; }
+    .header-right { text-align:right; }
+    h1 { font-size:20px; font-weight:700; margin-bottom:4px; }
+    .subtitle { font-size:13px; color:#8e8e93; text-transform:capitalize; }
+    .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:32px; }
+    .kpi { background:#f9f9fb; border-radius:14px; padding:16px; text-align:center; }
+    .kpi .num { font-size:36px; font-weight:700; }
+    .kpi .lbl { font-size:11px; color:#8e8e93; margin-top:6px; text-transform:uppercase; letter-spacing:.4px; }
+    .kpi.total .num { color:#5B6EFF; }
+    .kpi.novos  .num { color:#FF9F0A; }
+    .kpi.exist  .num { color:#34C759; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { background:#f2f2f7; padding:10px 12px; text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:#8e8e93; font-weight:600; }
+    th:first-child, th:nth-child(2) { text-align:center; }
+    td { padding:10px 12px; border-bottom:.5px solid #f2f2f7; vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    .footer { margin-top:32px; padding-top:16px; border-top:1px solid #f2f2f7; font-size:11px; color:#aeaeb2; display:flex; justify-content:space-between; }
+    @media print { body { padding:20px; } @page { margin:1cm; } }
+  </style>
+  </head><body>
+  <div class="header">
+    <div>
+      <div class="logo">eye<span>.crm</span></div>
+      <div style="margin-top:8px;font-size:13px;color:#8e8e93">Relatório de Atendimento WhatsApp</div>
+    </div>
+    <div class="header-right">
+      <h1>${sdr}</h1>
+      <div class="subtitle">${diaFmt}</div>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi total"><div class="num">${convs.length}</div><div class="lbl">Total atendidos</div></div>
+    <div class="kpi novos"><div class="num">${novos}</div><div class="lbl">Novos leads</div></div>
+    <div class="kpi exist"><div class="num">${convs.length - novos}</div><div class="lbl">Já cadastrados</div></div>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>Hora</th><th>Nome</th><th>Telefone</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <span>Eye CRM — Carros Online</span>
+    <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
+  </div>
+  <script>window.onload = () => { window.print(); }<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
 }
 
 /* ── load all messages for current unit → group into convs ── */
 async function loadWppConvs() {
   const uid = currentUnitId();
-  let q = sb.from('whatsapp_mensagens').select('*').order('timestamp', {ascending:false});
+  let q = sb.from('whatsapp_mensagens').select('*').neq('tipo','relatorio_sdr').order('timestamp', {ascending:false});
   if (uid) q = q.eq('unidade_id', uid);
   const { data, error } = await q;
   if (error) { console.error('wpp:', error); return; }
