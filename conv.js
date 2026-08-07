@@ -1,4 +1,11 @@
-const WPP_SERVER = 'https://eye-demo1-production.up.railway.app';
+const WPP_SERVER    = 'https://eye-demo1-production.up.railway.app';
+const WPP_TEMPLATES = [
+  { label: 'Saudação',      text: 'Olá! Tudo bem? Sou do time Eye Motors. Como posso te ajudar hoje?' },
+  { label: 'Modelo?',       text: 'Qual modelo você está procurando? Temos várias opções disponíveis!' },
+  { label: 'Visita',        text: 'Que tal agendar uma visita? Qual dia e horário fica melhor para você?' },
+  { label: 'Financiamento', text: 'Posso verificar as melhores condições de financiamento. Me passa seu CPF?' },
+  { label: 'Disponível',    text: 'Esse veículo está disponível sim! Posso reservar. Quer vir hoje?' },
+];
 
 let _activeWppNum = null;
 let _wppMsgsCache = [];
@@ -44,8 +51,91 @@ function _updateConvBadge() {
   b.textContent = total;
 }
 
+/* ── inject styles once ── */
+function _injectConvStyles() {
+  if (document.getElementById('eye-conv-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'eye-conv-styles';
+  s.textContent = `
+    .conv-ai-box{padding:10px 12px;background:#fffbf0;border-top:1px solid #FFD60A40;display:none}
+    .conv-ai-box .ai-text{font-size:13px;color:var(--txt1,#1c1c1e);line-height:1.5;white-space:pre-wrap;margin-bottom:8px}
+    .conv-ai-box .ai-use{padding:5px 14px;border-radius:8px;border:none;background:#FF9F0A;color:#fff;font-size:12px;font-weight:600;cursor:pointer}
+    .conv-templates{display:flex;flex-wrap:wrap;gap:4px;padding:6px 12px;border-top:0.5px solid var(--bdr,#e5e5ea);background:var(--bg2,#f9f9fb)}
+    .tpl-chip{padding:3px 10px;border-radius:20px;border:1px solid var(--bdr,#e5e5ea);background:var(--bg1,#fff);font-size:11px;font-weight:500;color:var(--txt2,#636366);cursor:pointer;transition:all 0.15s;white-space:nowrap}
+    .tpl-chip:hover{background:#5B6EFF;color:#fff;border-color:#5B6EFF}
+    .conv-ai-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--bdr,#e5e5ea);background:var(--bg1,#fff);color:#5B6EFF;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s}
+    .conv-ai-btn:hover{background:#5B6EFF;color:#fff}
+    .conv-ai-btn:disabled{opacity:0.5;cursor:not-allowed}
+    @keyframes eye-crm-spin{to{transform:rotate(360deg)}}
+    .eye-crm-spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(91,110,255,0.3);border-top-color:#5B6EFF;border-radius:50%;animation:eye-crm-spin 0.7s linear infinite}
+  `;
+  document.head.appendChild(s);
+}
+
+/* ── template quick-fill ── */
+function _useTpl(i) {
+  const t = WPP_TEMPLATES[i];
+  if (!t) return;
+  const inp = document.getElementById('conv-input');
+  if (!inp) return;
+  inp.value = t.text;
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight, 100) + 'px';
+  inp.focus();
+}
+
+/* ── IA suggestion from Eye CRM ── */
+async function eyeAISugerir() {
+  const btn = document.getElementById('conv-ai-btn');
+  const box = document.getElementById('conv-ai-box');
+  if (!btn || !box) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="eye-crm-spinner"></span>';
+
+  const uid  = currentUnitId();
+  const conv = _wppConvs.find(c => c.numero === _activeWppNum);
+  const nome = conv?.nome || _activeWppNum;
+
+  let msgsQ = sb.from('whatsapp_mensagens').select('mensagem,tipo')
+    .eq('numero_cliente', _activeWppNum).order('timestamp', { ascending: false }).limit(10);
+  if (uid) msgsQ = msgsQ.eq('unidade_id', uid);
+  const { data: msgs } = await msgsQ;
+
+  const ctx = (msgs || []).reverse()
+    .map(m => `${m.tipo === 'recebida' ? nome : 'SDR'}: ${m.mensagem}`).join('\n');
+
+  try {
+    const res = await fetch(`${WPP_SERVER}/groq-suggest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact: nome, phone: _activeWppNum, context: ctx })
+    });
+    const data = await res.json();
+    const txt = data.suggestion || '';
+    if (txt) {
+      box.style.display = 'block';
+      box.querySelector('.ai-text').textContent = txt;
+    } else { toast('IA não retornou sugestão', 'err'); }
+  } catch(e) { toast('Erro IA: ' + e.message, 'err'); }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-sparkles"></i>';
+}
+
+/* ── push notification helper ── */
+function _showWppNotification(m) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  new Notification('Nova mensagem — Eye CRM', {
+    body: `${m.nome_cliente || m.numero_cliente}: ${(m.mensagem || '').slice(0, 80)}`,
+    icon: '/favicon.ico',
+    tag:  `wpp-${m.numero_cliente}`
+  });
+}
+
 /* ── main render ── */
 async function renderConv() {
+  _injectConvStyles();
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   const el = document.getElementById('v-conv');
   el.innerHTML = `
     <div class="conv-wrap" id="conv-wrap">
@@ -335,10 +425,18 @@ async function openWppConv(numero) {
         ? (msgs||[]).map(wppMsgBubble).join('')
         : '<div style="text-align:center;color:var(--txt3);font-size:13px;padding:30px">Nenhuma mensagem ainda</div>'}
     </div>
+    <div class="conv-ai-box" id="conv-ai-box">
+      <div class="ai-text"></div>
+      <button class="ai-use" onclick="(function(){var t=document.getElementById('conv-ai-box').querySelector('.ai-text');var i=document.getElementById('conv-input');if(t&&i){i.value=t.textContent;i.style.height='auto';i.style.height=Math.min(i.scrollHeight,100)+'px';document.getElementById('conv-ai-box').style.display='none';}})()"><i class="ti ti-arrow-down-circle"></i> Usar</button>
+    </div>
+    <div class="conv-templates">
+      ${WPP_TEMPLATES.map((t,i) => `<button class="tpl-chip" onclick="_useTpl(${i})">${esc(t.label)}</button>`).join('')}
+    </div>
     <div class="conv-input-wrap">
       <textarea class="conv-input" id="conv-input" rows="1" placeholder="Digite sua mensagem… (Enter para enviar)"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendWppMsg()}"
         oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+      <button class="conv-ai-btn" id="conv-ai-btn" onclick="eyeAISugerir()" title="Sugerir resposta com IA"><i class="ti ti-sparkles"></i></button>
       <button class="conv-send" onclick="sendWppMsg()"><i class="ti ti-send"></i></button>
     </div>`;
 
@@ -431,6 +529,11 @@ function startWppRealtime() {
       drawWppList();
       _updateConvBadge();
       /* if this conv is open, append + mark read */
+      if (m.tipo === 'recebida') {
+        if (document.hidden || m.numero_cliente !== _activeWppNum) {
+          _showWppNotification(m);
+        }
+      }
       if (m.numero_cliente === _activeWppNum && m.tipo === 'recebida') {
         const msgsEl = document.getElementById('conv-msgs');
         if (msgsEl) {
