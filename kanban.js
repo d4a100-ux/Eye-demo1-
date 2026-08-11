@@ -74,11 +74,13 @@ async function renderCrm() {
   const el = document.getElementById('v-crm');
   loading(el);
   await getAppts();
-  const vndOpts = CU.role !== 'vendedor'
-    ? `<select class="fi fi-sel" id="kb-vnd-f" onchange="_kbVndFilter=this.value;_drawKanban()" style="height:34px">
-        <option value="">Todos os vendedores</option>
-        ${vendedores().map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}
-       </select>` : '';
+
+  if (CU.role === 'vendedor') { _renderVendedorView(el); return; }
+
+  const vndOpts = `<select class="fi fi-sel" id="kb-vnd-f" onchange="_kbVndFilter=this.value;_drawKanban()" style="height:34px">
+      <option value="">Todos os vendedores</option>
+      ${vendedores().map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}
+     </select>`;
   el.innerHTML = `
     <div class="filters" style="margin-bottom:12px">
       <input class="fi fi-search" style="height:34px" id="kb-q" placeholder="Buscar cliente…" oninput="_drawKanban()">
@@ -86,6 +88,85 @@ async function renderCrm() {
     </div>
     <div class="kb-board-wrap"><div id="kb-board"></div></div>`;
   _drawKanban();
+}
+
+/* ── Tela simplificada do Vendedor (mobile-first) ─────────────────────────── */
+function _renderVendedorView(el) {
+  if (!document.getElementById('eye-vnd-styles')) {
+    const s = document.createElement('style');
+    s.id = 'eye-vnd-styles';
+    s.textContent = `
+      .vnd-card-wrap{display:flex;flex-direction:column;gap:8px}
+      .vnd-update-btn{flex:1;height:44px;font-size:14px;font-weight:700;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px}
+      .kma-row{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+      .kma-btn{border:none;border-radius:9px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(91,110,255,.1);color:var(--ind);font-family:inherit;white-space:nowrap;transition:background .15s}
+      .kma-btn:hover{background:rgba(91,110,255,.2)}
+      .kma-btn.g{background:rgba(52,199,89,.12);color:#34C759}
+      .kma-btn.g:hover{background:rgba(52,199,89,.22)}
+      .kma-btn.r{background:rgba(255,59,48,.1);color:var(--red)}
+      .kma-btn.r:hover{background:rgba(255,59,48,.2)}
+    `;
+    document.head.appendChild(s);
+  }
+  const appts = _apptsCache.filter(a => a.vnd === CU.nome);
+  const ACTIVE_ST = ['passado_vendedor','agendado','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno','pendente','em_atendimento'];
+  const active  = appts.filter(a => ACTIVE_ST.includes(a.status)).length;
+  const visitas = appts.filter(a => a.status === 'agendado').length;
+  const vendas  = appts.filter(a => a.status === 'venda_concluida').length;
+
+  el.innerHTML = `
+    <div class="stats">
+      <div class="stat-c"><div class="sv">${active}</div><div class="sl">Ativos</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--amb)">${visitas}</div><div class="sl">Visitas</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--grn)">${vendas}</div><div class="sl">Vendas</div></div>
+    </div>
+    <div class="filters" style="margin-bottom:12px">
+      <input class="fi fi-search" id="vnd-q" placeholder="Buscar cliente…" oninput="_filterVndView()">
+    </div>
+    <div id="vnd-list"></div>`;
+  _filterVndView();
+}
+
+function _filterVndView() {
+  const q = (document.getElementById('vnd-q')?.value || '').toLowerCase();
+  let appts = _apptsCache.filter(a => a.vnd === CU.nome);
+  if (q) appts = appts.filter(a => (a.cli + ' ' + (a.tel||'')).toLowerCase().includes(q));
+
+  const PRIORITY = ['passado_vendedor','agendado','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno','pendente','em_atendimento'];
+  const active = appts.filter(a => PRIORITY.includes(a.status))
+    .sort((a, b) => PRIORITY.indexOf(a.status) - PRIORITY.indexOf(b.status));
+  const done = appts.filter(a => ['venda_concluida','perdido','sem_resposta','lead_frio','credito_reprovado'].includes(a.status));
+
+  const el = document.getElementById('vnd-list');
+  if (!appts.length) {
+    el.innerHTML = `<div class="empty-st"><i class="ti ti-user-off"></i><p>Nenhum lead atribuído a você ainda.</p></div>`;
+    return;
+  }
+  el.innerHTML = `
+    ${active.length ? `<div class="sec-lbl">Leads ativos <span>${active.length}</span></div><div class="vnd-card-wrap">${active.map(_vndCard).join('')}</div>` : ''}
+    ${done.length  ? `<div class="sec-lbl" style="margin-top:18px">Encerrados <span>${done.length}</span></div><div class="vnd-card-wrap">${done.map(_vndCard).join('')}</div>` : ''}`;
+}
+
+function _vndCard(a) {
+  const sm     = fmtStatus(a.status);
+  const alertH = _alertHours(a);
+  const alertCls = alertH >= 24 ? 'ac-alert-dead' : alertH >= 4 ? 'ac-alert-crit' : alertH >= 2 ? 'ac-alert-warn' : '';
+  return `<div class="ac${alertCls?' '+alertCls:''}" style="--c:${sm.c}">
+    <div class="ac-head">
+      <div style="flex:1;min-width:0">
+        <div class="ac-name">${esc(a.cli)}<span class="tag ${sm.cls}" style="margin-left:6px">${sm.l}</span>${alertH>=2?`<span class="ac-alert-badge">${alertH>=24?'🔴':'⚠'} ${Math.round(alertH)}h</span>`:''}</div>
+        <div class="ac-sub" style="margin-top:4px;flex-wrap:wrap;gap:6px">
+          ${a.tel    ? `<span><i class="ti ti-phone"></i>${esc(a.tel)}</span>`    : ''}
+          ${a.modelo ? `<span><i class="ti ti-car"></i>${esc(a.modelo)}</span>`   : ''}
+          ${a.data   ? `<span><i class="ti ti-calendar"></i>${fmtDate(a.data)}${a.hora?' · '+a.hora:''}</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="ac-acts" style="margin-top:10px">
+      <button class="btn-s p vnd-update-btn" onclick="openNeg('${a.id}')"><i class="ti ti-refresh"></i> Atualizar</button>
+      <button class="btn-s" style="height:44px;padding:0 14px" onclick="openLeadTimeline('${a.id}')"><i class="ti ti-timeline"></i></button>
+    </div>
+  </div>`;
 }
 
 function _drawKanban() {
@@ -158,6 +239,7 @@ function kbCard(a, locked) {
   const txt = alertText(a);
   const col = KB_COLS.find(c => c.id === a.status);
   const borderCol = col?.color || 'var(--ind)';
+  const miniActs = locked ? '' : _kbMiniActs(a);
   return `
     <div class="kb-card${al?' '+al:''}" style="border-left-color:${borderCol}" draggable="${!locked}"
       ondragstart="${locked?'void 0':("_kbDragId='"+a.id+"'")}"
@@ -177,7 +259,27 @@ function kbCard(a, locked) {
         ${a.valor ? `<span class="kb-card-val">${esc(a.valor)}</span>` : '<span></span>'}
         ${a.data  ? `<span class="kb-card-date"><i class="ti ti-calendar"></i>${fmtDate(a.data)}</span>` : ''}
       </div>
+      ${miniActs ? `<div class="kma-row">${miniActs}</div>` : ''}
     </div>`;
+}
+
+function _kbMiniActs(a) {
+  const id = a.id, st = a.status;
+  if (st === 'pendente')
+    return `<button class="kma-btn" onclick="event.stopPropagation();negQa('${id}','em_atendimento')">Iniciar →</button>`;
+  if (st === 'em_atendimento')
+    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','qualificado')">Qualificado ✓</button><button class="kma-btn" onclick="event.stopPropagation();negQa('${id}','agendado')">Agendar</button>`;
+  if (st === 'qualificado')
+    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','agendado')">Agendar visita →</button>`;
+  if (st === 'agendado')
+    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','passado_vendedor')">Confirmou ✓</button><button class="kma-btn r" onclick="event.stopPropagation();negQa('${id}','sem_resposta')">Cancelou</button>`;
+  if (st === 'passado_vendedor')
+    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','em_negociacao')">Cliente chegou ✓</button>`;
+  if (st === 'em_negociacao' || st === 'test_drive')
+    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','ficha_enviada')">Ficha →</button><button class="kma-btn" onclick="event.stopPropagation();negQa('${id}','ag_retorno')">Ag. retorno</button>`;
+  if (st === 'credito_aprovado')
+    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','venda_concluida')">Venda fechada! 🏆</button>`;
+  return '';
 }
 
 async function kbDrop(event, newStatus) {
