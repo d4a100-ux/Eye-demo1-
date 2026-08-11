@@ -124,6 +124,30 @@ async function renderBi() {
   const compareceTotal = mine.filter(a=>['em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length;
   const compareceRate = agendTotal>0 ? Math.round(compareceTotal/agendTotal*100) : 0;
 
+  // KPIs Protocolo 4E+ / V+
+  const qualTotal  = mine.filter(a=>['qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length;
+  const agenTotal4 = mine.filter(a=>['agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length;
+  const vendaTotal = mine.filter(a=>a.status==='venda_concluida').length;
+  const taxaQual   = mine.length>0 ? Math.round(qualTotal/mine.length*100) : 0;
+  const taxaAgen   = qualTotal>0   ? Math.round(agenTotal4/qualTotal*100)  : 0;
+  const taxaConv   = compareceTotal>0 ? Math.round(vendaTotal/compareceTotal*100) : 0;
+  function _semaforo(val, t1, t2) { return val>=t1?'var(--grn)':val>=t2?'var(--amb)':'var(--red)'; }
+  function _semaforoKpi(label, val, unit, target, t1, t2, hint) {
+    const c=_semaforo(val,t1,t2), bg=_semaforo(val,t1,t2).replace('var(--','').replace(')','');
+    const barW=Math.min(100,val);
+    return `<div style="background:var(--bg);border-radius:14px;padding:14px 16px;border:1px solid ${c}22">
+      <div style="font-size:10px;color:var(--txt3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">${label}</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:6px">
+        <span style="font-size:28px;font-weight:800;color:${c};letter-spacing:-1px;line-height:1">${val}</span>
+        <span style="font-size:14px;font-weight:600;color:${c};padding-bottom:3px">${unit}</span>
+      </div>
+      <div style="height:5px;background:var(--bg2);border-radius:3px;margin-bottom:6px;overflow:hidden">
+        <div style="height:100%;width:${barW}%;background:${c};border-radius:3px;transition:width .6s ease"></div>
+      </div>
+      <div style="font-size:10px;color:var(--txt3)">Meta: <b style="color:${c}">${target}</b> · ${hint}</div>
+    </div>`;
+  }
+
   // Relatório - dados por período (injetado via JS depois do render)
   function _biRepData(period) {
     const now2 = new Date();
@@ -188,6 +212,17 @@ async function renderBi() {
     <!-- PERFORMANCE POR PESSOA -->
     <div class="bi-section" id="bi-s-pessoas">
     <div class="bi-grid">
+      <div class="dash-box bi-full">
+        <div class="dash-box-title">Semáforo de KPIs — Protocolo 4E+ / V+
+          <span style="font-size:10px;font-weight:400;color:var(--txt3);text-transform:none;letter-spacing:0;margin-left:6px">verde=dentro da meta · amarelo=atenção · vermelho=abaixo</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+          ${_semaforoKpi('Qualificação', taxaQual, '%', '≥30%', 30, 15, 'leads qualificados')}
+          ${_semaforoKpi('Agendamento', taxaAgen, '%', '≥40%', 40, 20, '4E+: meta 40%')}
+          ${_semaforoKpi('Comparecimento', compareceRate, '%', '≥60%', 60, 40, '4E+/V+: meta 60%')}
+          ${_semaforoKpi('Conversão', taxaConv, '%', '≥30%', 30, 15, 'visita → venda')}
+        </div>
+      </div>
       <div class="dash-box bi-full">
         <div class="dash-box-title">Conversão por vendedor</div>
         ${vnds.length?`<canvas id="bi-vendors" height="120"></canvas>`:`<div class="alert-empty">Sem dados de vendedores</div>`}
