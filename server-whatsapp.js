@@ -18,11 +18,68 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+const GROQ_KEY_SERVER = process.env.GROQ_KEY;
+
 // Fallbacks globais — usados quando a unidade ainda não tem config própria
 const GLOBAL_TOKEN    = process.env.META_ACCESS_TOKEN;
 const GLOBAL_PHONE_ID = process.env.META_PHONE_NUMBER_ID;
 const VERIFY_TOKEN    = process.env.META_VERIFY_TOKEN || 'eye_crm_verify_2025';
 const UNIT_DEFAULT    = process.env.UNIDADE_ID_DEFAULT;
+
+/* ── Auto-resposta IA (primeiro contato) ── */
+async function gerarAutoResposta(mensagem, nome) {
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${GROQ_KEY_SERVER}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', max_tokens: 150,
+        messages: [
+          { role: 'system', content: 'Você é a recepção de uma concessionária de veículos. Responda de forma simpática, breve e profissional dando boas-vindas ao cliente e perguntando como pode ajudar. Máximo 2 frases. Português brasileiro natural.' },
+          { role: 'user',   content: `Cliente ${nome} enviou pela primeira vez: "${mensagem}". Gere a saudação de boas-vindas.` }
+        ]
+      })
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch(e) {
+    console.error('[groq]', e.message);
+    return null;
+  }
+}
+
+async function isFirstContact(unidadeId, numero) {
+  const { count } = await supabase.from('whatsapp_mensagens')
+    .select('id', { count: 'exact', head: true })
+    .eq('unidade_id', unidadeId).eq('numero_cliente', numero);
+  return count === 0;
+}
+
+async function _enviarWhatsApp(unidadeId, numero, mensagem) {
+  let token   = GLOBAL_TOKEN;
+  let phoneId = GLOBAL_PHONE_ID;
+  if (unidadeId) {
+    const c = await conexaoByUnidade(unidadeId);
+    if (c?.access_token)    token   = c.access_token;
+    if (c?.phone_number_id) phoneId = c.phone_number_id;
+  }
+  if (!token || !phoneId) return;
+  const to = (numero || '').replace(/\D/g, '');
+  try {
+    const r = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: mensagem } })
+    });
+    if (r.ok) {
+      await supabase.from('whatsapp_mensagens').insert({
+        unidade_id: unidadeId || UNIT_DEFAULT, numero_cliente: to,
+        mensagem, tipo: 'enviada', timestamp: new Date().toISOString()
+      });
+      console.log(`[auto] resposta enviada → ${to}`);
+    }
+  } catch(e) { console.error('[auto] erro enviar:', e.message); }
+}
 
 /* ── Helpers de lookup ── */
 async function conexaoByPhone(phoneId) {
@@ -78,6 +135,8 @@ app.post('/webhook', async (req, res) => {
           const { data: lead } = await supabase.from('leads')
             .select('id, nome').eq('unidade_id', unidadeId).eq('telefone', numero).maybeSingle();
 
+          const primeiro = await isFirstContact(unidadeId, numero);
+
           const { error } = await supabase.from('whatsapp_mensagens').insert({
             unidade_id:     unidadeId,
             lead_id:        lead?.id || null,
@@ -89,8 +148,15 @@ app.post('/webhook', async (req, res) => {
             timestamp:      new Date().toISOString()
           });
 
-          if (error) console.error('[meta] erro salvar:', error.message);
-          else       console.log('[meta] salvo OK');
+          if (error) { console.error('[meta] erro salvar:', error.message); }
+          else {
+            console.log('[meta] salvo OK');
+            if (primeiro) {
+              console.log(`[auto] primeiro contato de ${numero} — gerando auto-resposta`);
+              const autoResp = await gerarAutoResposta(texto, nome);
+              if (autoResp) await _enviarWhatsApp(unidadeId, numero, autoResp);
+            }
+          }
         } catch (err) {
           console.error('[meta] exceção:', err.message);
         }
@@ -178,6 +244,31 @@ app.post('/conectar-unidade', async (req, res) => {
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));
+
+/* ── Sugestão IA para Eye CRM (chamado do browser) ── */
+app.post('/groq-suggest', async (req, res) => {
+  const { contact, phone, context } = req.body;
+  if (!GROQ_KEY_SERVER) return res.status(503).json({ erro: 'GROQ_KEY não configurada no servidor' });
+
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${GROQ_KEY_SERVER}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile', max_tokens: 200,
+        messages: [
+          { role: 'system', content: 'Você é copilot de vendas de uma concessionária de veículos. Sugira UMA resposta curta, natural e persuasiva em português brasileiro. Máximo 2-3 frases. Qualifique o lead e proponha próximos passos.' },
+          { role: 'user',   content: `Contato: ${contact} (${phone})\n\nConversa:\n${context}\n\nSugira a próxima resposta do SDR:` }
+        ]
+      })
+    });
+    const data = await r.json();
+    const suggestion = data.choices?.[0]?.message?.content || '';
+    res.json({ suggestion });
+  } catch(e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
 
 /* ── Relatório SDR (enviado pela extensão Chrome) ── */
 app.post('/relatorio-sdr', async (req, res) => {
