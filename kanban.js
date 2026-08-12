@@ -109,6 +109,7 @@ function _kbOpenWpp(tel, nome) {
 }
 
 let _vndBriefings = {};
+let _vndContacts  = {};
 
 /* ── Tela simplificada do Vendedor (mobile-first) ─────────────────────────── */
 async function _renderVendedorView(el) {
@@ -124,26 +125,57 @@ async function _renderVendedorView(el) {
       .vnd-bf-chip{background:rgba(255,159,10,.12);color:var(--amb);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:600}
       .kb-wpp-btn{border:none;background:rgba(37,211,102,.12);color:#25D366;border-radius:8px;width:26px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;flex:none;transition:background .15s}
       .kb-wpp-btn:hover{background:rgba(37,211,102,.25)}
+      .vnd-contacts{margin-top:10px;padding:10px 12px;background:rgba(91,110,255,.07);border-radius:10px}
+      .vnd-contacts-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ind);margin-bottom:7px}
+      .vnd-contacts-row{display:flex;gap:6px;flex-wrap:wrap}
+      .vnd-contact-chip{border:1.5px solid rgba(91,110,255,.3);background:transparent;color:var(--ind);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+      .vnd-contact-chip.done{background:var(--grn);border-color:var(--grn);color:#fff;cursor:default}
+      .vnd-visita-prompt{margin-top:10px;padding:12px;background:rgba(255,59,48,.06);border:1px solid rgba(255,59,48,.18);border-radius:10px}
+      .vnd-visita-title{font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:8px;display:flex;align-items:center;gap:5px}
+      .vnd-visita-acts{display:flex;gap:6px;flex-wrap:wrap}
+      .vnd-vq{border:none;border-radius:9px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s}
+      .vnd-vq:hover{opacity:.8}
+      .vnd-vq.g{background:rgba(52,199,89,.14);color:var(--grn)}
+      .vnd-vq.r{background:rgba(255,59,48,.11);color:var(--red)}
     `;
     document.head.appendChild(s);
   }
   const appts = _apptsCache.filter(a => a.vnd === CU.nome);
-  // Busca briefings em lote
+  _vndBriefings = {};
+  _vndContacts  = {};
   if (appts.length) {
-    const { data: bfs } = await sb.from('eye_briefings').select('*').in('appt_id', appts.map(a => a.id));
-    _vndBriefings = {};
-    (bfs || []).forEach(b => _vndBriefings[b.appt_id] = b);
+    const ids = appts.map(a => a.id);
+    const [bfsRes, cmsRes] = await Promise.all([
+      sb.from('eye_briefings').select('*').in('appt_id', ids),
+      sb.from('eye_comments').select('appt_id,texto').in('appt_id', ids).ilike('texto', '[VND-C_]%')
+    ]);
+    (bfsRes.data || []).forEach(b => _vndBriefings[b.appt_id] = b);
+    (cmsRes.data || []).forEach(c => {
+      const m = c.texto.match(/\[VND-C(\d)\]/);
+      if (m) {
+        if (!_vndContacts[c.appt_id]) _vndContacts[c.appt_id] = new Set();
+        _vndContacts[c.appt_id].add(parseInt(m[1]));
+      }
+    });
   }
   const ACTIVE_ST = ['passado_vendedor','agendado','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno','pendente','em_atendimento'];
-  const active  = appts.filter(a => ACTIVE_ST.includes(a.status)).length;
-  const visitas = appts.filter(a => a.status === 'agendado').length;
-  const vendas  = appts.filter(a => a.status === 'venda_concluida').length;
+  const active         = appts.filter(a => ACTIVE_ST.includes(a.status)).length;
+  const visitas        = appts.filter(a => a.status === 'agendado').length;
+  const vendas         = appts.filter(a => a.status === 'venda_concluida').length;
+  const agendadosTotal = appts.filter(a => ['passado_vendedor','em_negociacao','ficha_enviada','venda_concluida','perdido','ag_retorno'].includes(a.status)).length;
+  const compareceTotal = appts.filter(a => ['em_negociacao','ficha_enviada','venda_concluida'].includes(a.status)).length;
+  const compareceRate  = agendadosTotal > 0 ? Math.round(compareceTotal / agendadosTotal * 100) : 0;
+  const convRate       = compareceTotal  > 0 ? Math.round(vendas / compareceTotal * 100) : 0;
+  const cmpColor = compareceRate >= 60 ? 'var(--grn)' : compareceRate >= 40 ? 'var(--amb)' : 'var(--red)';
+  const cnvColor = convRate >= 30 ? 'var(--grn)' : convRate >= 15 ? 'var(--amb)' : 'var(--red)';
 
   el.innerHTML = `
     <div class="stats">
       <div class="stat-c"><div class="sv">${active}</div><div class="sl">Ativos</div></div>
       <div class="stat-c"><div class="sv" style="color:var(--amb)">${visitas}</div><div class="sl">Visitas</div></div>
       <div class="stat-c"><div class="sv" style="color:var(--grn)">${vendas}</div><div class="sl">Vendas</div></div>
+      <div class="stat-c"><div class="sv" style="color:${cmpColor}">${compareceRate}%</div><div class="sl">Comparec.</div></div>
+      <div class="stat-c"><div class="sv" style="color:${cnvColor}">${convRate}%</div><div class="sl">Conversão</div></div>
     </div>
     <div class="filters" style="margin-bottom:12px">
       <input class="fi fi-search" id="vnd-q" placeholder="Buscar cliente…" oninput="_filterVndView()">
@@ -172,6 +204,31 @@ function _filterVndView() {
     ${done.length  ? `<div class="sec-lbl" style="margin-top:18px">Encerrados <span>${done.length}</span></div><div class="vnd-card-wrap">${done.map(_vndCard).join('')}</div>` : ''}`;
 }
 
+async function _vndMarkContact(apptId, n) {
+  const btn = document.querySelector(`.vnd-contact-chip[data-appt="${apptId}"][data-n="${n}"]`);
+  if (btn) btn.classList.add('done');
+  await sb.from('eye_comments').insert({
+    id: uid(), appt_id: apptId, user_nome: CU.nome,
+    texto: `[VND-C${n}] Contato ${n} realizado`,
+    created_at: new Date().toISOString()
+  });
+  if (!_vndContacts[apptId]) _vndContacts[apptId] = new Set();
+  _vndContacts[apptId].add(n);
+}
+
+async function _vndQa(apptId, newStatus) {
+  const a = _apptsCache.find(x => x.id === apptId);
+  if (!a) return;
+  const old = a.status;
+  const now = new Date().toISOString();
+  a.status = newStatus; a.em = now;
+  _filterVndView();
+  const { error } = await sb.from('eye_appts').update({ status: newStatus, em: now }).eq('id', apptId);
+  if (error) { toast('Erro ao atualizar', 'err'); a.status = old; a.em = null; _filterVndView(); return; }
+  await logStatus(apptId, old, newStatus);
+  toast('Atualizado!');
+}
+
 function _vndCard(a) {
   const sm     = fmtStatus(a.status);
   const alertH = _alertHours(a);
@@ -189,6 +246,37 @@ function _vndCard(a) {
         ${bf.objecao && bf.objecao !== 'nenhuma' ? `<span class="vnd-bf-chip">⚠ ${objLabels[bf.objecao]||bf.objecao}</span>` : ''}
       </div>
     </div>` : '';
+
+  // Checklist 4 contatos V+ — aparece para leads passados ao vendedor ou agendados
+  const showChecklist = ['passado_vendedor','agendado'].includes(a.status);
+  const done = _vndContacts[a.id] || new Set();
+  const checklistHtml = showChecklist ? `
+    <div class="vnd-contacts">
+      <div class="vnd-contacts-title">Protocolo V+ — 4 contatos obrigatórios</div>
+      <div class="vnd-contacts-row">
+        ${[1,2,3,4].map(n => {
+          const isDone = done.has(n);
+          const labels = ['1º Boas-vindas','2º Confirmação','3º Véspera','4º Pós-visita'];
+          return `<button class="vnd-contact-chip${isDone?' done':''}" data-appt="${a.id}" data-n="${n}"
+            ${isDone ? 'disabled' : `onclick="event.stopPropagation();_vndMarkContact('${a.id}',${n})"`}
+            title="${labels[n-1]}">${isDone?'✓ ':''} C${n}</button>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // Prompt de resultado de visita — aparece quando data já passou e ainda está agendado/passado
+  const today = new Date().toISOString().slice(0,10);
+  const visitaPendente = ['agendado','passado_vendedor'].includes(a.status) && a.data && a.data <= today;
+  const visitaHtml = visitaPendente ? `
+    <div class="vnd-visita-prompt">
+      <div class="vnd-visita-title"><i class="ti ti-flag"></i> Registrar resultado da visita</div>
+      <div class="vnd-visita-acts">
+        <button class="vnd-vq g" onclick="event.stopPropagation();_vndQa('${a.id}','em_negociacao')">Compareceu — Em Neg.</button>
+        <button class="vnd-vq r" onclick="event.stopPropagation();_vndQa('${a.id}','perdido')">Não compareceu</button>
+        <button class="vnd-vq" style="background:rgba(142,142,147,.12);color:var(--txt2)" onclick="event.stopPropagation();_vndQa('${a.id}','ag_retorno')">Remarcar</button>
+      </div>
+    </div>` : '';
+
   return `<div class="ac${alertCls?' '+alertCls:''}" style="--c:${sm.c}">
     <div class="ac-head">
       <div style="flex:1;min-width:0">
@@ -201,6 +289,8 @@ function _vndCard(a) {
       </div>
     </div>
     ${briefingHtml}
+    ${checklistHtml}
+    ${visitaHtml}
     <div class="ac-acts" style="margin-top:10px">
       <button class="btn-s p vnd-update-btn" onclick="openNeg('${a.id}')"><i class="ti ti-refresh"></i> Atualizar</button>
       ${a.tel ? `<button class="btn-s" style="height:44px;padding:0 14px;color:#25D366" onclick="event.stopPropagation();_kbOpenWpp('${a.tel.replace(/\D/g,'')}','${esc(a.cli)}')" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
