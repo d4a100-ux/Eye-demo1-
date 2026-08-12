@@ -1,7 +1,7 @@
 const SESSION_HOURS = 12;
 let _popStateNav = false;
 
-const _VALID_TABS = ['inicio','conv','crm','tarefas','agenda','cal','retrab','origem','negoc','base','bi','ativos','conf','users','config'];
+const _VALID_TABS = ['inicio','conv','crm','tarefas','agenda','cal','retrab','origem','negoc','base','bi','ativos','conf','users','config','mst-bi'];
 
 (async () => {
   await initUsers();
@@ -29,6 +29,7 @@ const _VALID_TABS = ['inicio','conv','crm','tarefas','agenda','cal','retrab','or
 })();
 
 async function _openWppLeadModal(nome, tel) {
+  // Aguarda o CRM renderizar
   await new Promise(r => setTimeout(r, 600));
   await getUsers();
   const vnds = vendedores();
@@ -44,13 +45,14 @@ async function _openWppLeadModal(nome, tel) {
   document.getElementById('a-orig').value     = 'WhatsApp Direto';
   document.getElementById('a-status').value   = 'em_atendimento';
   document.getElementById('a-vnd').innerHTML  =
-    `<option value="">Selecione...</option>${vnds.map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}`;
+    `<option value="">Selecione…</option>${vnds.map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}`;
   document.getElementById('a-vnd').value      = CU.role === 'vendedor' ? CU.nome : '';
   ['a-hora','a-modelo','a-valor','a-obs','a-prox'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('a-pgto').value = '';
   document.getElementById('ov-appt').classList.add('on');
+  // Limpa o param da URL sem recarregar
   history.replaceState({}, '', window.location.pathname);
 }
 
