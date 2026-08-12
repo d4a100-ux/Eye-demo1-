@@ -610,6 +610,11 @@ function startRealtimeLeads(){
   _leadNotifSub=sb.channel('eye-leads-rt2')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'eye_appts'},payload=>{
       const a=payload.new;
+      if(_activeUnit && a.unidade_id !== _activeUnit) return;
+      const already=_apptsCache.findIndex(x=>x.id===a.id);
+      if(already<0) _apptsCache.push(a);
+      _crmBadgeCount=(_apptsCache.filter(x=>x.status==='pendente')).length;
+      updateCrmBadge();
       if(CU.role==='vendedor') return;
       pushNotif('Novo lead chegou!',`${a.cli||a.tel} · ${a.orig||''}`);
       toast(`Novo lead: ${a.cli||a.tel}`);
