@@ -250,7 +250,7 @@ function navGroups() {
   };
   const mk = id => ({ id, ...ALL[id] });
   const groups = [
-    { label:'Atendimento', ids:['inicio','conv','crm','tarefas','agenda','cal','retrab'], roles:null },
+    { label:'Atendimento', ids:['inicio','conv','crm','tarefas','cal','retrab'], roles:null },
     { label:'Comercial',   ids:['base'],                                                  roles:['sdr','gerencia','master'] },
     { label:'Gestão',      ids:['negoc','bi','ativos','conf'],                            roles:['gerencia','master'] },
     { label:'Admin',       ids:CU.role==='master'?['users','config']:['users'],           roles:['gerencia','master'] },
@@ -284,6 +284,7 @@ function toggleSidebar() {
 }
 
 function goTab(id) {
+  if (id === 'agenda') id = 'cal';
   if (!_popStateNav) history.pushState({ tab: id }, '', '/' + id);
   _popStateNav = false;
   const logo = document.getElementById('eye-logo');
@@ -300,7 +301,7 @@ function goTab(id) {
   // Breadcrumb no topbar
   const crumb = document.getElementById('top-crumb');
   if (crumb) {
-    const names = { inicio:'',conv:'Conversas',crm:'CRM',tarefas:'Tarefas',agenda:'Agenda',cal:'Calendário',retrab:'Retrabalho',origem:'Origens',negoc:'Pipeline',base:'Base de Dados',bi:'BI',ativos:'Ativos',conf:'Conferência',users:'Usuários',config:'Config' };
+    const names = { inicio:'',conv:'Conversas',crm:'CRM',tarefas:'Tarefas',cal:'Calendário',retrab:'Retrabalho',origem:'Origens',negoc:'Pipeline',base:'Base de Dados',bi:'BI',ativos:'Ativos',conf:'Conferência',users:'Usuários',config:'Config' };
     const label = names[id] || id;
     crumb.textContent = label ? '/ ' + label : '';
     crumb.style.display = label ? 'inline' : 'none';
