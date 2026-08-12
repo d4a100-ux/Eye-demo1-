@@ -107,13 +107,13 @@ async function renderUnitsSelector() {
       .mst-period-btn.on{background:var(--ind);border-color:var(--ind);color:#fff}
       .mst-digest-btn{border:none;background:rgba(255,159,10,.12);color:var(--amb);border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px}
       .mst-digest-btn:hover{background:rgba(255,159,10,.22)}
-      .usc2-card{background:var(--card);border:1.5px solid var(--brd);border-radius:16px;padding:16px;cursor:pointer;transition:box-shadow .15s;position:relative}
-      .usc2-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.12)}
+      .usc2-card{background:rgba(255,255,255,.78);border:.5px solid rgba(255,255,255,.85);border-radius:16px;padding:16px;cursor:pointer;transition:box-shadow .15s;position:relative;backdrop-filter:blur(16px)}
+      .usc2-card:hover{box-shadow:0 8px 32px rgba(91,110,255,.12)}
       .usc2-grn{border-left:4px solid var(--grn)}
       .usc2-amb{border-left:4px solid var(--amb)}
       .usc2-red{border-left:4px solid var(--red)}
       .usc2-all{border-left:4px solid var(--ind)}
-      .usc2-add{border-style:dashed;border-left:1.5px dashed var(--brd);cursor:pointer}
+      .usc2-add{border-style:dashed;border-left:1.5px dashed rgba(60,60,67,.2);cursor:pointer}
       .usc2-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
       .usc2-rank{font-size:24px;flex:none;width:32px;text-align:center}
       .usc2-info{flex:1;min-width:0}
@@ -130,13 +130,13 @@ async function renderUnitsSelector() {
       .usc2-team{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--txt2);font-weight:500}
       .usc2-team i{margin-right:2px;vertical-align:-1px}
       .mst-digest-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
-      .mst-digest-panel{background:var(--card);border-radius:24px 24px 0 0;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;padding:24px 20px 32px}
+      .mst-digest-panel{background:rgba(255,255,255,.96);backdrop-filter:blur(32px) saturate(200%);-webkit-backdrop-filter:blur(32px) saturate(200%);border:.5px solid rgba(255,255,255,.92);border-bottom:none;box-shadow:0 -8px 40px rgba(0,0,0,.12);border-radius:24px 24px 0 0;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;padding:24px 20px 32px}
       .mst-digest-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
       .mst-digest-title{font-size:17px;font-weight:800;color:var(--txt)}
       .mst-digest-close{border:none;background:var(--bg2);color:var(--txt2);border-radius:50%;width:32px;height:32px;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
       .mst-digest-sec{margin-bottom:20px}
       .mst-digest-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);margin-bottom:10px}
-      .mst-snapshot-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--brd)}
+      .mst-snapshot-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bdr)}
       .mst-snapshot-row:last-child{border-bottom:none}
       .mst-snap-label{font-size:13px;color:var(--txt2)}
       .mst-snap-val{font-size:13px;font-weight:700;color:var(--txt)}
@@ -145,7 +145,7 @@ async function renderUnitsSelector() {
       .mst-risk-icon{font-size:16px;flex:none;margin-top:2px}
       .mst-risk-text{flex:1;font-size:12px;color:var(--txt2);line-height:1.5}
       .mst-risk-text b{color:var(--txt);font-weight:700}
-      .mst-rank-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--brd);cursor:pointer;transition:opacity .15s}
+      .mst-rank-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bdr);cursor:pointer;transition:opacity .15s}
       .mst-rank-row:last-child{border-bottom:none}
       .mst-rank-row:hover{opacity:.7}
       .mst-rank-medal{font-size:16px;width:24px;text-align:center;flex:none}
