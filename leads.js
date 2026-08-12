@@ -49,36 +49,8 @@ function apptCard(a, opts = {}) {
 
 // ─── AGENDA ───────────────────────────────────────────────────────────────────
 async function renderAgenda() {
-  const el = document.getElementById('v-agenda');
-  loading(el);
-  let appts = await getAppts();
-  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
-  el.innerHTML = `
-    <div class="stats">
-      <div class="stat-c"><div class="sv" style="color:var(--ind2)">${appts.length}</div><div class="sl">Total</div></div>
-      <div class="stat-c"><div class="sv">${appts.filter(a=>a.status==='agendado').length}</div><div class="sl">Agendados</div></div>
-      <div class="stat-c"><div class="sv" style="color:#FF9F0A">${appts.filter(a=>a.status==='passado_vendedor').length}</div><div class="sl">Com vendedor</div></div>
-      <div class="stat-c"><div class="sv" style="color:#34C759">${appts.filter(a=>a.status==='venda_concluida').length}</div><div class="sl">Vendas</div></div>
-      <div class="stat-c"><div class="sv" style="color:var(--red)">${appts.filter(a=>a.status==='perdido').length}</div><div class="sl">Perdidos</div></div>
-    </div>
-    <div class="filters">
-      <input class="fi fi-search" id="ag-q" placeholder="Buscar cliente, modelo…" oninput="_filterAgenda()">
-      <select class="fi fi-sel" id="ag-st" onchange="_filterAgenda()">
-        <option value="">Todos os status</option>
-        ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('')}
-      </select>
-      ${CU.role!=='vendedor'?`<select class="fi fi-sel" id="ag-vnd" onchange="_filterAgenda()">
-        <option value="">Todos os vendedores</option>
-        ${vendedores().map(v=>`<option>${v.nome}</option>`).join('')}
-      </select>`:''}
-      <select class="fi fi-sel" id="ag-orig" onchange="_filterAgenda()">
-        <option value="">Todas as origens</option>
-        ${Object.keys(activeOrigins()).map(o=>`<option>${o}</option>`).join('')}
-      </select>
-      <button class="btn-s" onclick="exportCSV()" style="white-space:nowrap"><i class="ti ti-table-export"></i>Exportar CSV</button>
-    </div>
-    <div id="ag-list"></div>`;
-  _filterAgenda();
+  goTab('cal');
+  _calInnerTab = 'agenda';
 }
 
 function _filterAgenda() {
@@ -161,15 +133,84 @@ async function agQa(id, newStatus) {
 // ─── CALENDAR ─────────────────────────────────────────────────────────────────
 let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), calSelDay = null;
 
+let _calInnerTab = 'calendario';
+
 async function renderCal() {
   const el = document.getElementById('v-cal');
   loading(el);
   await getAppts();
-  el.innerHTML = `<div class="cal-wrap"><div class="cal-box" id="cal-grid-box"></div><div class="cal-detail" id="cal-detail-box"></div></div>`;
-  drawCalGrid();
-  const today = new Date();
-  calSelDay = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  drawCalDetail(calSelDay);
+  el.innerHTML = `
+    <div class="bi-tabs" style="margin-bottom:16px">
+      <button class="bi-tab${_calInnerTab==='calendario'?' on':''}" onclick="_switchCalTab('calendario')"><i class="ti ti-calendar-month"></i> Calendário</button>
+      <button class="bi-tab${_calInnerTab==='agenda'?' on':''}" onclick="_switchCalTab('agenda')"><i class="ti ti-list"></i> Agenda</button>
+    </div>
+    <div id="cal-tab-calendario" style="${_calInnerTab!=='calendario'?'display:none':''}">
+      <div class="cal-wrap"><div class="cal-box" id="cal-grid-box"></div><div class="cal-detail" id="cal-detail-box"></div></div>
+    </div>
+    <div id="cal-tab-agenda" style="${_calInnerTab!=='agenda'?'display:none':''}">
+      <div id="cal-agenda-inner"></div>
+    </div>`;
+
+  if (_calInnerTab === 'calendario') {
+    drawCalGrid();
+    const today = new Date();
+    calSelDay = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    drawCalDetail(calSelDay);
+  } else {
+    _renderCalAgenda();
+  }
+}
+
+function _switchCalTab(tab) {
+  _calInnerTab = tab;
+  document.querySelectorAll('.bi-tab').forEach(b => b.classList.remove('on'));
+  const tabs = document.querySelectorAll('.bi-tab');
+  tabs.forEach(b => { if ((tab==='calendario'&&b.textContent.includes('Calendário'))||(tab==='agenda'&&b.textContent.includes('Agenda'))) b.classList.add('on'); });
+  document.getElementById('cal-tab-calendario').style.display = tab === 'calendario' ? '' : 'none';
+  document.getElementById('cal-tab-agenda').style.display     = tab === 'agenda'     ? '' : 'none';
+  if (tab === 'calendario') {
+    if (!document.getElementById('cal-grid-box')?.children.length) {
+      drawCalGrid();
+      const today = new Date();
+      calSelDay = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      drawCalDetail(calSelDay);
+    }
+  } else {
+    _renderCalAgenda();
+  }
+}
+
+function _renderCalAgenda() {
+  const wrap = document.getElementById('cal-agenda-inner');
+  if (!wrap) return;
+  let appts = [..._apptsCache];
+  if (CU.role === 'vendedor') appts = appts.filter(a => a.vnd === CU.nome);
+  wrap.innerHTML = `
+    <div class="stats">
+      <div class="stat-c"><div class="sv" style="color:var(--ind2)">${appts.length}</div><div class="sl">Total</div></div>
+      <div class="stat-c"><div class="sv">${appts.filter(a=>a.status==='agendado').length}</div><div class="sl">Agendados</div></div>
+      <div class="stat-c"><div class="sv" style="color:#FF9F0A">${appts.filter(a=>a.status==='passado_vendedor').length}</div><div class="sl">Com vendedor</div></div>
+      <div class="stat-c"><div class="sv" style="color:#34C759">${appts.filter(a=>a.status==='venda_concluida').length}</div><div class="sl">Vendas</div></div>
+      <div class="stat-c"><div class="sv" style="color:var(--red)">${appts.filter(a=>a.status==='perdido').length}</div><div class="sl">Perdidos</div></div>
+    </div>
+    <div class="filters">
+      <input class="fi fi-search" id="ag-q" placeholder="Buscar cliente, modelo…" oninput="_filterAgenda()">
+      <select class="fi fi-sel" id="ag-st" onchange="_filterAgenda()">
+        <option value="">Todos os status</option>
+        ${Object.entries(STATUS).map(([k,v])=>`<option value="${k}">${v.l}</option>`).join('')}
+      </select>
+      ${CU.role!=='vendedor'?`<select class="fi fi-sel" id="ag-vnd" onchange="_filterAgenda()">
+        <option value="">Todos os vendedores</option>
+        ${vendedores().map(v=>`<option>${v.nome}</option>`).join('')}
+      </select>`:''}
+      <select class="fi fi-sel" id="ag-orig" onchange="_filterAgenda()">
+        <option value="">Todas as origens</option>
+        ${Object.keys(activeOrigins()).map(o=>`<option>${o}</option>`).join('')}
+      </select>
+      <button class="btn-s" onclick="exportCSV()" style="white-space:nowrap"><i class="ti ti-table-export"></i>Exportar CSV</button>
+    </div>
+    <div id="ag-list"></div>`;
+  _filterAgenda();
 }
 
 function drawCalGrid() {
