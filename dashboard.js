@@ -240,6 +240,192 @@ async function renderInicio() {
 
 function saveMeta(val){localStorage.setItem('eye_meta',Math.max(1,parseInt(val)||10));renderInicio();}
 
+// ─── BI CROSS-UNIT (master: todas as unidades) ────────────────────────────────
+let _mstBiPeriod = '7d';
+
+async function renderMstBi() {
+  const el = document.getElementById('v-mst-bi');
+  if (!el) return;
+  loading(el);
+
+  if (!document.getElementById('eye-mst-bi-styles')) {
+    const s = document.createElement('style');
+    s.id = 'eye-mst-bi-styles';
+    s.textContent = `
+      .mst-bi-table{width:100%;border-collapse:collapse;font-size:13px}
+      .mst-bi-table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);border-bottom:2px solid var(--brd);white-space:nowrap}
+      .mst-bi-table td{padding:10px 12px;border-bottom:1px solid var(--brd);vertical-align:middle}
+      .mst-bi-table tr:last-child td{border-bottom:none}
+      .mst-bi-table td:first-child{font-size:12px;color:var(--txt2);font-weight:500;white-space:nowrap}
+      .mst-bi-hl td{background:rgba(91,110,255,.04)}
+      .mst-bi-trend{font-size:10px;font-weight:700;margin-left:5px;padding:1px 6px;border-radius:4px;display:inline-block}
+      .mst-bi-trend.up{color:var(--grn);background:rgba(52,199,89,.1)}
+      .mst-bi-trend.dn{color:var(--red);background:rgba(255,59,48,.08)}
+    `;
+    document.head.appendChild(s);
+  }
+
+  const uns  = await getUnidades();
+  const now  = new Date();
+  const hoje = now.toISOString().split('T')[0];
+  const days = _mstBiPeriod === 'hoje' ? 1 : _mstBiPeriod === '7d' ? 7 : 30;
+  const startTs = new Date(Date.now() - days * 86400000).toISOString().split('T')[0] + 'T00:00:00';
+  const prevTs  = new Date(Date.now() - days * 2 * 86400000).toISOString().split('T')[0] + 'T00:00:00';
+  const duas_h  = new Date(Date.now() - 7200000).toISOString();
+  const ACTIVE  = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','ficha_enviada'];
+
+  const unData = await Promise.all(uns.map(async u => {
+    const [rAppts, rPrev, rAlerts] = await Promise.all([
+      sb.from('eye_appts').select('id,status,criado_em').eq('unidade_id',u.id).gte('criado_em',startTs),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).gte('criado_em',prevTs).lt('criado_em',startTs),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).in('status',ACTIVE).lt('em',duas_h),
+    ]);
+    const appts  = rAppts.data || [];
+    const leads  = appts.length;
+    const vendas = appts.filter(a => a.status === 'venda_concluida').length;
+    const agnd   = appts.filter(a => ['agendado','passado_vendedor','em_negociacao','ficha_enviada','venda_concluida'].includes(a.status)).length;
+    const taxaAg = leads > 0 ? Math.round(agnd/leads*100) : 0;
+    const taxaCv = leads > 0 ? Math.round(vendas/leads*100) : 0;
+    const prev   = rPrev.count || 0;
+    const trend  = prev > 0 ? Math.round((leads-prev)/prev*100) : null;
+    const byDay  = {};
+    appts.forEach(a => { const d=(a.criado_em||'').slice(0,10); if(d) byDay[d]=(byDay[d]||0)+1; });
+    return { ...u, leads, vendas, agnd, taxaAg, taxaCv, alertas:rAlerts.count||0, trend, byDay, prev };
+  }));
+
+  unData.sort((a,b) => b.leads - a.leads);
+
+  const dates = Array.from({length:days},(_,i) => {
+    const d = new Date(Date.now()-(days-1-i)*86400000);
+    return d.toISOString().split('T')[0];
+  });
+
+  const UC  = ['#007AFF','#34C759','#FF9F0A','#5856D6','#FF3B30','#2DD4A7'];
+  const medals = ['🥇','🥈','🥉'];
+  const periodoLabel = _mstBiPeriod==='hoje'?'Hoje':_mstBiPeriod==='7d'?'Últimos 7 dias':'Últimos 30 dias';
+  const totLeads  = unData.reduce((s,u)=>s+u.leads,0);
+  const totVendas = unData.reduce((s,u)=>s+u.vendas,0);
+  const totAlerts = unData.reduce((s,u)=>s+u.alertas,0);
+  const taxaGlobal = totLeads>0 ? Math.round(totVendas/totLeads*100) : 0;
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:20px;font-weight:800;color:var(--txt);letter-spacing:-.5px">BI · Todas as unidades</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:2px">${periodoLabel} · ${uns.length} unidade${uns.length!==1?'s':''}</div>
+      </div>
+      <div class="bi-tabs">
+        <button class="bi-tab${_mstBiPeriod==='hoje'?' on':''}" onclick="_mstBiSetPeriod('hoje')">Hoje</button>
+        <button class="bi-tab${_mstBiPeriod==='7d'?' on':''}" onclick="_mstBiSetPeriod('7d')">7 dias</button>
+        <button class="bi-tab${_mstBiPeriod==='30d'?' on':''}" onclick="_mstBiSetPeriod('30d')">30 dias</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Total leads</div><div class="kpi-icon">📋</div></div><div class="kv">${totLeads}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Conversões</div><div class="kpi-icon">✅</div></div><div class="kv" style="color:var(--grn)">${totVendas}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Taxa global</div><div class="kpi-icon">📈</div></div><div class="kv" style="color:${taxaGlobal>=8?'var(--grn)':taxaGlobal>=4?'var(--amb)':'var(--red)'}">${taxaGlobal}%</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Alertas ativos</div><div class="kpi-icon">⚠️</div></div><div class="kv${totAlerts>0?' alert':''}">${totAlerts}</div></div>
+    </div>
+
+    <div class="dash-box" style="overflow-x:auto;margin-bottom:16px">
+      <div class="dash-box-title">Comparativo de unidades</div>
+      <table class="mst-bi-table">
+        <thead><tr>
+          <th>Métrica</th>
+          ${unData.map((u,i)=>`<th style="color:${UC[i%UC.length]}">${esc(u.nome)}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          <tr class="mst-bi-hl">
+            <td>Leads</td>
+            ${unData.map((u,i)=>`<td style="font-weight:800;font-size:15px;color:${UC[i%UC.length]}">${u.leads}${u.trend!==null?`<span class="mst-bi-trend ${u.trend>=0?'up':'dn'}">${u.trend>0?'+':''}${u.trend}%</span>`:''}</td>`).join('')}
+          </tr>
+          <tr>
+            <td>Agendados</td>
+            ${unData.map(u=>`<td>${u.agnd} <span style="font-size:10px;color:var(--txt3)">${u.taxaAg}%</span></td>`).join('')}
+          </tr>
+          <tr class="mst-bi-hl">
+            <td>Conversões</td>
+            ${unData.map(u=>`<td style="font-weight:700;color:${u.taxaCv>=8?'var(--grn)':u.taxaCv>=4?'var(--amb)':'var(--red)'}">${u.vendas} <span style="font-size:10px;font-weight:500">${u.taxaCv}%</span></td>`).join('')}
+          </tr>
+          <tr>
+            <td>Alertas ativos</td>
+            ${unData.map(u=>`<td style="font-weight:600;color:${u.alertas>3?'var(--red)':u.alertas>0?'var(--amb)':'var(--grn)'}">${u.alertas>0?'⚠ '+u.alertas:'✓ 0'}</td>`).join('')}
+          </tr>
+          <tr>
+            <td>Período anterior</td>
+            ${unData.map(u=>`<td style="font-size:12px;color:var(--txt3)">${u.prev} leads</td>`).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    ${days > 1 ? `
+    <div class="dash-box" style="margin-bottom:16px">
+      <div class="dash-box-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        Leads por dia
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          ${unData.map((u,i)=>`<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2)"><span style="width:12px;height:3px;background:${UC[i%UC.length]};display:inline-block;border-radius:2px"></span>${esc(u.nome)}</span>`).join('')}
+        </div>
+      </div>
+      ${_mstBiLineChart(dates, unData, UC)}
+    </div>` : ''}
+
+    <div class="dash-box" style="margin-bottom:16px">
+      <div class="dash-box-title">Taxa de conversão por unidade</div>
+      ${unData.map((u,i)=>{
+        const maxCv = Math.max(...unData.map(x=>x.taxaCv),1);
+        const barW  = Math.round(u.taxaCv/maxCv*100);
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+            <div style="display:flex;align-items:center;gap:7px">
+              <span style="font-size:14px">${medals[i]||`<span style="font-size:11px;color:var(--txt3);font-weight:600">#${i+1}</span>`}</span>
+              <span style="font-size:13px;font-weight:600;color:var(--txt)">${esc(u.nome)}</span>
+            </div>
+            <span style="font-size:14px;font-weight:800;color:${u.taxaCv>=8?'var(--grn)':u.taxaCv>=4?'var(--amb)':'var(--red)'}">${u.taxaCv}%</span>
+          </div>
+          <div style="height:8px;background:var(--bg2);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${barW}%;background:${UC[i%UC.length]};border-radius:4px;transition:.6s cubic-bezier(.34,1.56,.64,1)"></div>
+          </div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:3px">${u.vendas} conversão${u.vendas!==1?'ões':''} de ${u.leads} leads</div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${unData.map((u,i)=>`
+        <button onclick="switchUnit('${u.id}')" style="border:1.5px solid ${UC[i%UC.length]};background:transparent;border-radius:10px;padding:7px 14px;font-size:12px;font-weight:600;color:${UC[i%UC.length]};cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px">
+          <i class="ti ti-login" style="font-size:13px"></i>${esc(u.nome)}
+        </button>`).join('')}
+    </div>`;
+}
+
+function _mstBiSetPeriod(p) {
+  _mstBiPeriod = p;
+  renderMstBi();
+}
+
+function _mstBiLineChart(dates, units, colors) {
+  if (!dates || dates.length < 2) return '';
+  const W=600, H=130, pt=8, pr=12, pb=28, pl=28;
+  const cW=W-pl-pr, cH=H-pt-pb;
+  const maxVal = Math.max(...units.flatMap(u=>dates.map(d=>u.byDay[d]||0)), 1);
+  const xS = i => pl + (i/Math.max(dates.length-1,1))*cW;
+  const yS = v => pt + cH - (v/maxVal)*cH;
+  const gridVals = [0, Math.round(maxVal/2), maxVal];
+  const grid = gridVals.map(v=>`<line x1="${pl}" y1="${yS(v).toFixed(1)}" x2="${W-pr}" y2="${yS(v).toFixed(1)}" stroke="rgba(142,142,147,.15)" stroke-width="1"/>`).join('');
+  const yLbl = gridVals.map(v=>`<text x="${pl-4}" y="${(yS(v)+4).toFixed(1)}" text-anchor="end" font-family="Inter,sans-serif" font-size="9" fill="rgba(142,142,147,.7)">${v}</text>`).join('');
+  const xIdx = [0, Math.floor(dates.length/2), dates.length-1];
+  const xLbl = xIdx.map(i=>`<text x="${xS(i).toFixed(1)}" y="${H-4}" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="rgba(142,142,147,.7)">${dates[i].slice(5).replace('-','/')}</text>`).join('');
+  const lines = units.map((u,ui)=>{
+    const color = colors[ui%colors.length];
+    const pts   = dates.map((d,i)=>`${xS(i).toFixed(1)},${yS(u.byDay[d]||0).toFixed(1)}`).join(' ');
+    const dots  = dates.map((d,i)=>{ const v=u.byDay[d]||0; return v?`<circle cx="${xS(i).toFixed(1)}" cy="${yS(v).toFixed(1)}" r="2.5" fill="${color}"/>`:'' }).join('');
+    return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>${dots}`;
+  }).join('');
+  return `<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;min-width:260px">${grid}${yLbl}${xLbl}${lines}</svg></div>`;
+}
+
 // ─── HOT LEAD NOTIFICATION ────────────────────────────────────────────────────
 function showHotLeadNotif(){
   const lead=_apptsCache.find(a=>['pendente','em_atendimento'].includes(a.status)&&(CU.role!=='vendedor'||a.vnd===CU.nome));
