@@ -51,9 +51,7 @@ const KB_COLS = [
   { id:'sem_resposta',     label:'Sem Resposta',       color:'#8E8E93',     fase:'sdr' },
   // Fase Vendedor
   { id:'em_negociacao',    label:'Em Negociação',      color:'#5856D6',     fase:'vnd' },
-  { id:'test_drive',       label:'Test Drive',         color:'#007AFF',     fase:'vnd' },
   { id:'ficha_enviada',    label:'Ficha Enviada',      color:'#FF9F0A',     fase:'vnd' },
-  { id:'credito_aprovado', label:'Crédito Aprovado',   color:'#34C759',     fase:'vnd' },
   { id:'credito_reprovado',label:'Crédito Reprovado',  color:'#FF3B30',     fase:'vnd' },
   { id:'ag_retorno',       label:'Ag. Retorno',        color:'#8E8E93',     fase:'vnd' },
   { id:'venda_concluida',  label:'Venda Concluída',    color:'#34C759',     fase:'vnd' },
