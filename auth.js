@@ -450,7 +450,7 @@ async function enterUnit(unitId) {
   unitWrap.style.alignItems = 'center';
 
   buildNav();
-  goTab('inicio');
+  goTab(CU.role === 'master' && !unitId ? 'mst-bi' : 'inicio');
   if (!_appLaunched) {
     _appLaunched = true;
     setTimeout(showHotLeadNotif, 8000);
@@ -556,6 +556,6 @@ function goTab(id) {
     crumb.textContent = label ? '/ ' + label : '';
     crumb.style.display = label ? 'inline' : 'none';
   }
-  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos, tarefas:renderTarefas, retrab:renderRetrab, conf:renderConf, users:renderUsers, config:renderConfig };
+  const renders = { inicio:renderInicio, conv:renderConv, crm:renderCrm, agenda:renderAgenda, cal:renderCal, origem:renderOrigem, negoc:renderNegoc, base:renderBase, bi:renderBi, ativos:renderAtivos, tarefas:renderTarefas, retrab:renderRetrab, conf:renderConf, users:renderUsers, config:renderConfig, 'mst-bi':renderMstBi };
   if (renders[id]) renders[id]();
 }
