@@ -1,6 +1,25 @@
 // ─── BRIEFING SDR → VENDEDOR ──────────────────────────────────────────────────
 let _pendingBriefing = null;
 
+function _confirmDialog(msg, onOk) {
+  const existing = document.getElementById('eye-confirm-dlg');
+  if (existing) existing.remove();
+  const dlg = document.createElement('div');
+  dlg.id = 'eye-confirm-dlg';
+  dlg.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.4);backdrop-filter:blur(4px)';
+  dlg.innerHTML = `
+    <div style="background:rgba(255,255,255,.97);backdrop-filter:blur(32px);border:.5px solid rgba(255,255,255,.9);border-radius:24px 24px 0 0;width:100%;max-width:420px;padding:24px 20px 36px;box-shadow:0 -8px 40px rgba(0,0,0,.12)">
+      <div style="font-size:15px;font-weight:600;color:var(--txt);margin-bottom:18px;line-height:1.4">${msg}</div>
+      <div style="display:flex;gap:10px">
+        <button onclick="document.getElementById('eye-confirm-dlg').remove()" style="flex:1;height:44px;border-radius:14px;border:1.5px solid var(--bdr);background:transparent;font-size:14px;font-weight:600;color:var(--txt2);cursor:pointer;font-family:inherit">Cancelar</button>
+        <button id="eye-confirm-ok" style="flex:1;height:44px;border-radius:14px;border:none;background:var(--ind);font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Continuar</button>
+      </div>
+    </div>`;
+  dlg.querySelector('#eye-confirm-ok').addEventListener('click', () => { dlg.remove(); onOk(); });
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.remove(); });
+  document.body.appendChild(dlg);
+}
+
 function _alertHours(a) {
   if (!a.em) return 0;
   const activeStatuses = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno'];
@@ -483,17 +502,27 @@ function openLead() {
 }
 function closeLead(){document.getElementById('ov-lead').classList.remove('on');}
 
+let _savingLead = false;
 async function saveLead() {
+  if (_savingLead) return;
   const tel=document.getElementById('l-tel').value.trim(), orig=document.getElementById('l-orig').value;
   if(!tel||!orig){toast('Preencha telefone e origem','err');return;}
   const telNum=tel.replace(/\D/g,'');
   const dup=_apptsCache.find(a=>a.tel&&a.tel.replace(/\D/g,'')===telNum);
-  if(dup&&!confirm(`⚠️ Telefone já existe na base (${dup.cli}). Criar mesmo assim?`)) return;
+  if(dup) { _confirmDialog(`⚠️ Telefone já existe na base (${esc(dup.cli)}). Criar mesmo assim?`, _doSaveLead); return; }
+  await _doSaveLead();
+}
+async function _doSaveLead() {
+  if (_savingLead) return;
+  _savingLead = true;
+  const tel=document.getElementById('l-tel').value.trim();
   const cli=document.getElementById('l-cli').value.trim()||tel;
+  const orig=document.getElementById('l-orig').value;
   const today=new Date().toISOString().split('T')[0];
   const now=new Date().toISOString();
   const obj=withUnit({id:uid(),cli,tel,orig,status:'pendente',data:today,criado_por:CU.login,em:now,criado_em:now});
   const{error}=await sb.from('eye_appts').insert(obj);
+  _savingLead = false;
   if(error){toast('Erro ao criar lead. Tente novamente.','err');return;}
   closeLead(); toast('Lead criado!'); await refreshAll();
 }
@@ -544,7 +573,9 @@ async function openAppt(id) {
 }
 function closeAppt(){document.getElementById('ov-appt').classList.remove('on');}
 
+let _savingAppt = false;
 async function saveAppt() {
+  if (_savingAppt) return;
   const cli=document.getElementById('a-cli').value.trim(), data=document.getElementById('a-data').value;
   const vnd=document.getElementById('a-vnd').value,       orig=document.getElementById('a-orig').value;
   if(!cli||!data||!vnd||!orig){toast('Preencha: cliente, data, vendedor e origem','err');return;}
@@ -552,8 +583,16 @@ async function saveAppt() {
   if(!eid){
     const telV=document.getElementById('a-tel').value.trim();
     if(telV){const dup=_apptsCache.find(a=>a.tel&&a.tel.replace(/\D/g,'')=== telV.replace(/\D/g,''));
-      if(dup&&!confirm(`⚠️ Telefone já existe na base (${dup.cli}). Criar mesmo assim?`)) return;}
+      if(dup){ _confirmDialog(`⚠️ Telefone já existe na base (${esc(dup.cli)}). Criar mesmo assim?`, _doSaveAppt); return; }}
   }
+  await _doSaveAppt();
+}
+async function _doSaveAppt() {
+  if (_savingAppt) return;
+  _savingAppt = true;
+  const cli=document.getElementById('a-cli').value.trim(), data=document.getElementById('a-data').value;
+  const vnd=document.getElementById('a-vnd').value, orig=document.getElementById('a-orig').value;
+  const eid=document.getElementById('appt-id').value;
   const nowTs=new Date().toISOString();
   const obj=withUnit({id:eid||uid(),cli,data,tel:document.getElementById('a-tel').value.trim(),hora:document.getElementById('a-hora').value,
     vnd,orig,status:document.getElementById('a-status').value||'agendado',modelo:document.getElementById('a-modelo').value.trim(),
@@ -563,6 +602,7 @@ async function saveAppt() {
   let error;
   if(eid){({error}=await sb.from('eye_appts').update(obj).eq('id',eid));}
   else   {({error}=await sb.from('eye_appts').insert(obj));}
+  _savingAppt = false;
   if(error){toast('Erro ao salvar. Tente novamente.','err');return;}
   closeAppt(); toast(eid?'Agendamento atualizado':'Lead criado com sucesso'); await refreshAll();
 }
@@ -715,10 +755,11 @@ async function saveNeg(){
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 async function delAppt(id){
-  if(!confirm('Excluir este agendamento?')) return;
-  const{error}=await sb.from('eye_appts').delete().eq('id',id);
-  if(error){toast('Erro ao excluir. Tente novamente.','err');return;}
-  toast('Agendamento excluído','warn'); await refreshAll();
+  _confirmDialog('Excluir este agendamento? Esta ação não pode ser desfeita.', async () => {
+    const{error}=await sb.from('eye_appts').delete().eq('id',id);
+    if(error){toast('Erro ao excluir. Tente novamente.','err');return;}
+    closeNeg(); toast('Agendamento excluído','warn'); await refreshAll();
+  });
 }
 
 function exportCSV(){
@@ -881,11 +922,13 @@ async function saveBriefing() {
 
   const briefObj = withUnit({ veiculo, entrada, troca, troca_detalhe, pagamento, urgencia, objecao, resumo, appt_id:apptId, criado_por:CU.nome, criado_em:new Date().toISOString() });
   const existing = await getBriefing(apptId);
+  let bErr;
   if (existing) {
-    await sb.from('eye_briefings').update(briefObj).eq('appt_id', apptId);
+    ({error:bErr} = await sb.from('eye_briefings').update(briefObj).eq('appt_id', apptId));
   } else {
-    await sb.from('eye_briefings').insert({ ...briefObj, id: uid() });
+    ({error:bErr} = await sb.from('eye_briefings').insert({ ...briefObj, id: uid() }));
   }
+  if (bErr) { toast('Erro ao salvar briefing. Tente novamente.', 'err'); return; }
 
   document.getElementById('ov-briefing').classList.remove('on');
   const pending = _pendingBriefing;
