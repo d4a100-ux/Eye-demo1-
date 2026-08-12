@@ -151,25 +151,13 @@ async function renderUnitsSelector() {
       .mst-rank-medal{font-size:16px;width:24px;text-align:center;flex:none}
       .mst-rank-name{flex:1;font-size:13px;font-weight:600;color:var(--txt)}
       .mst-rank-kpis{font-size:11px;color:var(--txt3);text-align:right}
+      @keyframes spin{to{transform:rotate(360deg)}}
     `;
     document.head.appendChild(s);
   }
 
   const grid  = document.getElementById('units-grid');
   const subEl = document.getElementById('units-sel-sub');
-  const hd    = document.querySelector('.units-sel-hd');
-
-  if (!document.getElementById('mst-controls')) {
-    const ctrl = document.createElement('div');
-    ctrl.id = 'mst-controls';
-    ctrl.className = 'mst-controls';
-    hd.appendChild(ctrl);
-  }
-  document.getElementById('mst-controls').innerHTML = `
-    <button class="mst-period-btn${_mstPeriod==='hoje'?' on':''}" onclick="_mstSetPeriod('hoje')">Hoje</button>
-    <button class="mst-period-btn${_mstPeriod==='7d'?' on':''}" onclick="_mstSetPeriod('7d')">7 dias</button>
-    <button class="mst-period-btn${_mstPeriod==='30d'?' on':''}" onclick="_mstSetPeriod('30d')">30 dias</button>
-    <button class="mst-digest-btn" onclick="_mstDigest()"><i class="ti ti-coffee"></i> Morning Digest</button>`;
 
   grid.innerHTML = '<div class="units-loading">Carregando…</div>';
 
@@ -178,9 +166,7 @@ async function renderUnitsSelector() {
 
   const now  = new Date();
   const hoje = now.toISOString().split('T')[0];
-  const startDate = _mstPeriod === 'hoje'
-    ? hoje + 'T00:00:00'
-    : new Date(Date.now() - (_mstPeriod === '7d' ? 7 : 30) * 86400000).toISOString().split('T')[0] + 'T00:00:00';
+  const startDate = hoje + 'T00:00:00';
   const duasHAtras = new Date(Date.now() - 7200000).toISOString();
   const ACTIVE = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','ficha_enviada'];
 
@@ -264,71 +250,149 @@ async function renderUnitsSelector() {
     </div>`;
 }
 
-function _mstSetPeriod(p) {
-  _mstPeriod = p;
-  renderUnitsSelector();
-}
-
-function _mstDigest() {
-  const cards = _mstCards;
-  if (!cards.length) { toast('Carregue os dados primeiro'); return; }
-
-  const totLeads  = cards.reduce((s,c) => s+c.leads,    0);
-  const totVendas = cards.reduce((s,c) => s+c.vendas,   0);
-  const totAlerts = cards.reduce((s,c) => s+c.alertas,  0);
-  const totAg     = cards.reduce((s,c) => s+c.agendados,0);
-  const taxaGlobal = totLeads > 0 ? Math.round(totVendas / totLeads * 100) : 0;
-
-  const risks = [];
-  const piorAlerta = [...cards].filter(c => c.alertas > 0).sort((a,b) => b.alertas - a.alertas)[0];
-  if (piorAlerta) risks.push({ icon:'🚨', uid: piorAlerta.id, text:`<b>${esc(piorAlerta.nome)}</b> tem ${piorAlerta.alertas} lead${piorAlerta.alertas>1?'s':''} parado${piorAlerta.alertas>1?'s':''} há mais de 2h` });
-  const semVendas = [...cards].filter(c => c.leads > 2 && c.vendas === 0).sort((a,b) => b.leads - a.leads)[0];
-  if (semVendas) risks.push({ icon:'📉', uid: semVendas.id, text:`<b>${esc(semVendas.nome)}</b> tem ${semVendas.leads} leads mas nenhuma conversão no período` });
-  const semAg = cards.find(c => c.agendados === 0 && c.leads > 0);
-  if (semAg) risks.push({ icon:'📅', uid: semAg.id, text:`<b>${esc(semAg.nome)}</b> não tem agendamentos para hoje` });
-  const semTime = cards.find(c => (c.sdrs + c.vnds) === 0);
-  if (semTime && risks.length < 3) risks.push({ icon:'👥', uid: semTime.id, text:`<b>${esc(semTime.nome)}</b> sem usuários ativos cadastrados` });
-
-  const periodoLabel = _mstPeriod === 'hoje' ? 'Hoje' : _mstPeriod === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias';
-  const medals = ['🥇','🥈','🥉'];
+async function _mstDigest(period) {
+  period = period || _mstPeriod || 'hoje';
 
   document.getElementById('mst-digest-ov')?.remove();
   const ov = document.createElement('div');
   ov.id = 'mst-digest-ov';
   ov.className = 'mst-digest-ov';
-  ov.innerHTML = `
-    <div class="mst-digest-panel">
-      <div class="mst-digest-hd">
-        <div class="mst-digest-title">☕ Morning Digest</div>
-        <button class="mst-digest-close" onclick="document.getElementById('mst-digest-ov').remove()">×</button>
-      </div>
-      <div class="mst-digest-sec">
-        <div class="mst-digest-sec-title">📊 Snapshot — ${periodoLabel}</div>
-        <div class="mst-snapshot-row"><span class="mst-snap-label">Total de leads</span><span class="mst-snap-val">${totLeads}</span></div>
-        <div class="mst-snapshot-row"><span class="mst-snap-label">Conversões</span><span class="mst-snap-val" style="color:${taxaGlobal>=8?'var(--grn)':taxaGlobal>=4?'var(--amb)':'var(--red)'}">${totVendas} (${taxaGlobal}%)</span></div>
-        <div class="mst-snapshot-row"><span class="mst-snap-label">Alertas críticos agora</span><span class="mst-snap-val" style="color:${totAlerts>5?'var(--red)':totAlerts>0?'var(--amb)':'var(--grn)'}">${totAlerts} parado${totAlerts!==1?'s':''}</span></div>
-        <div class="mst-snapshot-row"><span class="mst-snap-label">Agendados hoje</span><span class="mst-snap-val">${totAg}</span></div>
-      </div>
-      <div class="mst-digest-sec">
-        <div class="mst-digest-sec-title">🚨 Top Riscos</div>
-        ${risks.length ? risks.slice(0,3).map(r => `
-          <div class="mst-risk-item" onclick="document.getElementById('mst-digest-ov').remove();enterUnit('${r.uid}')">
-            <span class="mst-risk-icon">${r.icon}</span>
-            <div class="mst-risk-text">${r.text}<br><span style="color:var(--ind);font-size:11px;font-weight:600">→ Entrar na unidade</span></div>
-          </div>`).join('') : `<div style="text-align:center;padding:12px;color:var(--grn);font-weight:700">✓ Nenhum risco crítico identificado!</div>`}
-      </div>
-      <div class="mst-digest-sec">
-        <div class="mst-digest-sec-title">📈 Ranking de Unidades</div>
-        ${cards.map((u, i) => `
-          <div class="mst-rank-row" onclick="document.getElementById('mst-digest-ov').remove();enterUnit('${u.id}')">
-            <span class="mst-rank-medal">${medals[i]||`#${i+1}`}</span>
-            <span class="mst-rank-name">${esc(u.nome)}</span>
-            <span class="mst-rank-kpis">${u.leads} leads · ${u.vendas} conv. · ${u.alertas} alertas</span>
-          </div>`).join('')}
-      </div>
-    </div>`;
+  ov.innerHTML = `<div class="mst-digest-panel"><div style="text-align:center;padding:40px 0;color:var(--txt3)"><i class="ti ti-loader" style="font-size:28px;animation:spin 1s linear infinite"></i><p style="margin-top:10px;font-size:13px">Carregando dados…</p></div></div>`;
   ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
   document.body.appendChild(ov);
+
+  const uns   = await getUnidades();
+  const users = await getUsers();
+  const now   = new Date();
+  const hoje  = now.toISOString().split('T')[0];
+  const ontem = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const startDate = period === 'hoje' ? hoje + 'T00:00:00'
+    : new Date(Date.now() - (period === '7d' ? 7 : 30) * 86400000).toISOString().split('T')[0] + 'T00:00:00';
+  const meia_hora_atras = new Date(Date.now() - 1800000).toISOString();
+  const duas_h_atras    = new Date(Date.now() - 7200000).toISOString();
+  const ACTIVE = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','ficha_enviada'];
+
+  const cards = await Promise.all(uns.map(async u => {
+    const [rLeads, rOntem, rVendas, rAlerts30, rAlerts2h, rAg] = await Promise.all([
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).gte('criado_em',startDate),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).gte('criado_em',ontem+'T00:00:00').lt('criado_em',hoje+'T00:00:00'),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).eq('status','venda_concluida').gte('criado_em',startDate),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).in('status',ACTIVE).lt('em',meia_hora_atras),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).in('status',ACTIVE).lt('em',duas_h_atras),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).eq('status','agendado').eq('data',hoje),
+    ]);
+    const leads    = rLeads.count   || 0;
+    const ontemN   = rOntem.count   || 0;
+    const vendas   = rVendas.count  || 0;
+    const alerta30 = rAlerts30.count|| 0;
+    const alerta2h = rAlerts2h.count|| 0;
+    const agendados= rAg.count      || 0;
+    const sdrs = users.filter(u2 => u2.unidade_id === u.id && u2.role === 'sdr').length;
+    const vnds = users.filter(u2 => u2.unidade_id === u.id && u2.role === 'vendedor').length;
+    return { ...u, leads, ontemN, vendas, alerta30, alerta2h, agendados, sdrs, vnds };
+  }));
+
+  cards.sort((a, b) => b.leads - a.leads);
+  _mstCards = cards;
+
+  const totLeads   = cards.reduce((s,c) => s+c.leads,   0);
+  const totOntem   = cards.reduce((s,c) => s+c.ontemN,  0);
+  const totVendas  = cards.reduce((s,c) => s+c.vendas,  0);
+  const totAlerts  = cards.reduce((s,c) => s+c.alerta2h,0);
+  const totAlerts30= cards.reduce((s,c) => s+c.alerta30,0);
+  const totAg      = cards.reduce((s,c) => s+c.agendados,0);
+  const taxaGlobal = totLeads > 0 ? Math.round(totVendas / totLeads * 100) : 0;
+  const leadsVsOntem = period === 'hoje' && totOntem > 0
+    ? (totLeads > totOntem ? `<span style="color:var(--grn);font-size:11px"> ↑ +${totLeads-totOntem} vs ontem</span>`
+     : totLeads < totOntem ? `<span style="color:var(--red);font-size:11px"> ↓ -${totOntem-totLeads} vs ontem</span>` : '')
+    : '';
+
+  // Risks
+  const risks = [];
+  const pior2h = [...cards].filter(c => c.alerta2h > 0).sort((a,b) => b.alerta2h - a.alerta2h)[0];
+  if (pior2h) risks.push({ icon:'🚨', uid:pior2h.id, text:`<b>${esc(pior2h.nome)}</b> tem <b>${pior2h.alerta2h} lead${pior2h.alerta2h>1?'s':''}</b> parado${pior2h.alerta2h>1?'s':''} há mais de 2h sem ação` });
+  const pior30 = [...cards].filter(c => c.alerta30 > 0 && c !== pior2h).sort((a,b) => b.alerta30 - a.alerta30)[0];
+  if (pior30 && risks.length < 3) risks.push({ icon:'⏱', uid:pior30.id, text:`<b>${esc(pior30.nome)}</b> tem <b>${pior30.alerta30} lead${pior30.alerta30>1?'s':''}</b> esperando resposta há +30min` });
+  const semVendas = [...cards].filter(c => c.leads > 3 && c.vendas === 0).sort((a,b) => b.leads - a.leads)[0];
+  if (semVendas && risks.length < 3) risks.push({ icon:'📉', uid:semVendas.id, text:`<b>${esc(semVendas.nome)}</b> tem <b>${semVendas.leads} leads</b> no período mas <b>0 conversões</b>` });
+  const semAg = cards.find(c => c.agendados === 0 && c.leads > 0);
+  if (semAg && risks.length < 3) risks.push({ icon:'📅', uid:semAg.id, text:`<b>${esc(semAg.nome)}</b> não tem nenhum agendamento para hoje` });
+  const semTime = cards.find(c => (c.sdrs + c.vnds) === 0);
+  if (semTime && risks.length < 3) risks.push({ icon:'👥', uid:semTime.id, text:`<b>${esc(semTime.nome)}</b> não tem nenhum usuário ativo cadastrado` });
+
+  const hora = now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const medals = ['🥇','🥈','🥉'];
+  const periodoLabel = period === 'hoje' ? 'Hoje' : period === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias';
+
+  const panel = ov.querySelector('.mst-digest-panel');
+  panel.innerHTML = `
+    <div class="mst-digest-hd">
+      <div>
+        <div class="mst-digest-title">☕ Morning Digest</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:2px">Gerado às ${hora}</div>
+      </div>
+      <button class="mst-digest-close" onclick="document.getElementById('mst-digest-ov').remove()">×</button>
+    </div>
+    <div class="mst-controls" style="margin-bottom:18px;justify-content:flex-start">
+      <button class="mst-period-btn${period==='hoje'?' on':''}" onclick="_mstDigest('hoje')">Hoje</button>
+      <button class="mst-period-btn${period==='7d'?' on':''}" onclick="_mstDigest('7d')">7 dias</button>
+      <button class="mst-period-btn${period==='30d'?' on':''}" onclick="_mstDigest('30d')">30 dias</button>
+    </div>
+    <div class="mst-digest-sec">
+      <div class="mst-digest-sec-title">📊 Snapshot — ${periodoLabel}</div>
+      <div class="mst-snapshot-row">
+        <span class="mst-snap-label">Total de leads</span>
+        <span class="mst-snap-val">${totLeads}${leadsVsOntem}</span>
+      </div>
+      <div class="mst-snapshot-row">
+        <span class="mst-snap-label">Agendamentos hoje</span>
+        <span class="mst-snap-val" style="color:${totAg>0?'var(--txt)':'var(--red)'}">${totAg}</span>
+      </div>
+      <div class="mst-snapshot-row">
+        <span class="mst-snap-label">Conversões</span>
+        <span class="mst-snap-val" style="color:${taxaGlobal>=8?'var(--grn)':taxaGlobal>=4?'var(--amb)':'var(--red)'}">${totVendas} <span style="font-weight:500;font-size:12px">(${taxaGlobal}% conversão)</span></span>
+      </div>
+      <div class="mst-snapshot-row">
+        <span class="mst-snap-label">Leads parados >30min</span>
+        <span class="mst-snap-val" style="color:${totAlerts30>3?'var(--red)':totAlerts30>0?'var(--amb)':'var(--grn)'}">${totAlerts30}</span>
+      </div>
+      <div class="mst-snapshot-row">
+        <span class="mst-snap-label">Leads parados >2h</span>
+        <span class="mst-snap-val" style="color:${totAlerts>2?'var(--red)':totAlerts>0?'var(--amb)':'var(--grn)'}">${totAlerts}</span>
+      </div>
+    </div>
+    <div class="mst-digest-sec">
+      <div class="mst-digest-sec-title">🚨 Top Riscos — Ação necessária</div>
+      ${risks.length ? risks.map(r => `
+        <div class="mst-risk-item" onclick="document.getElementById('mst-digest-ov').remove();enterUnit('${r.uid}')">
+          <span class="mst-risk-icon">${r.icon}</span>
+          <div class="mst-risk-text">${r.text}<br><span style="color:var(--ind);font-size:11px;font-weight:600">→ Entrar na unidade</span></div>
+        </div>`).join('')
+      : `<div style="text-align:center;padding:14px;color:var(--grn);font-weight:700;font-size:13px">✓ Nenhum risco crítico agora!</div>`}
+    </div>
+    <div class="mst-digest-sec">
+      <div class="mst-digest-sec-title">👥 Time por unidade</div>
+      ${cards.map(u => `
+        <div class="mst-snapshot-row" style="cursor:pointer" onclick="document.getElementById('mst-digest-ov').remove();enterUnit('${u.id}')">
+          <span class="mst-snap-label">${esc(u.nome)}</span>
+          <span class="mst-snap-val" style="font-size:12px;font-weight:500">
+            ${u.sdrs} SDR${u.sdrs!==1?'s':''} · ${u.vnds} vendedor${u.vnds!==1?'es':''}
+            ${(u.sdrs+u.vnds)===0?'<span style="color:var(--red)"> ⚠</span>':''}
+          </span>
+        </div>`).join('')}
+    </div>
+    <div class="mst-digest-sec">
+      <div class="mst-digest-sec-title">📈 Ranking — ${periodoLabel}</div>
+      ${cards.map((u, i) => `
+        <div class="mst-rank-row" onclick="document.getElementById('mst-digest-ov').remove();enterUnit('${u.id}')">
+          <span class="mst-rank-medal">${medals[i]||`#${i+1}`}</span>
+          <div style="flex:1;min-width:0">
+            <div class="mst-rank-name">${esc(u.nome)}</div>
+            <div class="mst-rank-kpis">${u.leads} leads · ${u.vendas} conv. · ${u.agendados} ag. hoje · ${u.alerta2h} alertas</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${u.alerta2h>5?'var(--red)':u.alerta2h>0?'var(--amb)':'var(--grn)'}">${u.alerta2h>0?`⚠ ${u.alerta2h}`:'✓'}</span>
+        </div>`).join('')}
+    </div>`;
 }
 
 async function openNewUnit() {
@@ -379,7 +443,8 @@ async function enterUnit(unitId) {
     <select class="fi" style="height:32px;font-size:12px;margin:0" onchange="switchUnit(this.value)">
       <option value="">Todas as unidades</option>
       ${uns.map(u => `<option value="${u.id}" ${u.id === unitId ? 'selected' : ''}>${u.nome}</option>`).join('')}
-    </select>`;
+    </select>
+    ${CU.role === 'master' ? `<button onclick="_mstDigest()" title="Morning Digest" style="border:none;background:rgba(255,159,10,.12);color:var(--amb);border-radius:10px;height:32px;padding:0 12px;font-size:13px;cursor:pointer;font-weight:700;white-space:nowrap">☕</button>` : ''}`;
   unitWrap.style.display = 'flex';
   unitWrap.style.gap = '6px';
   unitWrap.style.alignItems = 'center';
