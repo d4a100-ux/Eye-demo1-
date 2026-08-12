@@ -239,7 +239,6 @@ function kbCard(a, locked) {
   const txt = alertText(a);
   const col = KB_COLS.find(c => c.id === a.status);
   const borderCol = col?.color || 'var(--ind)';
-  const miniActs = locked ? '' : _kbMiniActs(a);
   return `
     <div class="kb-card${al?' '+al:''}" style="border-left-color:${borderCol}" draggable="${!locked}"
       ondragstart="${locked?'void 0':("_kbDragId='"+a.id+"'")}"
@@ -259,27 +258,7 @@ function kbCard(a, locked) {
         ${a.valor ? `<span class="kb-card-val">${esc(a.valor)}</span>` : '<span></span>'}
         ${a.data  ? `<span class="kb-card-date"><i class="ti ti-calendar"></i>${fmtDate(a.data)}</span>` : ''}
       </div>
-      ${miniActs ? `<div class="kma-row">${miniActs}</div>` : ''}
     </div>`;
-}
-
-function _kbMiniActs(a) {
-  const id = a.id, st = a.status;
-  if (st === 'pendente')
-    return `<button class="kma-btn" onclick="event.stopPropagation();negQa('${id}','em_atendimento')">Iniciar →</button>`;
-  if (st === 'em_atendimento')
-    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','qualificado')">Qualificado ✓</button><button class="kma-btn" onclick="event.stopPropagation();negQa('${id}','agendado')">Agendar</button>`;
-  if (st === 'qualificado')
-    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','agendado')">Agendar visita →</button>`;
-  if (st === 'agendado')
-    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','passado_vendedor')">Confirmou ✓</button><button class="kma-btn r" onclick="event.stopPropagation();negQa('${id}','sem_resposta')">Cancelou</button>`;
-  if (st === 'passado_vendedor')
-    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','em_negociacao')">Cliente chegou ✓</button>`;
-  if (st === 'em_negociacao' || st === 'test_drive')
-    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','ficha_enviada')">Ficha →</button><button class="kma-btn" onclick="event.stopPropagation();negQa('${id}','ag_retorno')">Ag. retorno</button>`;
-  if (st === 'credito_aprovado')
-    return `<button class="kma-btn g" onclick="event.stopPropagation();negQa('${id}','venda_concluida')">Venda fechada! 🏆</button>`;
-  return '';
 }
 
 async function kbDrop(event, newStatus) {
