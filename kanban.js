@@ -55,7 +55,13 @@ const _ACTIVE_ST = ['pendente','em_atendimento','qualificado','agendado','passad
 
 function alertClass(a) {
   if (!a.em || !_ACTIVE_ST.includes(a.status)) return '';
-  const h = (Date.now() - new Date(a.em)) / 3600000;
+  const mins = (Date.now() - new Date(a.em)) / 60000;
+  if (a.status === 'pendente') {
+    if (mins >= 10) return 'card-dead';
+    if (mins >= 3)  return 'card-crit';
+    return '';
+  }
+  const h = mins / 60;
   if (h >= 24) return 'card-dead';
   if (h >= 4)  return 'card-crit';
   if (h >= 2)  return 'card-warn';
@@ -64,10 +70,15 @@ function alertClass(a) {
 
 function alertText(a) {
   if (!a.em || !_ACTIVE_ST.includes(a.status)) return '';
-  const h = (Date.now() - new Date(a.em)) / 3600000;
+  const mins = (Date.now() - new Date(a.em)) / 60000;
+  if (a.status === 'pendente') {
+    if (mins < 3)  return '';
+    if (mins < 60) return `Sem resposta há ${Math.round(mins)}min`;
+    return `Sem resposta há ${Math.round(mins/60)}h`;
+  }
+  const h = mins / 60;
   if (h < 2) return '';
-  const hh = h >= 24 ? `${Math.round(h)}h` : `${Math.round(h)}h`;
-  return `Parado há ${hh}`;
+  return `Parado há ${Math.round(h)}h`;
 }
 
 async function renderCrm() {
@@ -90,25 +101,39 @@ async function renderCrm() {
   _drawKanban();
 }
 
+function _kbOpenWpp(tel, nome) {
+  goTab('conv');
+  const clean = (tel || '').replace(/\D/g, '');
+  if (!clean) return;
+  setTimeout(() => { if (typeof openWppConv === 'function') openWppConv(clean, nome); }, 600);
+}
+
+let _vndBriefings = {};
+
 /* ── Tela simplificada do Vendedor (mobile-first) ─────────────────────────── */
-function _renderVendedorView(el) {
+async function _renderVendedorView(el) {
   if (!document.getElementById('eye-vnd-styles')) {
     const s = document.createElement('style');
     s.id = 'eye-vnd-styles';
     s.textContent = `
       .vnd-card-wrap{display:flex;flex-direction:column;gap:8px}
       .vnd-update-btn{flex:1;height:44px;font-size:14px;font-weight:700;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px}
-      .kma-row{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
-      .kma-btn{border:none;border-radius:9px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;background:rgba(91,110,255,.1);color:var(--ind);font-family:inherit;white-space:nowrap;transition:background .15s}
-      .kma-btn:hover{background:rgba(91,110,255,.2)}
-      .kma-btn.g{background:rgba(52,199,89,.12);color:#34C759}
-      .kma-btn.g:hover{background:rgba(52,199,89,.22)}
-      .kma-btn.r{background:rgba(255,59,48,.1);color:var(--red)}
-      .kma-btn.r:hover{background:rgba(255,59,48,.2)}
+      .vnd-briefing{background:rgba(255,159,10,.08);border:1px solid rgba(255,159,10,.2);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12px;color:var(--txt2);line-height:1.45}
+      .vnd-briefing b{color:var(--amb);font-weight:700}
+      .vnd-briefing-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:5px}
+      .vnd-bf-chip{background:rgba(255,159,10,.12);color:var(--amb);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:600}
+      .kb-wpp-btn{border:none;background:rgba(37,211,102,.12);color:#25D366;border-radius:8px;width:26px;height:22px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;flex:none;transition:background .15s}
+      .kb-wpp-btn:hover{background:rgba(37,211,102,.25)}
     `;
     document.head.appendChild(s);
   }
   const appts = _apptsCache.filter(a => a.vnd === CU.nome);
+  // Busca briefings em lote
+  if (appts.length) {
+    const { data: bfs } = await sb.from('eye_briefings').select('*').in('appt_id', appts.map(a => a.id));
+    _vndBriefings = {};
+    (bfs || []).forEach(b => _vndBriefings[b.appt_id] = b);
+  }
   const ACTIVE_ST = ['passado_vendedor','agendado','em_negociacao','test_drive','ficha_enviada','credito_aprovado','ag_retorno','pendente','em_atendimento'];
   const active  = appts.filter(a => ACTIVE_ST.includes(a.status)).length;
   const visitas = appts.filter(a => a.status === 'agendado').length;
@@ -151,6 +176,19 @@ function _vndCard(a) {
   const sm     = fmtStatus(a.status);
   const alertH = _alertHours(a);
   const alertCls = alertH >= 24 ? 'ac-alert-dead' : alertH >= 4 ? 'ac-alert-crit' : alertH >= 2 ? 'ac-alert-warn' : '';
+  const bf     = _vndBriefings[a.id];
+  const urgLabels = { essa_semana:'⚡ Essa semana', esse_mes:'📅 Esse mês', sem_prazo:'🕐 Sem prazo' };
+  const objLabels = { preco:'Preço', pagamento:'Pagamento', modelo:'Modelo', pesquisando:'Pesquisando', nenhuma:'Sem objeção' };
+  const briefingHtml = bf ? `
+    <div class="vnd-briefing">
+      <b>Briefing SDR</b>${bf.resumo ? ` · ${esc(bf.resumo)}` : ''}
+      <div class="vnd-briefing-row">
+        ${bf.veiculo   ? `<span class="vnd-bf-chip"><i class="ti ti-car"></i> ${esc(bf.veiculo)}</span>` : ''}
+        ${bf.urgencia  ? `<span class="vnd-bf-chip">${urgLabels[bf.urgencia]||bf.urgencia}</span>` : ''}
+        ${bf.pagamento ? `<span class="vnd-bf-chip">💳 ${esc(bf.pagamento)}</span>` : ''}
+        ${bf.objecao && bf.objecao !== 'nenhuma' ? `<span class="vnd-bf-chip">⚠ ${objLabels[bf.objecao]||bf.objecao}</span>` : ''}
+      </div>
+    </div>` : '';
   return `<div class="ac${alertCls?' '+alertCls:''}" style="--c:${sm.c}">
     <div class="ac-head">
       <div style="flex:1;min-width:0">
@@ -162,8 +200,10 @@ function _vndCard(a) {
         </div>
       </div>
     </div>
+    ${briefingHtml}
     <div class="ac-acts" style="margin-top:10px">
       <button class="btn-s p vnd-update-btn" onclick="openNeg('${a.id}')"><i class="ti ti-refresh"></i> Atualizar</button>
+      ${a.tel ? `<button class="btn-s" style="height:44px;padding:0 14px;color:#25D366" onclick="event.stopPropagation();_kbOpenWpp('${a.tel.replace(/\D/g,'')}','${esc(a.cli)}')" title="WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
       <button class="btn-s" style="height:44px;padding:0 14px" onclick="openLeadTimeline('${a.id}')"><i class="ti ti-timeline"></i></button>
     </div>
   </div>`;
@@ -257,6 +297,7 @@ function kbCard(a, locked) {
       <div class="kb-card-foot">
         ${a.valor ? `<span class="kb-card-val">${esc(a.valor)}</span>` : '<span></span>'}
         ${a.data  ? `<span class="kb-card-date"><i class="ti ti-calendar"></i>${fmtDate(a.data)}</span>` : ''}
+        ${a.tel   ? `<button class="kb-wpp-btn" onclick="event.stopPropagation();_kbOpenWpp('${a.tel.replace(/\D/g,'')}','${esc(a.cli)}')" title="Abrir conversa WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
       </div>
     </div>`;
 }
