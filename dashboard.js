@@ -154,7 +154,7 @@ async function renderInicio() {
         <div class="dash-box">
           <div class="dash-box-title">Ranking de unidades</div>
           ${mstCards.length ? mstCards.map((u,i) => `
-            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);cursor:pointer" onclick="switchUnit('${u.id}')" title="Ir para ${esc(u.nome)}">
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="switchUnit('${u.id}')" title="Ir para ${esc(u.nome)}">
               <span style="font-size:15px;flex:none;width:22px;text-align:center">${medals[i]||`<span style='font-size:11px;color:var(--txt3)'>#${i+1}</span>`}</span>
               <div style="flex:1;min-width:0">
                 <div style="font-size:13px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.nome)}</div>
@@ -253,8 +253,8 @@ async function renderMstBi() {
     s.id = 'eye-mst-bi-styles';
     s.textContent = `
       .mst-bi-table{width:100%;border-collapse:collapse;font-size:13px}
-      .mst-bi-table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);border-bottom:2px solid var(--brd);white-space:nowrap}
-      .mst-bi-table td{padding:10px 12px;border-bottom:1px solid var(--brd);vertical-align:middle}
+      .mst-bi-table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);border-bottom:2px solid var(--bdr);white-space:nowrap}
+      .mst-bi-table td{padding:10px 12px;border-bottom:1px solid var(--bdr);vertical-align:middle}
       .mst-bi-table tr:last-child td{border-bottom:none}
       .mst-bi-table td:first-child{font-size:12px;color:var(--txt2);font-weight:500;white-space:nowrap}
       .mst-bi-hl td{background:rgba(91,110,255,.04)}
