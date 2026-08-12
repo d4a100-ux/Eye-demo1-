@@ -94,56 +94,241 @@ async function showApp(initialTab = 'inicio') {
   startRealtimeLeads();
 }
 
+let _mstPeriod = 'hoje';
+let _mstCards  = [];
+
 async function renderUnitsSelector() {
-  const grid = document.getElementById('units-grid');
+  if (!document.getElementById('eye-master-styles')) {
+    const s = document.createElement('style');
+    s.id = 'eye-master-styles';
+    s.textContent = `
+      .mst-controls{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+      .mst-period-btn{border:1.5px solid rgba(91,110,255,.25);background:transparent;color:var(--txt2);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+      .mst-period-btn.on{background:var(--ind);border-color:var(--ind);color:#fff}
+      .mst-digest-btn{border:none;background:rgba(255,159,10,.12);color:var(--amb);border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px}
+      .mst-digest-btn:hover{background:rgba(255,159,10,.22)}
+      .usc2-card{background:var(--card);border:1.5px solid var(--brd);border-radius:16px;padding:16px;cursor:pointer;transition:box-shadow .15s;position:relative}
+      .usc2-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.12)}
+      .usc2-grn{border-left:4px solid var(--grn)}
+      .usc2-amb{border-left:4px solid var(--amb)}
+      .usc2-red{border-left:4px solid var(--red)}
+      .usc2-all{border-left:4px solid var(--ind)}
+      .usc2-add{border-style:dashed;border-left:1.5px dashed var(--brd);cursor:pointer}
+      .usc2-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+      .usc2-rank{font-size:24px;flex:none;width:32px;text-align:center}
+      .usc2-info{flex:1;min-width:0}
+      .usc2-name{font-size:15px;font-weight:700;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .usc2-city{font-size:11px;color:var(--txt3);margin-top:2px;display:flex;align-items:center;gap:3px}
+      .usc2-saude{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:8px;padding:3px 8px;flex:none}
+      .usc2-saude-grn{background:rgba(52,199,89,.12);color:var(--grn)}
+      .usc2-saude-amb{background:rgba(255,159,10,.12);color:var(--amb)}
+      .usc2-saude-red{background:rgba(255,59,48,.1);color:var(--red)}
+      .usc2-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+      .usc2-kpi{text-align:center}
+      .usc2-val{display:block;font-size:18px;font-weight:800;color:var(--txt);letter-spacing:-0.5px}
+      .usc2-lbl{display:block;font-size:10px;color:var(--txt3);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
+      .usc2-team{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--txt2);font-weight:500}
+      .usc2-team i{margin-right:2px;vertical-align:-1px}
+      .mst-digest-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px)}
+      .mst-digest-panel{background:var(--card);border-radius:24px 24px 0 0;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;padding:24px 20px 32px}
+      .mst-digest-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+      .mst-digest-title{font-size:17px;font-weight:800;color:var(--txt)}
+      .mst-digest-close{border:none;background:var(--bg2);color:var(--txt2);border-radius:50%;width:32px;height:32px;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+      .mst-digest-sec{margin-bottom:20px}
+      .mst-digest-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--txt3);margin-bottom:10px}
+      .mst-snapshot-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--brd)}
+      .mst-snapshot-row:last-child{border-bottom:none}
+      .mst-snap-label{font-size:13px;color:var(--txt2)}
+      .mst-snap-val{font-size:13px;font-weight:700;color:var(--txt)}
+      .mst-risk-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,59,48,.06);border:1px solid rgba(255,59,48,.15);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:background .15s}
+      .mst-risk-item:hover{background:rgba(255,59,48,.11)}
+      .mst-risk-icon{font-size:16px;flex:none;margin-top:2px}
+      .mst-risk-text{flex:1;font-size:12px;color:var(--txt2);line-height:1.5}
+      .mst-risk-text b{color:var(--txt);font-weight:700}
+      .mst-rank-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--brd);cursor:pointer;transition:opacity .15s}
+      .mst-rank-row:last-child{border-bottom:none}
+      .mst-rank-row:hover{opacity:.7}
+      .mst-rank-medal{font-size:16px;width:24px;text-align:center;flex:none}
+      .mst-rank-name{flex:1;font-size:13px;font-weight:600;color:var(--txt)}
+      .mst-rank-kpis{font-size:11px;color:var(--txt3);text-align:right}
+    `;
+    document.head.appendChild(s);
+  }
+
+  const grid  = document.getElementById('units-grid');
   const subEl = document.getElementById('units-sel-sub');
+  const hd    = document.querySelector('.units-sel-hd');
+
+  if (!document.getElementById('mst-controls')) {
+    const ctrl = document.createElement('div');
+    ctrl.id = 'mst-controls';
+    ctrl.className = 'mst-controls';
+    hd.appendChild(ctrl);
+  }
+  document.getElementById('mst-controls').innerHTML = `
+    <button class="mst-period-btn${_mstPeriod==='hoje'?' on':''}" onclick="_mstSetPeriod('hoje')">Hoje</button>
+    <button class="mst-period-btn${_mstPeriod==='7d'?' on':''}" onclick="_mstSetPeriod('7d')">7 dias</button>
+    <button class="mst-period-btn${_mstPeriod==='30d'?' on':''}" onclick="_mstSetPeriod('30d')">30 dias</button>
+    <button class="mst-digest-btn" onclick="_mstDigest()"><i class="ti ti-coffee"></i> Morning Digest</button>`;
+
   grid.innerHTML = '<div class="units-loading">Carregando…</div>';
 
-  const uns = await getUnidades();
-  if (subEl) subEl.textContent = uns.length + ' unidade' + (uns.length !== 1 ? 's' : '');
+  const uns   = await getUnidades();
+  const users = await getUsers();
 
-  const hoje = new Date().toISOString().split('T')[0];
+  const now  = new Date();
+  const hoje = now.toISOString().split('T')[0];
+  const startDate = _mstPeriod === 'hoje'
+    ? hoje + 'T00:00:00'
+    : new Date(Date.now() - (_mstPeriod === '7d' ? 7 : 30) * 86400000).toISOString().split('T')[0] + 'T00:00:00';
   const duasHAtras = new Date(Date.now() - 7200000).toISOString();
-  const ACTIVE = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado'];
+  const ACTIVE = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','ficha_enviada'];
 
   const cards = await Promise.all(uns.map(async u => {
-    const [r1, r2, r3] = await Promise.all([
-      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id', u.id).gte('criado_em', hoje + 'T00:00:00'),
-      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id', u.id).eq('status','agendado').eq('data', hoje),
-      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id', u.id).in('status', ACTIVE).lt('em', duasHAtras),
+    const [rLeads, rVendas, rAlerts, rAg] = await Promise.all([
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).gte('criado_em',startDate),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).eq('status','venda_concluida').gte('criado_em',startDate),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).in('status',ACTIVE).lt('em',duasHAtras),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).eq('status','agendado').eq('data',hoje),
     ]);
-    const alertas = r3.count || 0;
-    return { ...u, leadsHoje: r1.count||0, agendados: r2.count||0, alertas, cor: alertas>3?'red':alertas>0?'amb':'grn' };
+    const leads   = rLeads.count  || 0;
+    const vendas  = rVendas.count || 0;
+    const alertas = rAlerts.count || 0;
+    const agendados = rAg.count   || 0;
+    const sdrs = users.filter(u2 => u2.unidade_id === u.id && u2.role === 'sdr').length;
+    const vnds = users.filter(u2 => u2.unidade_id === u.id && u2.role === 'vendedor').length;
+    const saude = alertas === 0 && (vendas > 0 || leads === 0) ? 'otima'
+                : alertas <= 4 ? 'atencao' : 'critico';
+    const saudeCor   = saude === 'otima' ? 'grn' : saude === 'atencao' ? 'amb' : 'red';
+    const saudeLabel = saude === 'otima' ? 'Saúde ótima' : saude === 'atencao' ? 'Atenção' : 'Crítico';
+    return { ...u, leads, vendas, alertas, agendados, sdrs, vnds, saude, saudeCor, saudeLabel };
   }));
 
-  const totLeads = cards.reduce((s,c) => s+c.leadsHoje, 0);
-  const totAg    = cards.reduce((s,c) => s+c.agendados, 0);
+  cards.sort((a, b) => b.leads - a.leads);
+  _mstCards = cards;
 
-  grid.innerHTML = cards.map(u => `
-    <div class="unit-sel-card u-${u.cor}" onclick="enterUnit('${u.id}')">
-      <div class="usc-dot usc-dot-${u.cor}"></div>
-      <div class="usc-name">${esc(u.nome)}</div>
-      ${u.cidade ? `<div class="usc-city"><i class="ti ti-map-pin"></i> ${esc(u.cidade)}</div>` : '<div class="usc-city"></div>'}
-      <div class="usc-kpis">
-        <div class="usc-kpi"><span class="usc-val">${u.leadsHoje}</span><span class="usc-lbl">hoje</span></div>
-        <div class="usc-kpi"><span class="usc-val">${u.agendados}</span><span class="usc-lbl">agendados</span></div>
-        <div class="usc-kpi"><span class="usc-val">${u.alertas}</span><span class="usc-lbl">alertas</span></div>
+  const totLeads  = cards.reduce((s,c) => s+c.leads,    0);
+  const totVendas = cards.reduce((s,c) => s+c.vendas,   0);
+  const totAg     = cards.reduce((s,c) => s+c.agendados,0);
+  const totAlerts = cards.reduce((s,c) => s+c.alertas,  0);
+  if (subEl) subEl.textContent = `${uns.length} unidade${uns.length!==1?'s':''} · ${totLeads} leads`;
+
+  const medals = ['🥇','🥈','🥉'];
+  grid.innerHTML = cards.map((u, i) => `
+    <div class="usc2-card usc2-${u.saudeCor}" onclick="enterUnit('${u.id}')">
+      <div class="usc2-top">
+        <div class="usc2-rank">${medals[i] || `#${i+1}`}</div>
+        <div class="usc2-info">
+          <div class="usc2-name">${esc(u.nome)}</div>
+          ${u.cidade ? `<div class="usc2-city"><i class="ti ti-map-pin"></i> ${esc(u.cidade)}</div>` : ''}
+        </div>
+        <div class="usc2-saude usc2-saude-${u.saudeCor}">${u.saudeLabel}</div>
       </div>
-      ${u.alertas > 0 ? `<div class="usc-alert-tag">⚠ ${u.alertas} parado${u.alertas>1?'s':''}</div>` : ''}
-    </div>`).join('') + (uns.length > 1 ? `
-    <div class="unit-sel-card u-all" onclick="enterUnit(null)">
-      <div class="usc-dot" style="background:var(--ind)"></div>
-      <div class="usc-name" style="color:var(--ind)">Todas as unidades</div>
-      <div class="usc-city">Visão consolidada</div>
-      <div class="usc-kpis">
-        <div class="usc-kpi"><span class="usc-val">${totLeads}</span><span class="usc-lbl">hoje</span></div>
-        <div class="usc-kpi"><span class="usc-val">${totAg}</span><span class="usc-lbl">agendados</span></div>
+      <div class="usc2-kpis">
+        <div class="usc2-kpi"><span class="usc2-val">${u.leads}</span><span class="usc2-lbl">Leads</span></div>
+        <div class="usc2-kpi"><span class="usc2-val">${u.agendados}</span><span class="usc2-lbl">Agendados</span></div>
+        <div class="usc2-kpi"><span class="usc2-val">${u.vendas}</span><span class="usc2-lbl">Conversões</span></div>
+        <div class="usc2-kpi"><span class="usc2-val" style="color:${u.alertas>5?'var(--red)':u.alertas>2?'var(--amb)':'inherit'}">${u.alertas}</span><span class="usc2-lbl">Alertas</span></div>
       </div>
-    </div>` : '') + `
-    <div class="unit-sel-card u-add" onclick="openNewUnit()">
-      <div class="usc-name" style="color:var(--ind)"><i class="ti ti-plus"></i> Nova unidade</div>
-      <div class="usc-city">Adicionar unidade</div>
+      <div class="usc2-team">
+        <span><i class="ti ti-headset"></i> ${u.sdrs} SDR${u.sdrs!==1?'s':''}</span>
+        <span><i class="ti ti-user-dollar"></i> ${u.vnds} Vendedor${u.vnds!==1?'es':''}</span>
+        ${u.alertas > 0 ? `<span style="color:var(--red);font-weight:700"><i class="ti ti-alert-triangle"></i> ${u.alertas} parado${u.alertas>1?'s':''}</span>` : ''}
+      </div>
+    </div>`).join('')
+  + (uns.length > 1 ? `
+    <div class="usc2-card usc2-all" onclick="enterUnit(null)">
+      <div class="usc2-top">
+        <div class="usc2-rank" style="font-size:20px">📊</div>
+        <div class="usc2-info">
+          <div class="usc2-name" style="color:var(--ind)">Todas as unidades</div>
+          <div class="usc2-city">Visão consolidada</div>
+        </div>
+      </div>
+      <div class="usc2-kpis">
+        <div class="usc2-kpi"><span class="usc2-val">${totLeads}</span><span class="usc2-lbl">Leads</span></div>
+        <div class="usc2-kpi"><span class="usc2-val">${totAg}</span><span class="usc2-lbl">Agendados</span></div>
+        <div class="usc2-kpi"><span class="usc2-val">${totVendas}</span><span class="usc2-lbl">Conversões</span></div>
+        <div class="usc2-kpi"><span class="usc2-val" style="color:${totAlerts>5?'var(--red)':totAlerts>0?'var(--amb)':'inherit'}">${totAlerts}</span><span class="usc2-lbl">Alertas</span></div>
+      </div>
+    </div>` : '')
+  + `
+    <div class="usc2-card usc2-add" onclick="openNewUnit()">
+      <div class="usc2-top">
+        <div class="usc2-rank" style="font-size:26px;color:var(--ind)">+</div>
+        <div class="usc2-info">
+          <div class="usc2-name" style="color:var(--ind)">Nova unidade</div>
+          <div class="usc2-city">Adicionar ao sistema</div>
+        </div>
+      </div>
     </div>`;
+}
+
+function _mstSetPeriod(p) {
+  _mstPeriod = p;
+  renderUnitsSelector();
+}
+
+function _mstDigest() {
+  const cards = _mstCards;
+  if (!cards.length) { toast('Carregue os dados primeiro'); return; }
+
+  const totLeads  = cards.reduce((s,c) => s+c.leads,    0);
+  const totVendas = cards.reduce((s,c) => s+c.vendas,   0);
+  const totAlerts = cards.reduce((s,c) => s+c.alertas,  0);
+  const totAg     = cards.reduce((s,c) => s+c.agendados,0);
+  const taxaGlobal = totLeads > 0 ? Math.round(totVendas / totLeads * 100) : 0;
+
+  const risks = [];
+  const piorAlerta = [...cards].filter(c => c.alertas > 0).sort((a,b) => b.alertas - a.alertas)[0];
+  if (piorAlerta) risks.push({ icon:'🚨', uid: piorAlerta.id, text:`<b>${esc(piorAlerta.nome)}</b> tem ${piorAlerta.alertas} lead${piorAlerta.alertas>1?'s':''} parado${piorAlerta.alertas>1?'s':''} há mais de 2h` });
+  const semVendas = [...cards].filter(c => c.leads > 2 && c.vendas === 0).sort((a,b) => b.leads - a.leads)[0];
+  if (semVendas) risks.push({ icon:'📉', uid: semVendas.id, text:`<b>${esc(semVendas.nome)}</b> tem ${semVendas.leads} leads mas nenhuma conversão no período` });
+  const semAg = cards.find(c => c.agendados === 0 && c.leads > 0);
+  if (semAg) risks.push({ icon:'📅', uid: semAg.id, text:`<b>${esc(semAg.nome)}</b> não tem agendamentos para hoje` });
+  const semTime = cards.find(c => (c.sdrs + c.vnds) === 0);
+  if (semTime && risks.length < 3) risks.push({ icon:'👥', uid: semTime.id, text:`<b>${esc(semTime.nome)}</b> sem usuários ativos cadastrados` });
+
+  const periodoLabel = _mstPeriod === 'hoje' ? 'Hoje' : _mstPeriod === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias';
+  const medals = ['🥇','🥈','🥉'];
+
+  document.getElementById('mst-digest-ov')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'mst-digest-ov';
+  ov.className = 'mst-digest-ov';
+  ov.innerHTML = `
+    <div class="mst-digest-panel">
+      <div class="mst-digest-hd">
+        <div class="mst-digest-title">☕ Morning Digest</div>
+        <button class="mst-digest-close" onclick="document.getElementById('mst-digest-ov').remove()">×</button>
+      </div>
+      <div class="mst-digest-sec">
+        <div class="mst-digest-sec-title">📊 Snapshot — ${periodoLabel}</div>
+        <div class="mst-snapshot-row"><span class="mst-snap-label">Total de leads</span><span class="mst-snap-val">${totLeads}</span></div>
+        <div class="mst-snapshot-row"><span class="mst-snap-label">Conversões</span><span class="mst-snap-val" style="color:${taxaGlobal>=8?'var(--grn)':taxaGlobal>=4?'var(--amb)':'var(--red)'}">${totVendas} (${taxaGlobal}%)</span></div>
+        <div class="mst-snapshot-row"><span class="mst-snap-label">Alertas críticos agora</span><span class="mst-snap-val" style="color:${totAlerts>5?'var(--red)':totAlerts>0?'var(--amb)':'var(--grn)'}">${totAlerts} parado${totAlerts!==1?'s':''}</span></div>
+        <div class="mst-snapshot-row"><span class="mst-snap-label">Agendados hoje</span><span class="mst-snap-val">${totAg}</span></div>
+      </div>
+      <div class="mst-digest-sec">
+        <div class="mst-digest-sec-title">🚨 Top Riscos</div>
+        ${risks.length ? risks.slice(0,3).map(r => `
+          <div class="mst-risk-item" onclick="document.getElementById('mst-digest-ov').remove();enterUnit('${r.uid}')">
+            <span class="mst-risk-icon">${r.icon}</span>
+            <div class="mst-risk-text">${r.text}<br><span style="color:var(--ind);font-size:11px;font-weight:600">→ Entrar na unidade</span></div>
+          </div>`).join('') : `<div style="text-align:center;padding:12px;color:var(--grn);font-weight:700">✓ Nenhum risco crítico identificado!</div>`}
+      </div>
+      <div class="mst-digest-sec">
+        <div class="mst-digest-sec-title">📈 Ranking de Unidades</div>
+        ${cards.map((u, i) => `
+          <div class="mst-rank-row" onclick="document.getElementById('mst-digest-ov').remove();enterUnit('${u.id}')">
+            <span class="mst-rank-medal">${medals[i]||`#${i+1}`}</span>
+            <span class="mst-rank-name">${esc(u.nome)}</span>
+            <span class="mst-rank-kpis">${u.leads} leads · ${u.vendas} conv. · ${u.alertas} alertas</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
 }
 
 async function openNewUnit() {
