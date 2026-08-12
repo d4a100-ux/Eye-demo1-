@@ -387,7 +387,7 @@ function kbCard(a, locked) {
       <div class="kb-card-foot">
         ${a.valor ? `<span class="kb-card-val">${esc(a.valor)}</span>` : '<span></span>'}
         ${a.data  ? `<span class="kb-card-date"><i class="ti ti-calendar"></i>${fmtDate(a.data)}</span>` : ''}
-        ${a.tel   ? `<button class="kb-wpp-btn" onclick="event.stopPropagation();_kbOpenWpp('${a.tel.replace(/\D/g,'')}','${esc(a.cli)}')" title="Abrir conversa WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
+        ${a.tel   ? `<button class="kb-wpp-btn" data-tel="${a.tel.replace(/\D/g,'')}" data-cli="${esc(a.cli)}" onclick="event.stopPropagation();_kbOpenWpp(this.dataset.tel,this.dataset.cli)" title="Abrir conversa WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
       </div>
     </div>`;
 }
@@ -420,13 +420,13 @@ async function kbDrop(event, newStatus) {
   a.status = newStatus;
   a.em = now;
   _drawKanban();
-  toast('Lead movido!');
   const { error } = await sb.from('eye_appts').update({ status: newStatus, em: now }).eq('id', id);
   if (error) {
     toast('Erro ao mover lead. Tente novamente.', 'err');
     a.status = oldStatus;
+    a.em = undefined;
     _drawKanban();
     return;
   }
-  if (oldStatus !== newStatus) await logStatus(id, oldStatus, newStatus);
+  if (oldStatus !== newStatus) { await logStatus(id, oldStatus, newStatus); toast('Lead movido!'); }
 }
