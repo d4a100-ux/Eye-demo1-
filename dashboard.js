@@ -73,9 +73,18 @@ async function renderInicio() {
   const meta=parseInt(localStorage.getItem('eye_meta')||'10');
   const pct=Math.min(100,Math.round(realizedMonth.length/meta*100));
 
-  // Master: fetch cross-unit quick data for the two middle boxes
+  // Master: cross-unit data. Others: tasks assigned to this user
   let mstCards = [];
-  if (CU.role === 'master') mstCards = await _mstQuickFetch();
+  let myTasks = { vencidas:[], hoje:[], futuras:[] };
+  if (CU.role === 'master') {
+    mstCards = await _mstQuickFetch();
+  } else {
+    const allTasks = await getTasks();
+    const myT = allTasks.filter(t => !t.concluida && t.responsavel === CU.nome);
+    myTasks.vencidas = myT.filter(t => t.vencimento && t.vencimento < today);
+    myTasks.hoje     = myT.filter(t => t.vencimento === today);
+    myTasks.futuras  = myT.filter(t => !t.vencimento || t.vencimento > today);
+  }
   const funnel=[
     {l:'Leads',        n:myAppts.length,                                                                                                                                              bg:'#007AFF'},
     {l:'Agendados',    n:myAppts.filter(a=>['agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length,bg:'#5856D6'},
@@ -158,16 +167,31 @@ async function renderInicio() {
       </div>`;
     })() : `<div class="dash-row">
       <div class="dash-box">
-        <div class="dash-box-title">Alertas</div>
-        ${hotLeads.length||confirmedToday.length||realizedToday.length?`
-          ${hotLeads.length?`<div class="alert-item"><div class="alert-dot" style="background:var(--red)"></div><div class="alert-txt">Leads parados (+1 dia)</div><div class="alert-count" style="color:var(--red)">${hotLeads.length}</div></div>`:''}
-          ${confirmedToday.length?`<div class="alert-item"><div class="alert-dot" style="background:var(--amb)"></div><div class="alert-txt">Passados ao vendedor hoje</div><div class="alert-count" style="color:var(--amb)">${confirmedToday.length}</div></div>`:''}
-          ${realizedToday.length?`<div class="alert-item"><div class="alert-dot" style="background:var(--grn)"></div><div class="alert-txt">Vendidos hoje</div><div class="alert-count" style="color:var(--grn)">${realizedToday.length}</div></div>`:''}
-        `:`<div class="alert-empty">✅ Tudo tranquilo hoje</div>`}
+        <div class="dash-box-title" style="display:flex;align-items:center;justify-content:space-between">
+          Minhas Tarefas
+          <button onclick="goTab('tarefas')" style="border:none;background:transparent;color:var(--ind);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;padding:0">Ver todas →</button>
+        </div>
+        ${myTasks.vencidas.length||myTasks.hoje.length||myTasks.futuras.length?`
+          ${myTasks.vencidas.slice(0,2).map(t=>`
+            <div class="alert-item" onclick="goTab('tarefas')" style="cursor:pointer">
+              <div class="alert-dot" style="background:var(--red)"></div>
+              <div class="alert-txt" style="color:var(--red);font-weight:600"><i class="ti ${TASK_ICONS[t.tipo]||'ti-checkbox'}" style="font-size:11px;margin-right:2px"></i>${esc(t.descricao||TASK_LABELS[t.tipo]||'Tarefa')}</div>
+              <div class="alert-count" style="color:var(--red);font-size:10px">${fmtDate(t.vencimento)}</div>
+            </div>`).join('')}
+          ${myTasks.vencidas.length>2?`<div class="alert-item"><div class="alert-dot" style="background:var(--red)"></div><div class="alert-txt" style="color:var(--red)">+${myTasks.vencidas.length-2} vencida${myTasks.vencidas.length-2!==1?'s':''}</div></div>`:''}
+          ${myTasks.hoje.slice(0,2).map(t=>`
+            <div class="alert-item" onclick="goTab('tarefas')" style="cursor:pointer">
+              <div class="alert-dot" style="background:var(--amb)"></div>
+              <div class="alert-txt"><i class="ti ${TASK_ICONS[t.tipo]||'ti-checkbox'}" style="font-size:11px;margin-right:2px"></i>${esc(t.descricao||TASK_LABELS[t.tipo]||'Tarefa')}</div>
+              <div class="alert-count" style="color:var(--amb)">Hoje${t.hora?' · '+t.hora:''}</div>
+            </div>`).join('')}
+          ${myTasks.hoje.length>2?`<div class="alert-item"><div class="alert-dot" style="background:var(--amb)"></div><div class="alert-txt" style="color:var(--amb)">+${myTasks.hoje.length-2} para hoje</div></div>`:''}
+          ${myTasks.futuras.length?`<div class="alert-item"><div class="alert-dot" style="background:var(--ind)"></div><div class="alert-txt">${myTasks.futuras.length} próxima${myTasks.futuras.length!==1?'s':''}</div><div class="alert-count" style="color:var(--txt3)">futuras</div></div>`:''}
+        `:`<div class="alert-empty">✅ Nenhuma tarefa pendente</div>`}
       </div>
       <div class="dash-box">
-        <div class="dash-box-title">Meta do mês</div>
-        <div class="meta-header"><span>Vendidos: <b>${realizedMonth.length}</b></span><input class="meta-input" type="number" id="meta-input" value="${meta}" min="1" onchange="saveMeta(this.value)"></div>
+        <div class="dash-box-title">Meta pessoal do mês</div>
+        <div class="meta-header"><span>Realizadas: <b>${realizedMonth.length}</b></span><input class="meta-input" type="number" id="meta-input" value="${meta}" min="1" onchange="saveMeta(this.value)"></div>
         <div class="meta-bar-bg"><div class="meta-bar-fill" style="--w:${pct}%;width:${pct}%"></div></div>
         <div class="meta-label">${pct}% da meta · ${Math.max(0,meta-realizedMonth.length)} restantes</div>
       </div>
