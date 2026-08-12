@@ -34,6 +34,27 @@ function _renderFunnelSVG(funnel) {
   return `<div class="funnel-svg-wrap"><svg viewBox="0 0 ${W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%"><defs>${defs}</defs>${segs}</svg></div>`;
 }
 
+async function _mstQuickFetch() {
+  const uns  = await getUnidades();
+  const hoje = new Date().toISOString().split('T')[0];
+  const ontem = new Date(Date.now()-86400000).toISOString().split('T')[0];
+  const duas_h = new Date(Date.now()-7200000).toISOString();
+  const ACTIVE = ['pendente','em_atendimento','qualificado','agendado','passado_vendedor','em_negociacao','ficha_enviada'];
+  const cards = await Promise.all(uns.map(async u => {
+    const [rL,rO,rV,rA,rAg] = await Promise.all([
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).gte('criado_em',hoje+'T00:00:00'),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).gte('criado_em',ontem+'T00:00:00').lt('criado_em',hoje+'T00:00:00'),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).eq('status','venda_concluida').gte('criado_em',hoje+'T00:00:00'),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).in('status',ACTIVE).lt('em',duas_h),
+      sb.from('eye_appts').select('*',{count:'exact',head:true}).eq('unidade_id',u.id).eq('status','agendado').eq('data',hoje),
+    ]);
+    return { ...u, leads:rL.count||0, ontem:rO.count||0, vendas:rV.count||0, alertas:rA.count||0, agendados:rAg.count||0 };
+  }));
+  cards.sort((a,b) => b.leads - a.leads);
+  if (typeof _mstCards !== 'undefined') _mstCards = cards;
+  return cards;
+}
+
 async function renderInicio() {
   const el=document.getElementById('v-inicio');
   loading(el);
@@ -51,6 +72,10 @@ async function renderInicio() {
 
   const meta=parseInt(localStorage.getItem('eye_meta')||'10');
   const pct=Math.min(100,Math.round(realizedMonth.length/meta*100));
+
+  // Master: fetch cross-unit quick data for the two middle boxes
+  let mstCards = [];
+  if (CU.role === 'master') mstCards = await _mstQuickFetch();
   const funnel=[
     {l:'Leads',        n:myAppts.length,                                                                                                                                              bg:'#007AFF'},
     {l:'Agendados',    n:myAppts.filter(a=>['agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length,bg:'#5856D6'},
@@ -95,7 +120,43 @@ async function renderInicio() {
       <div class="kpi-c"><div class="kpi-top"><div class="kl">Vendas no mês</div><div class="kpi-icon">✅</div></div><div class="kv">${realizedMonth.length}</div></div>
       <div class="kpi-c"><div class="kpi-top"><div class="kl">Leads parados</div><div class="kpi-icon">⚠️</div></div><div class="kv${hotLeads.length>0?' alert':''}">${hotLeads.length}</div></div>
     </div>
-    <div class="dash-row">
+    ${CU.role === 'master' ? (() => {
+      const hora = now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const tL   = mstCards.reduce((s,c)=>s+c.leads,   0);
+      const tO   = mstCards.reduce((s,c)=>s+c.ontem,   0);
+      const tV   = mstCards.reduce((s,c)=>s+c.vendas,  0);
+      const tA   = mstCards.reduce((s,c)=>s+c.alertas, 0);
+      const tAg  = mstCards.reduce((s,c)=>s+c.agendados,0);
+      const taxa = tL>0 ? Math.round(tV/tL*100) : 0;
+      const trendV = tL>tO ? `<span style="color:var(--grn);font-size:10px"> ↑ +${tL-tO}</span>` : tL<tO ? `<span style="color:var(--red);font-size:10px"> ↓ -${tO-tL}</span>` : '';
+      const medals = ['🥇','🥈','🥉'];
+      return `<div class="dash-row">
+        <div class="dash-box">
+          <div class="dash-box-title" style="display:flex;align-items:center;justify-content:space-between">
+            Snapshot
+            <button onclick="_mstDigest()" style="border:none;background:rgba(255,159,10,.12);color:var(--amb);border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">☕ Digest</button>
+          </div>
+          <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Todas as unidades · ${hora}</div>
+          <div class="alert-item"><div class="alert-dot" style="background:var(--ind)"></div><div class="alert-txt">Leads hoje</div><div class="alert-count">${tL}${trendV}</div></div>
+          <div class="alert-item"><div class="alert-dot" style="background:var(--amb)"></div><div class="alert-txt">Agendamentos hoje</div><div class="alert-count">${tAg}</div></div>
+          <div class="alert-item"><div class="alert-dot" style="background:var(--grn)"></div><div class="alert-txt">Conversões hoje</div><div class="alert-count" style="color:${taxa>=8?'var(--grn)':taxa>=4?'var(--amb)':'var(--red)'}">${tV} (${taxa}%)</div></div>
+          <div class="alert-item"><div class="alert-dot" style="background:var(--red)"></div><div class="alert-txt">Alertas ativos >2h</div><div class="alert-count" style="color:${tA>3?'var(--red)':tA>0?'var(--amb)':'var(--grn)'}">${tA}</div></div>
+        </div>
+        <div class="dash-box">
+          <div class="dash-box-title">Ranking de unidades</div>
+          ${mstCards.length ? mstCards.map((u,i) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);cursor:pointer" onclick="switchUnit('${u.id}')" title="Ir para ${esc(u.nome)}">
+              <span style="font-size:15px;flex:none;width:22px;text-align:center">${medals[i]||`<span style='font-size:11px;color:var(--txt3)'>#${i+1}</span>`}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.nome)}</div>
+                <div style="font-size:11px;color:var(--txt3)">${u.leads} leads · ${u.vendas} conv. · ${u.agendados} ag.</div>
+              </div>
+              <span style="font-size:11px;font-weight:700;flex:none;color:${u.alertas>3?'var(--red)':u.alertas>0?'var(--amb)':'var(--grn)'}">${u.alertas>0?`⚠ ${u.alertas}`:'✓'}</span>
+            </div>`).join('')
+          : `<div class="alert-empty">Nenhuma unidade encontrada</div>`}
+        </div>
+      </div>`;
+    })() : `<div class="dash-row">
       <div class="dash-box">
         <div class="dash-box-title">Alertas</div>
         ${hotLeads.length||confirmedToday.length||realizedToday.length?`
@@ -110,7 +171,7 @@ async function renderInicio() {
         <div class="meta-bar-bg"><div class="meta-bar-fill" style="--w:${pct}%;width:${pct}%"></div></div>
         <div class="meta-label">${pct}% da meta · ${Math.max(0,meta-realizedMonth.length)} restantes</div>
       </div>
-    </div>
+    </div>`}
     <div class="dash-box">
       <div class="dash-box-title">Funil do mês</div>
       ${_renderFunnelSVG(funnel)}
