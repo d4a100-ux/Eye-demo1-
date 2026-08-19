@@ -73,7 +73,9 @@ async function getTasks(force = false) {
 }
 
 async function getAppts() {
-  let q = sb.from('eye_appts').select('*').order('data').order('hora');
+  const now = new Date();
+  const mesStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01T00:00:00`;
+  let q = sb.from('eye_appts').select('*').gte('criado_em', mesStart).order('criado_em', {ascending:false});
   q = applyUnitFilter(q);
   const { data, error } = await q;
   if (error) { console.error('getAppts:', error); return []; }
