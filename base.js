@@ -101,6 +101,7 @@ function baseCard(a) {
         <div class="ac-name">${esc(a.cli||'—')}<span class="tag ${st.cls}">${st.l}</span></div>
         <div class="ac-sub">
           ${a.vnd ?`<span><i class="ti ti-user"></i>${esc(a.vnd)}</span>`:''}
+          ${isMgr()&&a.criado_por?`<span style="color:var(--txt3)"><i class="ti ti-headset"></i>${esc((_usersCache||[]).find(u=>u.login===a.criado_por)?.nome||a.criado_por)}</span>`:''}
           ${a.tel ?`<span><i class="ti ti-phone"></i>${a.tel}</span>`:''}
           ${a.orig?`<span><i class="ti ti-map-pin"></i>${esc(a.orig)}</span>`:''}
           ${mes   ?`<span><i class="ti ti-calendar"></i>${mes}</span>`:''}
