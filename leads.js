@@ -78,10 +78,12 @@ function _filterAgenda() {
   const q    = (document.getElementById('ag-q')?.value   ||'').toLowerCase();
   const st   =  document.getElementById('ag-st')?.value  ||'';
   const vnd  =  document.getElementById('ag-vnd')?.value ||'';
+  const sdr  =  document.getElementById('ag-sdr')?.value ||'';
   const orig =  document.getElementById('ag-orig')?.value||'';
   if (q)    appts = appts.filter(a => (a.cli+a.vnd+(a.modelo||'')).toLowerCase().includes(q));
   if (st)   appts = appts.filter(a => a.status===st);
   if (vnd)  appts = appts.filter(a => a.vnd===vnd);
+  if (sdr)  appts = appts.filter(a => a.criado_por===sdr);
   if (orig) appts = appts.filter(a => a.orig===orig);
   const el = document.getElementById('ag-list');
   if (!appts.length) { el.innerHTML=`<div class="empty-st"><i class="ti ti-calendar-off"></i><p>Nenhum agendamento encontrado.<br>Clique em "Novo lead" para criar o primeiro.</p></div>`; return; }
@@ -126,6 +128,7 @@ function agendaCard(a) {
         <div class="ag-card-sub">
           ${a.hora?`<span><i class="ti ti-clock"></i>${a.hora}</span>`:''}
           <span><i class="ti ti-user"></i>${esc(a.vnd||'—')}</span>
+          ${isMgr()&&a.criado_por?`<span style="color:var(--txt3)"><i class="ti ti-headset"></i>${esc((_usersCache||[]).find(u=>u.login===a.criado_por)?.nome||a.criado_por)}</span>`:''}
           ${a.tel?`<span><i class="ti ti-phone"></i>${esc(a.tel)}</span>`:''}
           ${a.modelo?`<span><i class="ti ti-car"></i>${esc(a.modelo)}</span>`:''}
         </div>
@@ -221,6 +224,10 @@ function _renderCalAgenda() {
       ${CU.role!=='vendedor'?`<select class="fi fi-sel" id="ag-vnd" onchange="_filterAgenda()">
         <option value="">Todos os vendedores</option>
         ${vendedores().map(v=>`<option>${v.nome}</option>`).join('')}
+      </select>`:''}
+      ${isMgr()?`<select class="fi fi-sel" id="ag-sdr" onchange="_filterAgenda()">
+        <option value="">Todos os SDRs</option>
+        ${((_usersCache||[]).filter(u=>u.role==='sdr')).map(u=>`<option value="${esc(u.login)}">${esc(u.nome)}</option>`).join('')}
       </select>`:''}
       <select class="fi fi-sel" id="ag-orig" onchange="_filterAgenda()">
         <option value="">Todas as origens</option>
