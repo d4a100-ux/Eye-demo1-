@@ -379,6 +379,7 @@ function kbCard(a, locked) {
         <div class="kb-card-info">
           <div class="kb-card-name">${esc(a.cli)}</div>
           <div class="kb-card-vnd">${esc(a.vnd)||'—'}</div>
+          ${isMgr() && a.criado_por ? `<div class="kb-card-vnd" style="color:var(--txt3);font-size:9.5px">SDR: ${esc((_usersCache||[]).find(u=>u.login===a.criado_por)?.nome||a.criado_por)}</div>` : ''}
         </div>
         ${scoreBadge(a)}
       </div>
