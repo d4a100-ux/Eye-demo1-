@@ -611,7 +611,8 @@ async function _doSaveAppt() {
 async function openNeg(id){
   const a=_apptsCache.find(x=>x.id===id);if(!a)return;
   const _negTitleEl = document.getElementById('neg-modal-title');
-  _negTitleEl.innerHTML = `<span style="font-size:20px;font-weight:800;letter-spacing:-.4px;display:block;line-height:1.1;color:var(--txt)">${esc(a.cli)}</span>`;
+  const sdrNome = a.criado_por ? ((_usersCache||[]).find(u=>u.login===a.criado_por)?.nome||a.criado_por) : null;
+  _negTitleEl.innerHTML = `<span style="font-size:20px;font-weight:800;letter-spacing:-.4px;display:block;line-height:1.1;color:var(--txt)">${esc(a.cli)}</span>${isMgr()&&sdrNome?`<span style="font-size:11px;color:var(--txt3);margin-top:3px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-headset" style="font-size:11px"></i>SDR: <b style="color:var(--txt2);font-weight:600">${esc(sdrNome)}</b></span>`:''}${isMgr()&&a.vnd?`<span style="font-size:11px;color:var(--txt3);margin-top:1px;margin-left:10px;display:inline-flex;align-items:center;gap:4px"><i class="ti ti-user" style="font-size:11px"></i>VND: <b style="color:var(--txt2);font-weight:600">${esc(a.vnd)}</b></span>`:''}`;
   document.getElementById('neg-id').value=id;
   document.getElementById('n-status').value=a.status||'pendente';
   // Mostrar datas de chegada e agendamento
