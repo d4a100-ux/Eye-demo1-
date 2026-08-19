@@ -538,7 +538,15 @@ async function _doSaveLead() {
 async function openAppt(id) {
   await getUsers();
   const vnds=vendedores();
+  const sdrs=(_usersCache||[]).filter(u=>u.role==='sdr');
   document.getElementById('a-vnd').innerHTML=`<option value="">Selecione…</option>${vnds.map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('')}`;
+  const sdrWrap=document.getElementById('a-sdr-wrap');
+  if(sdrWrap){
+    if(isMgr()&&sdrs.length){
+      sdrWrap.style.display='block';
+      document.getElementById('a-sdr').innerHTML=`<option value="">Selecione o SDR…</option>${sdrs.map(u=>`<option value="${esc(u.login)}">${esc(u.nome)}</option>`).join('')}`;
+    } else { sdrWrap.style.display='none'; }
+  }
   const today=new Date().toISOString().split('T')[0];
   if(id){
     const a=_apptsCache.find(x=>x.id===id);if(!a)return;
@@ -556,6 +564,7 @@ async function openAppt(id) {
     document.getElementById('a-pgto').value=a.pgto||'';
     document.getElementById('a-obs').value=a.obs||'';
     document.getElementById('a-prox').value=a.prox||'';
+    const sdrEl=document.getElementById('a-sdr'); if(sdrEl) sdrEl.value=a.criado_por||'';
     const[logs,comments]=await Promise.all([loadApptLogs(a.id),loadComments(a.id)]);
     drawComments(a.id,comments); drawJourney(a.status,logs);
     const histEl=document.getElementById('appt-history');
@@ -574,6 +583,8 @@ async function openAppt(id) {
     document.getElementById('a-orig').value='';
     document.getElementById('a-status').value='agendado';
     document.getElementById('a-pgto').value='';
+    const sdrElNew=document.getElementById('a-sdr');
+    if(sdrElNew) sdrElNew.value=CU.role==='sdr'?CU.login:'';
     ['appt-history','appt-comments','appt-journey'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='';});
   }
   document.getElementById('ov-appt').classList.add('on');
@@ -601,11 +612,13 @@ async function _doSaveAppt() {
   const vnd=document.getElementById('a-vnd').value, orig=document.getElementById('a-orig').value;
   const eid=document.getElementById('appt-id').value;
   const nowTs=new Date().toISOString();
+  const sdrVal=document.getElementById('a-sdr')?.value;
+  const criado_por = (isMgr()&&sdrVal) ? sdrVal : CU.login;
   const obj=withUnit({id:eid||uid(),cli,data,tel:document.getElementById('a-tel').value.trim(),hora:document.getElementById('a-hora').value,
     vnd,orig,status:document.getElementById('a-status').value||'agendado',modelo:document.getElementById('a-modelo').value.trim(),
     valor:document.getElementById('a-valor').value.trim(),pgto:document.getElementById('a-pgto').value,
     obs:document.getElementById('a-obs').value.trim(),prox:document.getElementById('a-prox').value.trim(),
-    criado_por:CU.login,em:nowTs,...(!eid&&{criado_em:nowTs})});
+    criado_por,em:nowTs,...(!eid&&{criado_em:nowTs})});
   let error;
   if(eid){({error}=await sb.from('eye_appts').update(obj).eq('id',eid));}
   else   {({error}=await sb.from('eye_appts').insert(obj));}
