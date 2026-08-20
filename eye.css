@@ -1,18 +1,18 @@
 :root{
-  /* Glassmorphism tokens */
-  --bg:linear-gradient(135deg,#EEF2FF 0%,#F0F0F8 35%,#E8EDF5 65%,#EDF1FF 100%);
+  /* Glassmorphism tokens — iOS Liquid Glass identity */
+  --bg:#F2F2F7;
   --bg2:rgba(60,60,67,.05);
-  --sur:rgba(255,255,255,.72);
-  --sur2:rgba(255,255,255,.55);
-  --bg-app:#EEF2FF;
-  --bg-elevated:rgba(255,255,255,.88);
-  --bg-hover:rgba(255,255,255,.50);
+  --sur:rgba(255,255,255,.82);
+  --sur2:rgba(255,255,255,.60);
+  --bg-app:#F2F2F7;
+  --bg-elevated:rgba(255,255,255,.92);
+  --bg-hover:rgba(255,255,255,.55);
   --bg-active:rgba(91,110,255,.08);
 
-  --glass-card:rgba(255,255,255,.72);
-  --glass-sidebar:rgba(240,242,255,.75);
-  --glass-topbar:rgba(238,242,255,.80);
-  --glass-modal:rgba(255,255,255,.88);
+  --glass-card:rgba(255,255,255,.80);
+  --glass-sidebar:rgba(255,255,255,.75);
+  --glass-topbar:rgba(255,255,255,.82);
+  --glass-modal:rgba(255,255,255,.92);
   --glass-blur-sm:blur(16px) saturate(180%) brightness(1.04);
   --glass-blur-md:blur(20px) saturate(180%) brightness(1.04);
   --glass-blur-lg:blur(28px) saturate(200%) brightness(1.02);
@@ -21,11 +21,11 @@
   --glass-border-soft:0.5px solid rgba(255,255,255,.70);
   --glass-highlight:inset 0 1px 0 rgba(255,255,255,.80);
 
-  --bdr:rgba(60,60,67,.08);
-  --bdr2:rgba(60,60,67,.14);
-  --border:rgba(60,60,67,.08);
-  --border-md:rgba(60,60,67,.14);
-  --border-strong:rgba(60,60,67,.22);
+  --bdr:rgba(60,60,67,.10);
+  --bdr2:rgba(60,60,67,.16);
+  --border:rgba(60,60,67,.10);
+  --border-md:rgba(60,60,67,.16);
+  --border-strong:rgba(60,60,67,.24);
 
   --txt:#1C1C1E;--txt2:#8E8E93;--txt3:#C7C7CC;
   --text-primary:#1C1C1E;--text-secondary:#8E8E93;--text-tertiary:#C7C7CC;
@@ -40,14 +40,14 @@
   --r:20px;--rs:12px;--rm:16px;
   --radius-sm:12px;--radius-md:16px;--radius-lg:20px;--radius-xl:24px;--radius-2xl:28px;
 
-  --shadow-sm:0 2px 8px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.03),inset 0 1px 0 rgba(255,255,255,.80);
-  --shadow-md:0 8px 32px rgba(0,0,0,.10),0 0 0 .5px rgba(0,0,0,.04),inset 0 1px 0 rgba(255,255,255,.90);
-  --shadow-lg:0 16px 48px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04),inset 0 1px 0 rgba(255,255,255,.95);
-  --shadow-xl:0 24px 80px rgba(0,0,0,.14),0 0 0 .5px rgba(0,0,0,.04),inset 0 1px 0 rgba(255,255,255,1);
+  --shadow-sm:0 1px 4px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.08),0 0 0 .5px rgba(0,0,0,.04);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.10),0 0 0 .5px rgba(0,0,0,.04);
+  --shadow-xl:0 20px 60px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#EEF2FF 0%,#F0F0F8 35%,#E8EDF5 65%,#EDF1FF 100%) fixed;color:var(--txt);-webkit-font-smoothing:antialiased;min-height:100vh;}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#F2F2F7;color:var(--txt);-webkit-font-smoothing:antialiased;min-height:100vh;}
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;}
