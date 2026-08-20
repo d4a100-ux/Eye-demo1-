@@ -42,22 +42,30 @@ const ORIGINS = {
 const ROLE_LABELS = { gerencia:'Gerência', sdr:'SDR', vendedor:'Vendedor', master:'Master' };
 
 const KB_COLS = [
-  // Fase SDR
-  { id:'pendente',         label:'Novo Lead',          color:'var(--txt2)', fase:'sdr' },
-  { id:'em_atendimento',   label:'Em Atendimento',     color:'#5856D6',     fase:'sdr' },
-  { id:'qualificado',      label:'Qualificado',        color:'#007AFF',     fase:'sdr' },
-  { id:'agendado',         label:'Agendado',           color:'#2DD4A7',     fase:'sdr' },
-  { id:'passado_vendedor', label:'Passado ao Vendedor',color:'#FF9F0A',     fase:'sdr' },
-  { id:'sem_resposta',     label:'Sem Resposta',       color:'#8E8E93',     fase:'sdr' },
-  // Fase Vendedor
-  { id:'em_negociacao',    label:'Em Negociação',      color:'#5856D6',     fase:'vnd' },
-  { id:'ficha_enviada',    label:'Ficha Enviada',      color:'#FF9F0A',     fase:'vnd' },
-  { id:'credito_reprovado',label:'Crédito Reprovado',  color:'#FF3B30',     fase:'vnd' },
-  { id:'ag_retorno',       label:'Ag. Retorno',        color:'#8E8E93',     fase:'vnd' },
-  { id:'venda_concluida',  label:'Venda Concluída',    color:'#34C759',     fase:'vnd' },
-  // Saídas
-  { id:'lead_frio',        label:'Lead Frio',          color:'#8E8E93',     fase:'exit'},
-  { id:'perdido',          label:'Perdido',            color:'#FF3B30',     fase:'exit'},
+  {
+    id: 'novo_lead',
+    label: 'Novo Lead',
+    color: '#5B6EFF',
+    fase: 'sdr',
+    statuses: ['pendente'],
+    dropStatus: 'pendente'
+  },
+  {
+    id: 'em_contato',
+    label: 'Em Contato',
+    color: '#5B6EFF',
+    fase: 'sdr',
+    statuses: ['em_atendimento', 'qualificado', 'sem_resposta'],
+    dropStatus: 'em_atendimento'
+  },
+  {
+    id: 'agendado',
+    label: 'Agendado',
+    color: '#34C759',
+    fase: 'both',
+    statuses: ['agendado', 'passado_vendedor', 'em_negociacao', 'test_drive', 'ficha_enviada', 'credito_aprovado', 'credito_reprovado', 'ag_retorno', 'venda_concluida'],
+    dropStatus: 'agendado'
+  }
 ];
 
 // Lead Score — maior = mais quente
