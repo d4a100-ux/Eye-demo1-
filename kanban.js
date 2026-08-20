@@ -3,21 +3,24 @@ let _kbDragId     = null;
 let _pendingKbDrop = null;
 
 const KB_TRAINING = {
-  pendente:           { desc:'Lead novo que acabou de chegar, sem contato ainda.', fazer:'Ligar ou enviar WhatsApp em até 5 minutos. Cada minuto conta!', script:'Oi [nome]! Vi que você tem interesse em veículos. Posso te ajudar a encontrar o carro ideal hoje?', erro:'Deixar passar mais de 30 minutos sem contato — a concorrência vai agir antes.' },
-  em_atendimento:     { desc:'Lead que está sendo atendido agora — conversa ativa.', fazer:'Identificar necessidade, qualificar o interesse e agendar ou avançar na jornada.', script:'Perfeito [nome]! Para eu te ajudar melhor: qual modelo você tem mais interesse? E qual seria sua forma de pagamento preferida?', erro:'Ficar apenas no WhatsApp sem avançar para agendamento ou passagem ao vendedor.' },
-  qualificado:        { desc:'Lead qualificado com interesse confirmado e dados coletados.', fazer:'Agendar visita ou passar ao vendedor com briefing completo preenchido.', script:'Ótimo [nome]! Com base no que me disse, temos exatamente o que você procura. Quando você pode vir conhecer pessoalmente?', erro:'Qualificar e não dar o próximo passo — lead fica travado aqui.' },
-  agendado:           { desc:'Cliente com visita marcada na loja.', fazer:'Confirmar o agendamento no dia anterior e avisar o vendedor responsável.', script:'Olá [nome], passando para confirmar sua visita amanhã às [hora]. Estamos te esperando com o [modelo] separado!', erro:'Não confirmar e o cliente não comparecer sem aviso.' },
-  passado_vendedor:   { desc:'Lead já está com o vendedor para negociação presencial.', fazer:'Garantir que o vendedor recebeu o briefing e está atendendo o cliente.', script:'Já passei todas as informações para o [vendedor]. Ele vai te atender com toda atenção que você merece!', erro:'Passar sem briefing — vendedor fica sem contexto e perde oportunidade.' },
-  em_negociacao:      { desc:'Cliente na loja negociando, proposta em andamento.', fazer:'Manter ritmo, apresentar opções e trabalhar objeções sem pressão excessiva.', script:'Entendo sua preocupação com [objeção]. Posso verificar uma condição especial para você? Deixa eu falar com o gerente.', erro:'Deixar o cliente ir embora sem fechar ou sem próximo passo definido.' },
-  test_drive:         { desc:'Cliente fazendo ou agendado para test drive.', fazer:'Preparar o veículo, acompanhar a experiência e conectar emocionalmente.', script:'Como foi a experiência com o [modelo]? Se sentiu bem no veículo? Quer que eu verifique uma proposta personalizada?', erro:'Deixar o cliente sair sem fazer uma proposta após o test drive.' },
-  ficha_enviada:      { desc:'Ficha de crédito enviada para análise.', fazer:'Acompanhar o prazo e manter o cliente informado sobre o andamento.', script:'[nome], sua ficha está em análise. Normalmente leva [prazo]. Posso te avisar assim que tiver retorno?', erro:'Deixar o cliente sem notícias — gera ansiedade e desistência.' },
-  credito_aprovado:   { desc:'Crédito aprovado! Momento de fechar negócio.', fazer:'Entrar em contato imediatamente e agilizar a conclusão da venda.', script:'ÓTIMA NOTÍCIA, [nome]! Seu crédito foi aprovado! Quando podemos fechar o contrato? Podemos adiantar o processo ainda hoje?', erro:'Demorar para avisar — cliente pode ir para concorrente enquanto espera.' },
-  credito_reprovado:  { desc:'Crédito reprovado — buscar alternativas para o cliente.', fazer:'Apresentar alternativas: co-participante, entrada maior, outro modelo, outro banco.', script:'[nome], aconteceu um contratempo com a aprovação, mas temos soluções. Podemos tentar com um co-participante ou ajustar a entrada. Posso verificar?', erro:'Simplesmente informar que foi reprovado sem oferecer nenhuma alternativa.' },
-  ag_retorno:         { desc:'Cliente quer retornar ou aguarda mais informações.', fazer:'Definir data e hora exatas de retorno e cumprir o prazo.', script:'Perfeito [nome]! Então me fala: até quando você pretende tomar a decisão? Assim consigo manter a oferta reservada para você.', erro:'Não definir um prazo concreto — lead fica em aberto indefinidamente.' },
-  venda_concluida:    { desc:'Venda fechada! Fidelização e indicação.', fazer:'Agradecer, pedir indicação e manter contato pós-venda.', script:'Parabéns [nome] pelo seu novo carro! Se tiver algum amigo que também procura veículo, ficaria feliz em atender com a mesma atenção!', erro:'Nunca mais entrar em contato após a venda — oportunidade de indicação perdida.' },
-  lead_frio:          { desc:'Lead que perdeu interesse ou ficou sem resposta por muito tempo.', fazer:'Tentar reativação com nova abordagem ou oferta diferente.', script:'Oi [nome]! Sei que faz um tempo — mas acabou de chegar um modelo incrível que lembrei de você. Posso te mandar mais detalhes?', erro:'Não tentar reativar — lead descartado prematuramente.' },
-  sem_resposta:       { desc:'Lead que não respondeu as tentativas de contato.', fazer:'Tentar por canais diferentes (ligação, WhatsApp, e-mail) em horários variados.', script:'Oi [nome], tentei falar com você em outro momento. Ainda tem interesse em encontrar um bom veículo? Posso ajudar!', erro:'Insistir no mesmo horário e canal — mudar a abordagem.' },
-  perdido:            { desc:'Lead descartado ou que foi para a concorrência.', fazer:'Registrar o motivo da perda e tentar reativação futura estratégica.', script:'Entendemos, [nome]. Se mudar de ideia ou quiser comparar, estaremos aqui. Posso te colocar em nossa lista VIP?', erro:'Não registrar o motivo da perda — informação valiosa para melhorar o processo.' },
+  novo_lead: {
+    desc: 'Lead novo que acabou de entrar. Ainda não houve contato.',
+    fazer: 'Enviar WhatsApp ou ligar em até 5 minutos. Cada minuto conta!',
+    script: 'Oi [nome]! Vi que você tem interesse em veículos. Posso te ajudar a encontrar o carro ideal hoje?',
+    erro: 'Deixar passar mais de 30 minutos sem contato — a concorrência vai agir antes.',
+  },
+  em_contato: {
+    desc: 'Lead sendo atendido — em conversa ativa ou aguardando retorno.',
+    fazer: 'Qualificar interesse, descobrir modelo e forma de pagamento. Converter em agendamento.',
+    script: 'Perfeito [nome]! Pra eu te ajudar melhor: qual modelo você tem mais interesse? Quando poderia vir à loja conhecer pessoalmente?',
+    erro: 'Ficar só no WhatsApp sem avançar — lead precisa ser convertido em agendamento.',
+  },
+  agendado: {
+    desc: 'Cliente agendado ou em negociação na loja. Fase decisiva para fechar.',
+    fazer: 'Confirmar agendamento no dia anterior. Registrar resultado da visita. Acompanhar negociação até fechamento.',
+    script: 'Olá [nome], confirmando sua visita amanhã às [hora]. Estamos te esperando com o [modelo] separado!',
+    erro: 'Não confirmar o agendamento — risco alto de no-show sem aviso.',
+  },
 };
 
 function showKbTraining(colId) {
@@ -308,26 +311,19 @@ function _drawKanban() {
   if (q)  appts = appts.filter(a => (a.cli+' '+(a.tel||'')).toLowerCase().includes(q));
 
   const hidden = JSON.parse(localStorage.getItem('eye_kb_hidden') || '[]');
-  let visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
+  const visibleCols = KB_COLS.filter(col => !hidden.includes(col.id));
 
-  // Determina quais colunas são acessíveis por papel
   function _colLocked(col) {
     if (CU.role === 'gerencia' || CU.role === 'master') return false;
-    if (CU.role === 'sdr') return col.fase === 'vnd'; // SDR não acessa fase vnd
-    if (CU.role === 'vendedor') return col.fase === 'sdr' && col.id !== 'passado_vendedor'; // vendedor não acessa sdr (exceto passado_vendedor)
+    if (CU.role === 'sdr') return col.fase === 'vnd';
+    if (CU.role === 'vendedor') return col.fase === 'sdr';
     return false;
   }
 
-  const phaseLabels = { sdr:'— SDR', vnd:'— Vendedor', exit:'— Saídas' };
-  let lastFase = null;
   let html = '<div class="kb-board">';
   visibleCols.forEach(col => {
-    if (col.fase !== lastFase) {
-      html += `<div class="kb-phase-div"><span>${phaseLabels[col.fase]||col.fase}</span></div>`;
-      lastFase = col.fase;
-    }
-    const cards = appts.filter(a => a.status === col.id);
-    const totalVal = cards.reduce((s,a) => {
+    const cards = appts.filter(a => col.statuses.includes(a.status));
+    const totalVal = cards.reduce((s, a) => {
       const n = parseFloat((a.valor||'').replace(/[^0-9,.]/g,'').replace(',','.'));
       return s + (isNaN(n) ? 0 : n);
     }, 0);
@@ -335,10 +331,8 @@ function _drawKanban() {
                  : totalVal > 0    ? `R$${Math.round(totalVal)}`
                  : '';
     const locked = _colLocked(col);
-    const lockLabel = col.fase === 'sdr' ? 'Esta fase pertence ao SDR' : 'Esta fase pertence ao vendedor';
     html += `
-      <div class="kb-col${locked?' kb-locked':''}" data-status="${col.id}"
-        ${locked ? `title="${lockLabel}"` : ''}
+      <div class="kb-col${locked?' kb-locked':''}" data-col="${col.id}"
         ondragover="if(!${locked})event.preventDefault();if(!${locked})this.classList.add('kb-over')"
         ondragleave="this.classList.remove('kb-over')"
         ondrop="if(!${locked})kbDrop(event,'${col.id}')">
@@ -351,7 +345,7 @@ function _drawKanban() {
           <div style="display:flex;align-items:center;gap:5px">
             <span class="kb-count">${cards.length}</span>
             ${valStr ? `<span class="kb-val">${valStr}</span>` : ''}
-            <button class="kb-train-btn" onclick="event.stopPropagation();showKbTraining('${col.id}')" title="Guia">?</button>
+            <button class="kb-train-btn" onclick="event.stopPropagation();showKbTraining('${col.id}')" title="Guia da fase">?</button>
           </div>
         </div>
         <div class="kb-col-body">
@@ -363,37 +357,138 @@ function _drawKanban() {
   document.getElementById('kb-board').innerHTML = html;
 }
 
+function kbCardBorderColor(a) {
+  const al = alertClass(a);
+  if (al === 'card-dead' || al === 'card-crit' || al === 'card-warn') return 'var(--amb)';
+  if (['venda_concluida','credito_aprovado','agendado','passado_vendedor','em_negociacao','test_drive','ficha_enviada'].includes(a.status)) return 'var(--grn)';
+  if (a.status === 'credito_reprovado') return 'var(--red)';
+  if (['sem_resposta','ag_retorno'].includes(a.status)) return 'var(--amb)';
+  return 'var(--ind)';
+}
+
+function kbCardActBtn(a) {
+  const tel  = (a.tel||'').replace(/\D/g,'');
+  const alertH = a.em ? (Date.now() - new Date(a.em)) / 3600000 : 0;
+  if (a.status === 'pendente') {
+    if (tel) return `<button class="kb-act-btn kb-act-ind" data-tel="${tel}" data-cli="${esc(a.cli)}" onclick="event.stopPropagation();_kbOpenWpp(this.dataset.tel,this.dataset.cli)"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>`;
+    return `<button class="kb-act-btn kb-act-ind" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-phone"></i> Iniciar contato</button>`;
+  }
+  if (a.status === 'sem_resposta') {
+    if (tel) return `<button class="kb-act-btn kb-act-amb" data-tel="${tel}" data-cli="${esc(a.cli)}" onclick="event.stopPropagation();_kbOpenWpp(this.dataset.tel,this.dataset.cli)"><i class="ti ti-refresh"></i> Tentar novamente</button>`;
+    return `<button class="kb-act-btn kb-act-amb" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-refresh"></i> Tentar novamente</button>`;
+  }
+  if (['em_atendimento','qualificado'].includes(a.status)) {
+    if (alertH >= 2) return `<button class="kb-act-btn kb-act-amb" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-calendar-check"></i> Confirmar retorno</button>`;
+    return `<button class="kb-act-btn kb-act-ind" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-calendar-plus"></i> Agendar</button>`;
+  }
+  if (['agendado','passado_vendedor'].includes(a.status)) {
+    return `<button class="kb-act-btn kb-act-grn" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-check"></i> Confirmar chegada</button>`;
+  }
+  if (['em_negociacao','test_drive'].includes(a.status)) {
+    return `<button class="kb-act-btn kb-act-grn" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-trophy"></i> Venda feita!</button>`;
+  }
+  if (['ficha_enviada','credito_aprovado'].includes(a.status)) {
+    return `<button class="kb-act-btn kb-act-grn" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-file-check"></i> Fechar negócio</button>`;
+  }
+  if (a.status === 'credito_reprovado') {
+    return `<button class="kb-act-btn kb-act-red" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-lifebuoy"></i> Ver alternativas</button>`;
+  }
+  if (a.status === 'ag_retorno') {
+    return `<button class="kb-act-btn kb-act-amb" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-calendar"></i> Remarcar</button>`;
+  }
+  if (a.status === 'venda_concluida') {
+    return `<div class="kb-act-done"><i class="ti ti-check"></i> Concluída</div>`;
+  }
+  return `<button class="kb-act-btn kb-act-ind" onclick="event.stopPropagation();openNeg('${a.id}')"><i class="ti ti-eye"></i> Ver lead</button>`;
+}
+
+function _kbOpenMenu(btn, apptId) {
+  document.querySelectorAll('.kb-ctx-menu').forEach(m => m.remove());
+  const a = _apptsCache.find(x => x.id === apptId);
+  if (!a) return;
+  const rect = btn.getBoundingClientRect();
+  const menu = document.createElement('div');
+  menu.className = 'kb-ctx-menu';
+  menu.style.cssText = `position:fixed;top:${rect.bottom+4}px;right:${window.innerWidth-rect.right}px;z-index:9000`;
+  const tel = (a.tel||'').replace(/\D/g,'');
+  menu.innerHTML = `
+    <div class="kb-ctx-item" onclick="this.closest('.kb-ctx-menu').remove();openNeg('${apptId}')"><i class="ti ti-edit"></i>Ver / Editar</div>
+    <div class="kb-ctx-item" onclick="this.closest('.kb-ctx-menu').remove();openLeadTimeline('${apptId}')"><i class="ti ti-timeline"></i>Histórico</div>
+    ${tel ? `<div class="kb-ctx-item" style="color:#25D366" data-tel="${tel}" data-cli="${esc(a.cli)}" onclick="const t=this;t.closest('.kb-ctx-menu').remove();_kbOpenWpp(t.dataset.tel,t.dataset.cli)"><i class="ti ti-brand-whatsapp"></i>WhatsApp</div>` : ''}
+    <div class="kb-ctx-sep"></div>
+    <div class="kb-ctx-item warn" onclick="this.closest('.kb-ctx-menu').remove();_kbMarkFrio('${apptId}')"><i class="ti ti-snowflake"></i>Lead frio</div>
+    <div class="kb-ctx-item danger" onclick="this.closest('.kb-ctx-menu').remove();_kbMarkPerdido('${apptId}')"><i class="ti ti-x"></i>Marcar perdido</div>
+    ${canDelete() ? `<div class="kb-ctx-sep"></div><div class="kb-ctx-item danger" onclick="this.closest('.kb-ctx-menu').remove();delAppt('${apptId}')"><i class="ti ti-trash"></i>Deletar</div>` : ''}
+  `;
+  document.body.appendChild(menu);
+  event.stopPropagation();
+  setTimeout(() => {
+    document.addEventListener('click', () => document.querySelectorAll('.kb-ctx-menu').forEach(m => m.remove()), { once: true });
+  }, 10);
+}
+
+async function _kbMarkFrio(id) {
+  _confirmDialog('Marcar como lead frio? Ele sai do kanban e vai para Base de Dados.', async () => {
+    const a = _apptsCache.find(x => x.id === id);
+    if (!a) return;
+    const old = a.status;
+    const { error } = await sb.from('eye_appts').update({ status: 'lead_frio', em: new Date().toISOString() }).eq('id', id);
+    if (error) { toast('Erro ao atualizar', 'err'); return; }
+    await logStatus(id, old, 'lead_frio');
+    _apptsCache = _apptsCache.filter(x => x.id !== id);
+    _drawKanban();
+    toast('Lead marcado como frio.');
+  });
+}
+
+async function _kbMarkPerdido(id) {
+  _confirmDialog('Marcar como perdido? Ele sai do kanban e vai para Base de Dados.', async () => {
+    const a = _apptsCache.find(x => x.id === id);
+    if (!a) return;
+    const old = a.status;
+    const { error } = await sb.from('eye_appts').update({ status: 'perdido', em: new Date().toISOString() }).eq('id', id);
+    if (error) { toast('Erro ao atualizar', 'err'); return; }
+    await logStatus(id, old, 'perdido');
+    _apptsCache = _apptsCache.filter(x => x.id !== id);
+    _drawKanban();
+    toast('Lead marcado como perdido.');
+  });
+}
+
 function kbCard(a, locked) {
-  const ac  = userColor(a.vnd);
-  const al  = alertClass(a);
-  const txt = alertText(a);
-  const col = KB_COLS.find(c => c.id === a.status);
-  const borderCol = col?.color || 'var(--ind)';
+  const al        = alertClass(a);
+  const txt       = alertText(a);
+  const st        = fmtStatus(a.status);
+  const borderCol = kbCardBorderColor(a);
+  const sdrNome   = isMgr() && a.criado_por
+    ? ((_usersCache||[]).find(u => u.login === a.criado_por)?.nome || a.criado_por)
+    : null;
+  const dateStr   = a.data ? `${fmtDate(a.data)}${a.hora ? ' · ' + a.hora : ''}` : '';
   return `
-    <div class="kb-card${al?' '+al:''}" style="border-left-color:${borderCol}" draggable="${!locked}"
-      ondragstart="${locked?'void 0':("_kbDragId='"+a.id+"'")}"
+    <div class="kb-card kb-card-v2${al?' '+al:''}" style="border-left-color:${borderCol}" draggable="${!locked}"
+      ondragstart="${locked ? 'void 0' : `_kbDragId='${a.id}'`}"
       ondragend="document.querySelectorAll('.kb-col').forEach(c=>c.classList.remove('kb-over'))"
-      onclick="${locked?'void 0':("openNeg('"+a.id+"')")}">
-      <div class="kb-card-top">
-        <div class="kb-card-av" style="background:${ac}">${initials(a.vnd)}</div>
-        <div class="kb-card-info">
-          <div class="kb-card-name">${esc(a.cli)}</div>
-          <div class="kb-card-vnd">${esc(a.vnd)||'—'}</div>
-          ${isMgr() && a.criado_por ? `<div class="kb-card-vnd" style="color:var(--txt3);font-size:9.5px">SDR: ${esc((_usersCache||[]).find(u=>u.login===a.criado_por)?.nome||a.criado_por)}</div>` : ''}
-        </div>
-        ${scoreBadge(a)}
+      onclick="${locked ? 'void 0' : `openNeg('${a.id}')`}">
+      <div class="kb-card-header">
+        <span class="kb-status-chip" style="background:${st.c}22;color:${st.c}">${st.l}</span>
+        <span class="kb-card-vnd-nm">${esc(a.vnd||'—')}</span>
       </div>
-      ${txt ? `<div class="kb-card-alert">${al==='card-dead'?'🔴':'⚠'} ${esc(txt)}</div>` : ''}
-      ${a.modelo ? `<div class="kb-card-model"><i class="ti ti-car"></i>${esc(a.modelo)}</div>` : ''}
-      <div class="kb-card-foot">
-        ${a.valor ? `<span class="kb-card-val">${esc(a.valor)}</span>` : '<span></span>'}
-        ${a.data  ? `<span class="kb-card-date"><i class="ti ti-calendar"></i>${fmtDate(a.data)}</span>` : ''}
-        ${a.tel   ? `<button class="kb-wpp-btn" data-tel="${a.tel.replace(/\D/g,'')}" data-cli="${esc(a.cli)}" onclick="event.stopPropagation();_kbOpenWpp(this.dataset.tel,this.dataset.cli)" title="Abrir conversa WhatsApp"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
+      <div class="kb-card-name">${esc(a.cli)}</div>
+      <div class="kb-card-meta">
+        ${a.tel    ? `<span><i class="ti ti-phone"></i>${esc(a.tel)}</span>` : ''}
+        ${a.modelo ? `<span><i class="ti ti-car"></i>${esc(a.modelo)}</span>` : ''}
+        ${dateStr  ? `<span><i class="ti ti-calendar"></i>${dateStr}</span>` : ''}
+      </div>
+      ${sdrNome ? `<div class="kb-card-sdr"><i class="ti ti-headset"></i>${esc(sdrNome)}</div>` : ''}
+      ${txt ? `<div class="kb-card-alert-row">${al==='card-dead'?'🔴':'⚠'} ${esc(txt)}</div>` : ''}
+      <div class="kb-card-acts" onclick="event.stopPropagation()">
+        ${locked ? '' : kbCardActBtn(a)}
+        ${locked ? '' : `<button class="kb-more-btn" onclick="event.stopPropagation();_kbOpenMenu(this,'${a.id}')">···</button>`}
       </div>
     </div>`;
 }
 
-async function kbDrop(event, newStatus) {
+async function kbDrop(event, colId) {
   event.preventDefault();
   event.stopPropagation();
   document.querySelectorAll('.kb-col').forEach(c => c.classList.remove('kb-over'));
@@ -401,21 +496,16 @@ async function kbDrop(event, newStatus) {
   const id = _kbDragId;
   _kbDragId = null;
   const a = _apptsCache.find(x => x.id === id);
-  if (!a || a.status === newStatus) return;
-  // Bloqueia drop em coluna de fase restrita
-  const destCol = KB_COLS.find(c => c.id === newStatus);
-  if (destCol) {
-    const isLocked = (CU.role === 'sdr' && destCol.fase === 'vnd') || (CU.role === 'vendedor' && destCol.fase === 'sdr' && newStatus !== 'passado_vendedor');
-    if (isLocked) { toast('Esta fase pertence a outro papel', 'err'); return; }
-  }
+  if (!a) return;
 
-  // Passado ao vendedor → abre briefing antes de salvar
-  if (newStatus === 'passado_vendedor') {
-    _pendingBriefing = { source: 'kb', apptId: id, oldStatus: a.status };
-    openBriefingModal(id);
-    return;
-  }
+  const destCol = KB_COLS.find(c => c.id === colId);
+  const srcCol  = KB_COLS.find(c => c.statuses.includes(a.status));
+  if (!destCol || srcCol?.id === destCol.id) return;
 
+  const isLocked = (CU.role === 'sdr' && destCol.fase === 'vnd') || (CU.role === 'vendedor' && destCol.fase === 'sdr');
+  if (isLocked) { toast('Esta fase pertence a outro papel', 'err'); return; }
+
+  const newStatus = destCol.dropStatus;
   const oldStatus = a.status;
   const now = new Date().toISOString();
   a.status = newStatus;
