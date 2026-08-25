@@ -112,7 +112,9 @@ async function _enviarMensagem(conversationId, mensagem, accountId) {
       console.error('[zernio] erro envio:', JSON.stringify(result));
       return { ok: false, erro: result.error || result.message || 'Erro Zernio' };
     }
-    return { ok: true, data: result };
+    // platformMessageId vem na resposta — usado para rastrear delivery/read
+    const platId = result.message?.platformMessageId || result.platformMessageId || null;
+    return { ok: true, platId, data: result };
   } catch (e) {
     console.error('[zernio] exceção envio:', e.message);
     return { ok: false, erro: e.message };
@@ -146,7 +148,31 @@ async function _criarConversa(para, mensagem, accountId) {
   }
 }
 
-// ── WEBHOOK — recebe mensagens do Zernio ───────────────────────────────────────
+// ── Mapa em memória: platformMessageId → supabase row id (para delivery status) ─
+const _sentMap = new Map();
+
+// ── Extrai conteúdo de uma mensagem Zernio (texto + mídia) ────────────────────
+function _parseMsgContent(msg) {
+  const texto      = msg?.text || '';
+  const attachments = Array.isArray(msg?.attachments) ? msg.attachments : [];
+  if (!attachments.length) return texto;
+
+  const att     = attachments[0];
+  const rawUrl  = att.url || '';
+  // URL format: https://zernio.com/api/v1/whatsapp/media/{mediaId}
+  const mediaId = rawUrl.split('/').pop() || rawUrl;
+  const caption = texto ? ` ${texto}` : '';
+
+  switch (att.type) {
+    case 'audio':   return `[AUDIO:${mediaId}]${caption}`;
+    case 'image':   return `[IMAGEM:${mediaId}]${caption}`;
+    case 'video':   return `[VIDEO:${mediaId}]${caption}`;
+    case 'sticker': return `[STICKER:${mediaId}]`;
+    default:        return `[ARQUIVO:${att.payload?.filename||'arquivo'}:${mediaId}]${caption}`;
+  }
+}
+
+// ── WEBHOOK — recebe eventos do Zernio ─────────────────────────────────────────
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200); // responde imediatamente para o Zernio não retentar
 
@@ -155,68 +181,91 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // Zernio pode enviar array ou objeto único
   const eventos = Array.isArray(req.body) ? req.body : [req.body];
 
   for (const evt of eventos) {
+
+    // ── Delivery / Read status ─────────────────────────────────────────────────
+    if (evt.event === 'message.delivered' || evt.event === 'message.read') {
+      const platId = evt.message?.platformMessageId;
+      if (platId && _sentMap.has(platId)) {
+        const rowId = _sentMap.get(platId);
+        const status = evt.event === 'message.read' ? 'lido' : 'entregue';
+        await supabase.from('whatsapp_mensagens')
+          .update({ status_entrega: status }).eq('id', rowId);
+        if (evt.event === 'message.read') _sentMap.delete(platId);
+      }
+      continue;
+    }
+
+    if (evt.event === 'message.failed') {
+      const platId = evt.message?.platformMessageId;
+      if (platId && _sentMap.has(platId)) {
+        await supabase.from('whatsapp_mensagens')
+          .update({ status_entrega: 'falhou' }).eq('id', _sentMap.get(platId));
+        _sentMap.delete(platId);
+      }
+      continue;
+    }
+
     if (evt.event !== 'message.received') continue;
 
-    // Payload real do Zernio: { event, message, conversation, account, timestamp }
-    // Ignorar mensagens outgoing (ecos do próprio servidor)
+    // Ignorar ecos de mensagens enviadas pelo próprio servidor
     if (evt.message?.direction === 'outgoing') continue;
 
     const convId  = evt.message?.conversationId || evt.conversation?.id;
     const account = evt.account?.id || ZERNIO_ACCT;
     const sender  = evt.message?.sender || {};
 
-    // sender.id = número sem +; sender.phoneNumber = E.164 com +
     const numero = (sender.phoneNumber || sender.id || '').replace(/\D/g, '');
     const nome   = sender.name || numero;
-    const texto  = evt.message?.text || '';
+    const foto   = sender.picture || null;
 
     if (!numero || !convId) {
       console.warn('[zernio] payload incompleto:', JSON.stringify(evt).slice(0, 300));
       continue;
     }
-    if (!texto) continue; // ignora mídia sem texto (imagens, áudios)
+
+    const mensagem = _parseMsgContent(evt.message);
+    if (!mensagem) continue;
 
     const unidadeId = (await unidadeByAccount(account)) || UNIT_DEFAULT;
+    const primeiro  = await isFirstContact(unidadeId, numero);
 
-    // Tenta associar a um lead existente pelo telefone
-    const { data: lead } = await supabase.from('eye_appts')
-      .select('id, cli')
-      .eq('unidade_id', unidadeId)
-      .ilike('tel', `%${numero.slice(-8)}%`) // match parcial: 8 últimos dígitos
-      .maybeSingle();
-
-    const primeiro = await isFirstContact(unidadeId, numero);
-
-    const { error } = await supabase.from('whatsapp_mensagens').insert({
-      unidade_id:     unidadeId,
-      numero_cliente: numero,
-      mensagem:       texto,
-      tipo:           'recebida',
-      lida:           false,
-      timestamp:      new Date().toISOString()
-    });
-
+    // Tenta inserir com nome_cliente; se coluna não existir, insere sem
+    let insertData = {
+      unidade_id: unidadeId, numero_cliente: numero,
+      nome_cliente: nome, foto_cliente: foto,
+      mensagem, tipo: 'recebida', lida: false,
+      timestamp: new Date().toISOString()
+    };
+    let { error } = await supabase.from('whatsapp_mensagens').insert(insertData);
+    if (error?.message?.includes('nome_cliente') || error?.message?.includes('foto_cliente')) {
+      // Fallback sem colunas extras
+      const { nome_cliente, foto_cliente, ...base } = insertData;
+      const r2 = await supabase.from('whatsapp_mensagens').insert(base);
+      error = r2.error;
+    }
     if (error) { console.error('[zernio] erro salvar:', error.message); continue; }
 
-    console.log(`[zernio] ← ${numero} → unidade ${(unidadeId||'').slice(0,8)} | ${texto.slice(0,60)}`);
+    console.log(`[zernio] ← ${numero} (${nome}) | ${mensagem.slice(0,60)}`);
 
-    // Auto-resposta IA no primeiro contato
-    if (primeiro) {
-      console.log(`[auto] primeiro contato de ${numero} — gerando resposta IA`);
-      const autoResp = await gerarAutoResposta(texto, nome);
+    // Auto-resposta IA no primeiro contato (apenas mensagens de texto)
+    if (primeiro && evt.message?.text) {
+      const autoResp = await gerarAutoResposta(evt.message.text, nome);
       if (autoResp) {
         const { ok } = await _enviarMensagem(convId, autoResp, account);
         if (ok) {
           await supabase.from('whatsapp_mensagens').insert({
             unidade_id: unidadeId, numero_cliente: numero,
+            nome_cliente: nome, mensagem: autoResp,
+            tipo: 'enviada', status_entrega: 'enviado',
+            timestamp: new Date().toISOString()
+          }).catch(() => supabase.from('whatsapp_mensagens').insert({
+            unidade_id: unidadeId, numero_cliente: numero,
             mensagem: autoResp, tipo: 'enviada',
             timestamp: new Date().toISOString()
-          });
-          console.log(`[auto] → enviado para ${numero}`);
+          }));
         }
       }
     }
@@ -234,22 +283,37 @@ app.post('/enviar', async (req, res) => {
 
   let convId = await conversaIdByNumero(unidadeId, to);
   const uid  = unidadeId || UNIT_DEFAULT;
+  let platId = null;
 
   if (convId) {
     // Conversa existente — envia direto
-    const { ok, erro } = await _enviarMensagem(convId, mensagem);
-    if (!ok) return res.status(500).json({ erro: erro || 'Erro ao enviar via Zernio' });
+    const result = await _enviarMensagem(convId, mensagem);
+    if (!result.ok) return res.status(500).json({ erro: result.erro || 'Erro ao enviar via Zernio' });
+    platId = result.platId;
   } else {
     // Sem conversa prévia — cria nova e envia (Zernio faz os dois em um request)
     const result = await _criarConversa(`+${to}`, mensagem);
     if (!result.ok) return res.status(500).json({ erro: result.erro });
     convId = result.conversationId;
+    platId = result.platId;
   }
 
-  await supabase.from('whatsapp_mensagens').insert({
+  const { data: row } = await supabase.from('whatsapp_mensagens').insert({
     unidade_id: uid, numero_cliente: to, mensagem,
-    tipo: 'enviada', timestamp: new Date().toISOString()
-  });
+    tipo: 'enviada', status_entrega: 'enviado',
+    timestamp: new Date().toISOString()
+  }).select('id').single().catch(() =>
+    supabase.from('whatsapp_mensagens').insert({
+      unidade_id: uid, numero_cliente: to, mensagem,
+      tipo: 'enviada', timestamp: new Date().toISOString()
+    }).select('id').single()
+  );
+
+  // Registra no mapa de delivery para rastrear entrega/leitura
+  if (platId && row?.id) {
+    _sentMap.set(platId, row.id);
+    setTimeout(() => _sentMap.delete(platId), 24 * 60 * 60 * 1000); // limpa após 24h
+  }
 
   console.log(`[zernio] → ${to} | ${mensagem.slice(0, 60)}`);
   res.json({ ok: true });
@@ -371,6 +435,27 @@ app.post('/relatorio-sdr', async (req, res) => {
 
   if (error) return res.status(500).json({ erro: error.message });
   res.json({ ok: true });
+});
+
+// ── PROXY DE MÍDIA — busca arquivo do Zernio com auth e repassa ao browser ─────
+app.get('/media/:mediaId', async (req, res) => {
+  if (!ZERNIO_KEY) return res.status(503).json({ erro: 'sem chave' });
+  const { mediaId } = req.params;
+  try {
+    const r = await fetch(`${ZERNIO_API}/whatsapp/media/${mediaId}`, {
+      headers: { 'Authorization': `Bearer ${ZERNIO_KEY}` }
+    });
+    if (!r.ok) return res.status(r.status).send('Mídia não encontrada');
+    const ct = r.headers.get('content-type') || 'application/octet-stream';
+    res.setHeader('Content-Type', ct);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // Streama o body sem buffer (Node 18+ fetch retorna body ReadableStream)
+    const buf = await r.arrayBuffer();
+    res.send(Buffer.from(buf));
+  } catch (e) {
+    console.error('[media]', e.message);
+    res.status(500).send('Erro');
+  }
 });
 
 // ── HEALTH ─────────────────────────────────────────────────────────────────────
