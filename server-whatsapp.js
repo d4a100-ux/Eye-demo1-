@@ -93,7 +93,7 @@ async function unidadeByAccount(accountId) {
   return data?.unidade_id || null;
 }
 
-// ── Envio via Zernio ───────────────────────────────────────────────────────────
+// ── Envio via Zernio — com conversationId existente ───────────────────────────
 async function _enviarMensagem(conversationId, mensagem, accountId) {
   if (!ZERNIO_KEY || !conversationId) return { ok: false, erro: 'sem configuração' };
   try {
@@ -105,11 +105,38 @@ async function _enviarMensagem(conversationId, mensagem, accountId) {
     const result = await r.json();
     if (!r.ok) {
       console.error('[zernio] erro envio:', JSON.stringify(result));
-      return { ok: false, erro: result.message || 'Erro Zernio' };
+      return { ok: false, erro: result.error || result.message || 'Erro Zernio' };
     }
     return { ok: true, data: result };
   } catch (e) {
     console.error('[zernio] exceção envio:', e.message);
+    return { ok: false, erro: e.message };
+  }
+}
+
+// ── Cria nova conversa outbound (SDR inicia contato sem conversationId) ────────
+// Zernio: POST /v1/inbox/conversations cria E envia a primeira mensagem
+async function _criarConversa(para, mensagem, accountId) {
+  if (!ZERNIO_KEY) return { ok: false, erro: 'ZERNIO_API_KEY não configurada' };
+  try {
+    const r = await fetch(`${ZERNIO_API}/inbox/conversations`, {
+      method: 'POST',
+      headers: zHeaders(),
+      body: JSON.stringify({
+        accountId: accountId || ZERNIO_ACCT,
+        participantId: para,   // número E.164 do destinatário
+        message: mensagem
+      })
+    });
+    const result = await r.json();
+    if (!r.ok) {
+      console.error('[zernio] erro criar conversa:', JSON.stringify(result));
+      return { ok: false, erro: result.error || result.message || 'Erro Zernio' };
+    }
+    const convId = result.conversation?.id || result.id;
+    return { ok: true, conversationId: convId, data: result };
+  } catch (e) {
+    console.error('[zernio] exceção criar conversa:', e.message);
     return { ok: false, erro: e.message };
   }
 }
@@ -129,18 +156,21 @@ app.post('/webhook', async (req, res) => {
   for (const evt of eventos) {
     if (evt.event !== 'message.received') continue;
 
-    const d       = evt.data || {};
-    const convId  = d.conversation?.id || d.conversationId;
-    const account = d.account?.id || d.accountId || ZERNIO_ACCT;
-    const sender  = d.contact || d.sender || {};
-    const msgData = d.message || {};
+    // Payload real do Zernio: { event, message, conversation, account, timestamp }
+    // Ignorar mensagens outgoing (ecos do próprio servidor)
+    if (evt.message?.direction === 'outgoing') continue;
 
-    const numero = (sender.phone || sender.id || '').replace(/\D/g, '');
+    const convId  = evt.message?.conversationId || evt.conversation?.id;
+    const account = evt.account?.id || ZERNIO_ACCT;
+    const sender  = evt.message?.sender || {};
+
+    // sender.id = número sem +; sender.phoneNumber = E.164 com +
+    const numero = (sender.phoneNumber || sender.id || '').replace(/\D/g, '');
     const nome   = sender.name || numero;
-    const texto  = msgData.text || msgData.body || d.text || '';
+    const texto  = evt.message?.text || '';
 
     if (!numero || !convId) {
-      console.warn('[zernio] payload incompleto:', JSON.stringify(d).slice(0, 200));
+      console.warn('[zernio] payload incompleto:', JSON.stringify(evt).slice(0, 300));
       continue;
     }
     if (!texto) continue; // ignora mídia sem texto (imagens, áudios)
@@ -200,20 +230,23 @@ app.post('/enviar', async (req, res) => {
   const to = (numero || '').replace(/\D/g, '');
   if (!to || !mensagem) return res.status(400).json({ erro: 'numero e mensagem são obrigatórios' });
 
-  const convId = await conversaIdByNumero(unidadeId, to);
-  if (!convId) {
-    return res.status(400).json({
-      erro: 'Cliente ainda não iniciou conversa pelo WhatsApp. Use o link wa.me para o primeiro contato.'
-    });
+  let convId = await conversaIdByNumero(unidadeId, to);
+  const uid  = unidadeId || UNIT_DEFAULT;
+
+  if (convId) {
+    // Conversa existente — envia direto
+    const { ok, erro } = await _enviarMensagem(convId, mensagem);
+    if (!ok) return res.status(500).json({ erro: erro || 'Erro ao enviar via Zernio' });
+  } else {
+    // Sem conversa prévia — cria nova e envia (Zernio faz os dois em um request)
+    const result = await _criarConversa(`+${to}`, mensagem);
+    if (!result.ok) return res.status(500).json({ erro: result.erro });
+    convId = result.conversationId;
   }
 
-  const { ok, erro } = await _enviarMensagem(convId, mensagem);
-  if (!ok) return res.status(500).json({ erro: erro || 'Erro ao enviar via Zernio' });
-
   await supabase.from('whatsapp_mensagens').insert({
-    unidade_id: unidadeId || UNIT_DEFAULT,
-    numero_cliente: to, mensagem, tipo: 'enviada',
-    conversation_id: convId, timestamp: new Date().toISOString()
+    unidade_id: uid, numero_cliente: to, mensagem, tipo: 'enviada',
+    conversation_id: convId || null, timestamp: new Date().toISOString()
   });
 
   console.log(`[zernio] → ${to} | ${mensagem.slice(0, 60)}`);
