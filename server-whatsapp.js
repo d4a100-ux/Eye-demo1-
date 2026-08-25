@@ -1,12 +1,13 @@
 const express = require('express');
+const crypto  = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
   next();
 });
@@ -18,20 +19,35 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-const GROQ_KEY_SERVER = process.env.GROQ_KEY;
+// ── Zernio config ──────────────────────────────────────────────────────────────
+const ZERNIO_API    = 'https://zernio.com/api/v1';
+const ZERNIO_KEY    = process.env.ZERNIO_API_KEY;
+const ZERNIO_ACCT   = process.env.ZERNIO_ACCOUNT_ID;   // ID da conta WhatsApp no Zernio
+const ZERNIO_SECRET = process.env.ZERNIO_WEBHOOK_SECRET; // para HMAC (opcional mas recomendado)
+const GROQ_KEY      = process.env.GROQ_KEY;
+const UNIT_DEFAULT  = process.env.UNIDADE_ID_DEFAULT;
 
-// Fallbacks globais — usados quando a unidade ainda não tem config própria
-const GLOBAL_TOKEN    = process.env.META_ACCESS_TOKEN;
-const GLOBAL_PHONE_ID = process.env.META_PHONE_NUMBER_ID;
-const VERIFY_TOKEN    = process.env.META_VERIFY_TOKEN || 'eye_crm_verify_2025';
-const UNIT_DEFAULT    = process.env.UNIDADE_ID_DEFAULT;
+function zHeaders() {
+  return { 'Authorization': `Bearer ${ZERNIO_KEY}`, 'Content-Type': 'application/json' };
+}
 
-/* ── Auto-resposta IA (primeiro contato) ── */
+// ── Verificação de assinatura HMAC-SHA256 ──────────────────────────────────────
+function validarAssinatura(req) {
+  if (!ZERNIO_SECRET) return true; // pula se secret não configurado
+  const sig = req.headers['x-zernio-signature'];
+  if (!sig) return false;
+  const expected = crypto.createHmac('sha256', ZERNIO_SECRET)
+    .update(JSON.stringify(req.body)).digest('hex');
+  return sig === expected;
+}
+
+// ── Groq — auto-resposta no primeiro contato ───────────────────────────────────
 async function gerarAutoResposta(mensagem, nome) {
+  if (!GROQ_KEY) return null;
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${GROQ_KEY_SERVER}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile', max_tokens: 150,
         messages: [
@@ -40,14 +56,15 @@ async function gerarAutoResposta(mensagem, nome) {
         ]
       })
     });
-    const data = await res.json();
+    const data = await r.json();
     return data.choices?.[0]?.message?.content || null;
-  } catch(e) {
+  } catch (e) {
     console.error('[groq]', e.message);
     return null;
   }
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
 async function isFirstContact(unidadeId, numero) {
   const { count } = await supabase.from('whatsapp_mensagens')
     .select('id', { count: 'exact', head: true })
@@ -55,205 +72,239 @@ async function isFirstContact(unidadeId, numero) {
   return count === 0;
 }
 
-async function _enviarWhatsApp(unidadeId, numero, mensagem) {
-  let token   = GLOBAL_TOKEN;
-  let phoneId = GLOBAL_PHONE_ID;
-  if (unidadeId) {
-    const c = await conexaoByUnidade(unidadeId);
-    if (c?.access_token)    token   = c.access_token;
-    if (c?.phone_number_id) phoneId = c.phone_number_id;
-  }
-  if (!token || !phoneId) return;
-  const to = (numero || '').replace(/\D/g, '');
+// Busca o conversationId mais recente armazenado para um número
+async function conversaIdByNumero(unidadeId, numero) {
+  const { data } = await supabase.from('whatsapp_mensagens')
+    .select('conversation_id')
+    .eq('unidade_id', unidadeId)
+    .eq('numero_cliente', numero)
+    .not('conversation_id', 'is', null)
+    .order('timestamp', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.conversation_id || null;
+}
+
+// Busca unidade pelo account_id do Zernio
+async function unidadeByAccount(accountId) {
+  if (!accountId) return null;
+  const { data } = await supabase.from('whatsapp_conexoes')
+    .select('unidade_id').eq('account_id', accountId).maybeSingle();
+  return data?.unidade_id || null;
+}
+
+// ── Envio via Zernio ───────────────────────────────────────────────────────────
+async function _enviarMensagem(conversationId, mensagem, accountId) {
+  if (!ZERNIO_KEY || !conversationId) return { ok: false, erro: 'sem configuração' };
   try {
-    const r = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+    const r = await fetch(`${ZERNIO_API}/inbox/conversations/${conversationId}/messages`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: mensagem } })
+      headers: zHeaders(),
+      body: JSON.stringify({ accountId: accountId || ZERNIO_ACCT, message: mensagem })
     });
-    if (r.ok) {
-      await supabase.from('whatsapp_mensagens').insert({
-        unidade_id: unidadeId || UNIT_DEFAULT, numero_cliente: to,
-        mensagem, tipo: 'enviada', timestamp: new Date().toISOString()
-      });
-      console.log(`[auto] resposta enviada → ${to}`);
+    const result = await r.json();
+    if (!r.ok) {
+      console.error('[zernio] erro envio:', JSON.stringify(result));
+      return { ok: false, erro: result.message || 'Erro Zernio' };
     }
-  } catch(e) { console.error('[auto] erro enviar:', e.message); }
-}
-
-/* ── Helpers de lookup ── */
-async function conexaoByPhone(phoneId) {
-  const { data } = await supabase.from('whatsapp_conexoes')
-    .select('unidade_id, access_token')
-    .eq('phone_number_id', phoneId).maybeSingle();
-  return data;
-}
-
-async function conexaoByUnidade(unidadeId) {
-  const { data } = await supabase.from('whatsapp_conexoes')
-    .select('phone_number_id, access_token, numero_display, status')
-    .eq('unidade_id', unidadeId).maybeSingle();
-  return data;
-}
-
-/* ── Webhook verification ── */
-app.get('/webhook', (req, res) => {
-  if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === VERIFY_TOKEN) {
-    console.log('[meta] webhook verificado');
-    return res.status(200).send(req.query['hub.challenge']);
+    return { ok: true, data: result };
+  } catch (e) {
+    console.error('[zernio] exceção envio:', e.message);
+    return { ok: false, erro: e.message };
   }
-  res.sendStatus(403);
-});
+}
 
-/* ── Receber mensagens ── */
+// ── WEBHOOK — recebe mensagens do Zernio ───────────────────────────────────────
 app.post('/webhook', async (req, res) => {
-  res.sendStatus(200);
-  if (req.body.object !== 'whatsapp_business_account') return;
+  res.sendStatus(200); // responde imediatamente para o Zernio não retentar
 
-  for (const entry of req.body.entry || []) {
-    for (const change of entry.changes || []) {
-      if (change.field !== 'messages') continue;
-      const val    = change.value;
-      const phoneId = val.metadata?.phone_number_id;
+  if (!validarAssinatura(req)) {
+    console.warn('[zernio] assinatura inválida — ignorado');
+    return;
+  }
 
-      // Roteia pelo phone_number_id → unidade_id (cada unidade tem seu número)
-      let unidadeId = UNIT_DEFAULT;
-      if (phoneId) {
-        const c = await conexaoByPhone(phoneId);
-        if (c?.unidade_id) unidadeId = c.unidade_id;
-      }
+  // Zernio pode enviar array ou objeto único
+  const eventos = Array.isArray(req.body) ? req.body : [req.body];
 
-      for (const msg of val.messages || []) {
-        if (msg.type !== 'text') continue;
-        const numero = msg.from;
-        const texto  = msg.text?.body || '';
-        const nome   = val.contacts?.find(c => c.wa_id === msg.from)?.profile?.name || numero;
+  for (const evt of eventos) {
+    if (evt.event !== 'message.received') continue;
 
-        console.log(`[meta] ${numero} → unidade ${(unidadeId||'').slice(0,8)} | ${texto.slice(0,50)}`);
+    const d       = evt.data || {};
+    const convId  = d.conversation?.id || d.conversationId;
+    const account = d.account?.id || d.accountId || ZERNIO_ACCT;
+    const sender  = d.contact || d.sender || {};
+    const msgData = d.message || {};
 
-        try {
-          const { data: lead } = await supabase.from('leads')
-            .select('id, nome').eq('unidade_id', unidadeId).eq('telefone', numero).maybeSingle();
+    const numero = (sender.phone || sender.id || '').replace(/\D/g, '');
+    const nome   = sender.name || numero;
+    const texto  = msgData.text || msgData.body || d.text || '';
 
-          const primeiro = await isFirstContact(unidadeId, numero);
+    if (!numero || !convId) {
+      console.warn('[zernio] payload incompleto:', JSON.stringify(d).slice(0, 200));
+      continue;
+    }
+    if (!texto) continue; // ignora mídia sem texto (imagens, áudios)
 
-          const { error } = await supabase.from('whatsapp_mensagens').insert({
-            unidade_id:     unidadeId,
-            lead_id:        lead?.id || null,
-            numero_cliente: numero,
-            nome_cliente:   lead?.nome || nome,
-            mensagem:       texto,
-            tipo:           'recebida',
-            lida:           false,
-            timestamp:      new Date().toISOString()
+    const unidadeId = (await unidadeByAccount(account)) || UNIT_DEFAULT;
+
+    // Tenta associar a um lead existente pelo telefone
+    const { data: lead } = await supabase.from('eye_appts')
+      .select('id, cli')
+      .eq('unidade_id', unidadeId)
+      .ilike('tel', `%${numero.slice(-8)}%`) // match parcial: 8 últimos dígitos
+      .maybeSingle();
+
+    const primeiro = await isFirstContact(unidadeId, numero);
+
+    const { error } = await supabase.from('whatsapp_mensagens').insert({
+      unidade_id:      unidadeId,
+      lead_id:         lead?.id    || null,
+      numero_cliente:  numero,
+      nome_cliente:    lead?.cli   || nome,
+      mensagem:        texto,
+      tipo:            'recebida',
+      lida:            false,
+      conversation_id: convId,
+      timestamp:       new Date().toISOString()
+    });
+
+    if (error) { console.error('[zernio] erro salvar:', error.message); continue; }
+
+    console.log(`[zernio] ← ${numero} → unidade ${(unidadeId||'').slice(0,8)} | ${texto.slice(0,60)}`);
+
+    // Auto-resposta IA no primeiro contato
+    if (primeiro) {
+      console.log(`[auto] primeiro contato de ${numero} — gerando resposta IA`);
+      const autoResp = await gerarAutoResposta(texto, nome);
+      if (autoResp) {
+        const { ok } = await _enviarMensagem(convId, autoResp, account);
+        if (ok) {
+          await supabase.from('whatsapp_mensagens').insert({
+            unidade_id: unidadeId, numero_cliente: numero,
+            mensagem: autoResp, tipo: 'enviada',
+            conversation_id: convId, timestamp: new Date().toISOString()
           });
-
-          if (error) { console.error('[meta] erro salvar:', error.message); }
-          else {
-            console.log('[meta] salvo OK');
-            if (primeiro) {
-              console.log(`[auto] primeiro contato de ${numero} — gerando auto-resposta`);
-              const autoResp = await gerarAutoResposta(texto, nome);
-              if (autoResp) await _enviarWhatsApp(unidadeId, numero, autoResp);
-            }
-          }
-        } catch (err) {
-          console.error('[meta] exceção:', err.message);
+          console.log(`[auto] → enviado para ${numero}`);
         }
       }
     }
   }
 });
 
-/* ── Enviar mensagem ── */
+// ── GET /webhook — Zernio não precisa de verify token (diferente do Meta) ──────
+app.get('/webhook', (req, res) => res.status(200).send('Eye CRM · Zernio Webhook OK'));
+
+// ── ENVIAR — SDR envia mensagem para cliente ───────────────────────────────────
 app.post('/enviar', async (req, res) => {
   const { numero, mensagem, unidadeId } = req.body;
-
-  // Usa token e phoneId da unidade; fallback para variáveis globais
-  let token   = GLOBAL_TOKEN;
-  let phoneId = GLOBAL_PHONE_ID;
-
-  if (unidadeId) {
-    const c = await conexaoByUnidade(unidadeId);
-    if (c?.access_token)    token   = c.access_token;
-    if (c?.phone_number_id) phoneId = c.phone_number_id;
-  }
-
-  if (!token || !phoneId)
-    return res.status(400).json({ erro: 'WhatsApp não configurado para esta unidade' });
-
   const to = (numero || '').replace(/\D/g, '');
+  if (!to || !mensagem) return res.status(400).json({ erro: 'numero e mensagem são obrigatórios' });
 
-  try {
-    const r = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: mensagem } })
+  const convId = await conversaIdByNumero(unidadeId, to);
+  if (!convId) {
+    return res.status(400).json({
+      erro: 'Cliente ainda não iniciou conversa pelo WhatsApp. Use o link wa.me para o primeiro contato.'
     });
-    const result = await r.json();
-    if (!r.ok) return res.status(400).json({ erro: result.error?.message || 'Erro Meta API' });
-
-    await supabase.from('whatsapp_mensagens').insert({
-      unidade_id: unidadeId || UNIT_DEFAULT, numero_cliente: to,
-      mensagem, tipo: 'enviada', timestamp: new Date().toISOString()
-    });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('[meta] erro enviar:', err.message);
-    res.status(500).json({ erro: err.message });
   }
+
+  const { ok, erro } = await _enviarMensagem(convId, mensagem);
+  if (!ok) return res.status(500).json({ erro: erro || 'Erro ao enviar via Zernio' });
+
+  await supabase.from('whatsapp_mensagens').insert({
+    unidade_id: unidadeId || UNIT_DEFAULT,
+    numero_cliente: to, mensagem, tipo: 'enviada',
+    conversation_id: convId, timestamp: new Date().toISOString()
+  });
+
+  console.log(`[zernio] → ${to} | ${mensagem.slice(0, 60)}`);
+  res.json({ ok: true });
 });
 
-/* ── Status por unidade ── */
+// ── STATUS ─────────────────────────────────────────────────────────────────────
 app.get('/status', async (req, res) => {
   const uid = req.query.unidadeId;
   if (uid) {
-    const c = await conexaoByUnidade(uid);
-    if (c) return res.json({
-      status:  c.status || (c.phone_number_id ? 'conectado' : 'desconectado'),
-      numero:  c.numero_display || null,
-      provider: 'meta_cloud_api'
+    const { data } = await supabase.from('whatsapp_conexoes')
+      .select('account_id, numero_display, status').eq('unidade_id', uid).maybeSingle();
+    if (data) return res.json({
+      status:   data.status || (data.account_id ? 'conectado' : 'desconectado'),
+      numero:   data.numero_display || null,
+      provider: 'zernio'
     });
   }
-  // Fallback: se não há registro no banco, usa variáveis globais
-  const ok = !!(GLOBAL_TOKEN && GLOBAL_PHONE_ID);
-  res.json({ status: ok ? 'conectado' : 'desconectado', provider: 'meta_cloud_api' });
+  res.json({ status: ZERNIO_KEY ? 'configurado' : 'sem_key', provider: 'zernio' });
 });
 
-/* ── Conectar unidade (Embedded Signup callback) ──
-   Recebe phoneNumberId, wabaId, accessToken, numeroDisplay
-   e salva na tabela whatsapp_conexoes para aquela unidade.    */
+// ── CONECTAR UNIDADE — salva o account_id do Zernio para a unidade ─────────────
 app.post('/conectar-unidade', async (req, res) => {
-  const { unidadeId, phoneNumberId, wabaId, accessToken, numeroDisplay } = req.body;
-  if (!unidadeId || !phoneNumberId)
-    return res.status(400).json({ erro: 'unidadeId e phoneNumberId são obrigatórios' });
+  const { unidadeId, accountId, numeroDisplay } = req.body;
+  if (!unidadeId || !accountId)
+    return res.status(400).json({ erro: 'unidadeId e accountId são obrigatórios' });
 
   const { error } = await supabase.from('whatsapp_conexoes').upsert({
-    unidade_id:      unidadeId,
-    phone_number_id: phoneNumberId,
-    waba_id:         wabaId    || null,
-    access_token:    accessToken || null,
-    numero_display:  numeroDisplay || null,
-    status:          'conectado',
-    qr_code:         null,
-    atualizado_em:   new Date().toISOString()
+    unidade_id:     unidadeId,
+    account_id:     accountId,
+    numero_display: numeroDisplay || null,
+    status:         'conectado',
+    atualizado_em:  new Date().toISOString()
   }, { onConflict: 'unidade_id' });
 
   if (error) return res.status(500).json({ erro: error.message });
   res.json({ ok: true });
 });
 
-app.get('/health', (req, res) => res.json({ ok: true }));
+// ── REGISTRAR WEBHOOK no Zernio — chamar uma vez após deploy ──────────────────
+// POST /registrar-webhook { "webhookUrl": "https://seu-servidor.vercel.app/webhook" }
+app.post('/registrar-webhook', async (req, res) => {
+  if (!ZERNIO_KEY) return res.status(503).json({ erro: 'ZERNIO_API_KEY não configurada' });
+  const { webhookUrl } = req.body;
+  if (!webhookUrl) return res.status(400).json({ erro: 'webhookUrl é obrigatório' });
 
-/* ── Sugestão IA para Eye CRM (chamado do browser) ── */
+  try {
+    const r = await fetch(`${ZERNIO_API}/webhooks/settings`, {
+      method: 'POST',
+      headers: zHeaders(),
+      body: JSON.stringify({
+        name:     'Eye CRM',
+        url:      webhookUrl,
+        events:   ['message.received'],
+        isActive: true,
+        ...(ZERNIO_SECRET ? { secret: ZERNIO_SECRET } : {})
+      })
+    });
+    const result = await r.json();
+    if (!r.ok) return res.status(400).json({ erro: result.message || 'Erro Zernio', detail: result });
+    console.log('[zernio] webhook registrado:', webhookUrl);
+    res.json({ ok: true, webhook: result });
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+// ── DESCONECTAR ────────────────────────────────────────────────────────────────
+app.post('/desconectar', async (req, res) => {
+  const { unidadeId } = req.body;
+  if (unidadeId) {
+    await supabase.from('whatsapp_conexoes').upsert({
+      unidade_id:     unidadeId,
+      status:         'desconectado',
+      account_id:     null,
+      numero_display: null,
+      atualizado_em:  new Date().toISOString()
+    }, { onConflict: 'unidade_id' });
+  }
+  res.json({ ok: true });
+});
+
+// ── GROQ SUGGEST — sugestão IA para o SDR ─────────────────────────────────────
 app.post('/groq-suggest', async (req, res) => {
   const { contact, phone, context } = req.body;
-  if (!GROQ_KEY_SERVER) return res.status(503).json({ erro: 'GROQ_KEY não configurada no servidor' });
+  if (!GROQ_KEY) return res.status(503).json({ erro: 'GROQ_KEY não configurada no servidor' });
 
   try {
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${GROQ_KEY_SERVER}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile', max_tokens: 200,
         messages: [
@@ -263,67 +314,53 @@ app.post('/groq-suggest', async (req, res) => {
       })
     });
     const data = await r.json();
-    const suggestion = data.choices?.[0]?.message?.content || '';
-    res.json({ suggestion });
-  } catch(e) {
+    res.json({ suggestion: data.choices?.[0]?.message?.content || '' });
+  } catch (e) {
     res.status(500).json({ erro: e.message });
   }
 });
 
-/* ── Relatório SDR (enviado pela extensão Chrome) ── */
+// ── RELATÓRIO SDR ──────────────────────────────────────────────────────────────
 app.post('/relatorio-sdr', async (req, res) => {
   const { sdrName, date, conversations } = req.body;
   if (!conversations) return res.status(400).json({ erro: 'dados inválidos' });
 
-  const novos    = (conversations || []).filter(c => c.isNewLead).length;
-  const resumo   = JSON.stringify({ date, sdrName, total: conversations.length, novosLeads: novos, conversations });
+  const novos  = (conversations || []).filter(c => c.isNewLead).length;
+  const resumo = JSON.stringify({ date, sdrName, total: conversations.length, novosLeads: novos, conversations });
 
   const { error } = await supabase.from('whatsapp_mensagens').insert({
-    unidade_id:     UNIT_DEFAULT,
-    numero_cliente: 'RELATORIO_SDR',
-    nome_cliente:   sdrName || 'SDR',
-    mensagem:       resumo,
-    tipo:           'relatorio_sdr',
-    lida:           false,
-    timestamp:      new Date().toISOString()
+    unidade_id: UNIT_DEFAULT, numero_cliente: 'RELATORIO_SDR',
+    nome_cliente: sdrName || 'SDR', mensagem: resumo,
+    tipo: 'relatorio_sdr', lida: false, timestamp: new Date().toISOString()
   });
 
-  if (error) { console.error('[relatorio]', error.message); return res.status(500).json({ erro: error.message }); }
-  console.log(`[relatorio] ${sdrName} — ${conversations.length} contatos em ${date}`);
+  if (error) return res.status(500).json({ erro: error.message });
   res.json({ ok: true });
 });
 
-/* ── Desconectar ── */
-app.post('/desconectar', async (req, res) => {
-  const { unidadeId } = req.body;
-  if (unidadeId) {
-    await supabase.from('whatsapp_conexoes').upsert({
-      unidade_id:      unidadeId,
-      status:          'desconectado',
-      phone_number_id: null,
-      access_token:    null,
-      numero_display:  null,
-      qr_code:         null,
-      atualizado_em:   new Date().toISOString()
-    }, { onConflict: 'unidade_id' });
-  }
-  res.json({ ok: true });
-});
+// ── HEALTH ─────────────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => res.json({
+  ok:         true,
+  provider:   'zernio',
+  configured: !!ZERNIO_KEY,
+  account:    ZERNIO_ACCT || null
+}));
 
-/* ── Compat ── */
+// ── Compat — rotas antigas que o frontend pode ainda chamar ───────────────────
 app.post('/conectar/:unidadeId', (req, res) => res.json({ ok: true }));
 app.get('/conectar/:unidadeId',  (req, res) => res.json({ ok: true }));
 app.get('/qr', (req, res) => res.send(`
   <html><body style="font-family:sans-serif;padding:40px;max-width:480px;margin:auto">
-    <h2>Eye CRM — WhatsApp</h2>
-    <p>Este servidor usa a API oficial do WhatsApp (Meta Cloud API).</p>
-    <p style="color:#666">Cada unidade conecta o próprio número pelo painel de configurações.</p>
+    <h2>Eye CRM — WhatsApp via Zernio</h2>
+    <p>Provider: <strong>Zernio</strong></p>
+    <p>Configure o webhook apontando para <code>/webhook</code> no painel do Zernio.</p>
   </body></html>
 `));
 
+// ──────────────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`[eye] Servidor Meta Cloud API na porta ${PORT}`);
-  if (!GLOBAL_TOKEN)    console.warn('[eye] AVISO: META_ACCESS_TOKEN não configurado');
-  if (!GLOBAL_PHONE_ID) console.warn('[eye] AVISO: META_PHONE_NUMBER_ID não configurado');
+  console.log(`[eye] Servidor Zernio WhatsApp na porta ${PORT}`);
+  if (!ZERNIO_KEY)  console.warn('[eye] ⚠ ZERNIO_API_KEY não configurada');
+  if (!ZERNIO_ACCT) console.warn('[eye] ⚠ ZERNIO_ACCOUNT_ID não configurada');
 });
