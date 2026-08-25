@@ -10,7 +10,9 @@ const WPP_TEMPLATES = [
 let _activeWppNum = null;
 let _wppMsgsCache = [];
 let _wppConvs     = [];
-let _wppConvSub   = null;
+let _wppConvSub      = null;
+let _wppPollInterval = null;
+let _wppLastTs       = null;
 
 /* ── helpers ── */
 const CONV_COLORS = ['#5856D6','#007AFF','#34C759','#FF9F0A','#d4537e','#9b59b6','#ba7517'];
@@ -514,38 +516,62 @@ async function criarLeadDaWpp(numero, nome) {
   document.getElementById('ov-appt').classList.add('on');
 }
 
-/* ── realtime subscription ── */
+/* ── processa nova mensagem (usado pelo realtime e pelo poll) ── */
+async function _handleNewMsg(m) {
+  if (_wppMsgsCache.some(x => x.id === m.id)) return; // já processada
+  _wppMsgsCache.unshift(m);
+  _wppConvs = _groupWppConvs(_wppMsgsCache);
+  drawWppList();
+  _updateConvBadge();
+  if (m.tipo === 'recebida') {
+    if (document.hidden || m.numero_cliente !== _activeWppNum) _showWppNotification(m);
+  }
+  if (m.numero_cliente === _activeWppNum && m.tipo === 'recebida') {
+    const msgsEl = document.getElementById('conv-msgs');
+    if (msgsEl) {
+      msgsEl.insertAdjacentHTML('beforeend', wppMsgBubble(m));
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+    await sb.from('whatsapp_mensagens').update({ lida: true }).eq('id', m.id);
+    const conv = _wppConvs.find(c => c.numero === m.numero_cliente);
+    if (conv) conv.unread = 0;
+    _updateConvBadge();
+    drawWppList();
+  }
+  if ((m.timestamp || '') > (_wppLastTs || '')) _wppLastTs = m.timestamp;
+}
+
+/* ── polling fallback — garante atualização mesmo sem realtime habilitado ── */
+async function _wppPoll() {
+  if (!document.getElementById('conv-list')) return; // saiu da aba
+  const uid = currentUnitId();
+  const desde = _wppLastTs || new Date(Date.now() - 30000).toISOString(); // últimos 30s na primeira poll
+  let q = sb.from('whatsapp_mensagens')
+    .select('*').neq('tipo','relatorio_sdr')
+    .gt('timestamp', desde).order('timestamp', { ascending: true });
+  if (uid) q = q.eq('unidade_id', uid);
+  const { data } = await q;
+  for (const m of (data || [])) await _handleNewMsg(m);
+}
+
+/* ── realtime subscription + polling ── */
 function startWppRealtime() {
-  if (_wppConvSub) { try { sb.removeChannel(_wppConvSub); } catch(e) {} }
+  // Limpa anteriores
+  if (_wppConvSub)      { try { sb.removeChannel(_wppConvSub); } catch(e) {} }
+  if (_wppPollInterval) { clearInterval(_wppPollInterval); }
+
+  // Marca timestamp da msg mais recente no cache como ponto de partida
+  _wppLastTs = _wppMsgsCache[0]?.timestamp || new Date().toISOString();
+
+  // Polling de 5s (funciona sempre, independente do Supabase Realtime)
+  _wppPollInterval = setInterval(_wppPoll, 5000);
+
+  // Supabase Realtime (instantâneo quando a tabela tem replicação habilitada)
   const uid = currentUnitId();
   _wppConvSub = sb.channel('eye-wpp-rt2')
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'whatsapp_mensagens',
       ...(uid ? { filter: `unidade_id=eq.${uid}` } : {})
-    }, async payload => {
-      const m = payload.new;
-      _wppMsgsCache.unshift(m);
-      _wppConvs = _groupWppConvs(_wppMsgsCache);
-      drawWppList();
-      _updateConvBadge();
-      /* if this conv is open, append + mark read */
-      if (m.tipo === 'recebida') {
-        if (document.hidden || m.numero_cliente !== _activeWppNum) {
-          _showWppNotification(m);
-        }
-      }
-      if (m.numero_cliente === _activeWppNum && m.tipo === 'recebida') {
-        const msgsEl = document.getElementById('conv-msgs');
-        if (msgsEl) {
-          msgsEl.insertAdjacentHTML('beforeend', wppMsgBubble(m));
-          msgsEl.scrollTop = msgsEl.scrollHeight;
-        }
-        await sb.from('whatsapp_mensagens').update({lida:true}).eq('id', m.id);
-        const conv = _wppConvs.find(c => c.numero === m.numero_cliente);
-        if (conv) conv.unread = 0;
-        _updateConvBadge();
-        drawWppList();
-      }
-    })
+    }, payload => _handleNewMsg(payload.new))
     .subscribe();
 }
