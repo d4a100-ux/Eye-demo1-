@@ -72,17 +72,22 @@ async function isFirstContact(unidadeId, numero) {
   return count === 0;
 }
 
-// Busca o conversationId mais recente armazenado para um número
+// Busca conversationId via Zernio API (por número de telefone)
+// Não depende de colunas extras no Supabase
 async function conversaIdByNumero(unidadeId, numero) {
-  const { data } = await supabase.from('whatsapp_mensagens')
-    .select('conversation_id')
-    .eq('unidade_id', unidadeId)
-    .eq('numero_cliente', numero)
-    .not('conversation_id', 'is', null)
-    .order('timestamp', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return data?.conversation_id || null;
+  if (!ZERNIO_KEY) return null;
+  try {
+    const r = await fetch(`${ZERNIO_API}/inbox/conversations`, { headers: zHeaders() });
+    const data = await r.json();
+    const semPlus = numero.replace(/^\+/, '');
+    const conv = (data.data || []).find(c =>
+      c.participantId === semPlus || c.participantId === `+${semPlus}`
+    );
+    return conv?.id || null;
+  } catch (e) {
+    console.error('[zernio] busca conversa:', e.message);
+    return null;
+  }
 }
 
 // Busca unidade pelo account_id do Zernio
@@ -187,15 +192,12 @@ app.post('/webhook', async (req, res) => {
     const primeiro = await isFirstContact(unidadeId, numero);
 
     const { error } = await supabase.from('whatsapp_mensagens').insert({
-      unidade_id:      unidadeId,
-      lead_id:         lead?.id    || null,
-      numero_cliente:  numero,
-      nome_cliente:    lead?.cli   || nome,
-      mensagem:        texto,
-      tipo:            'recebida',
-      lida:            false,
-      conversation_id: convId,
-      timestamp:       new Date().toISOString()
+      unidade_id:     unidadeId,
+      numero_cliente: numero,
+      mensagem:       texto,
+      tipo:           'recebida',
+      lida:           false,
+      timestamp:      new Date().toISOString()
     });
 
     if (error) { console.error('[zernio] erro salvar:', error.message); continue; }
@@ -212,7 +214,7 @@ app.post('/webhook', async (req, res) => {
           await supabase.from('whatsapp_mensagens').insert({
             unidade_id: unidadeId, numero_cliente: numero,
             mensagem: autoResp, tipo: 'enviada',
-            conversation_id: convId, timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString()
           });
           console.log(`[auto] → enviado para ${numero}`);
         }
@@ -245,8 +247,8 @@ app.post('/enviar', async (req, res) => {
   }
 
   await supabase.from('whatsapp_mensagens').insert({
-    unidade_id: uid, numero_cliente: to, mensagem, tipo: 'enviada',
-    conversation_id: convId || null, timestamp: new Date().toISOString()
+    unidade_id: uid, numero_cliente: to, mensagem,
+    tipo: 'enviada', timestamp: new Date().toISOString()
   });
 
   console.log(`[zernio] → ${to} | ${mensagem.slice(0, 60)}`);
