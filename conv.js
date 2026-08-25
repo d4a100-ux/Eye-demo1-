@@ -382,7 +382,7 @@ function drawWppList(q = '') {
           <span class="ci-time">${fmtMsgTime(c.lastTs)}</span>
         </div>
         <div class="ci-preview">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.lastMsg||'')}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(_msgPreview(c.lastMsg||''))}</span>
           ${c.unread > 0 ? `<span class="ci-badge">${c.unread}</span>` : ''}
         </div>
       </div>
@@ -446,14 +446,96 @@ async function openWppConv(numero) {
   if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
+/* ── preview da última mensagem na lista (converte tags em texto legível) ── */
+function _msgPreview(txt) {
+  if (!txt) return '';
+  if (txt.startsWith('[AUDIO:'))   return '🎵 Áudio';
+  if (txt.startsWith('[IMAGEM:'))  return '📷 Imagem';
+  if (txt.startsWith('[VIDEO:'))   return '🎬 Vídeo';
+  if (txt.startsWith('[STICKER:')) return '😀 Figurinha';
+  if (txt.startsWith('[ARQUIVO:')) return '📎 Arquivo';
+  return txt;
+}
+
+/* ── renderiza conteúdo da mensagem: texto simples ou mídia ── */
+function _renderMsgContent(texto) {
+  if (!texto) return '';
+  const mUrl = id => `${WPP_SERVER}/media/${encodeURIComponent(id)}`;
+
+  const audio = texto.match(/^\[AUDIO:([^\]]+)\]([\s\S]*)$/);
+  if (audio) {
+    const cap = audio[2].trim();
+    return `<audio controls style="width:100%;max-width:240px;display:block;margin:2px 0">
+      <source src="${mUrl(audio[1])}">Seu browser não suporta áudio.
+    </audio>${cap ? `<div style="font-size:12px;margin-top:2px">${esc(cap)}</div>` : ''}`;
+  }
+  const img = texto.match(/^\[IMAGEM:([^\]]+)\]([\s\S]*)$/);
+  if (img) {
+    const cap = img[2].trim();
+    return `<img src="${mUrl(img[1])}" loading="lazy"
+      style="max-width:240px;max-height:300px;border-radius:8px;display:block;cursor:zoom-in"
+      onclick="window.open(this.src,'_blank')">${cap ? `<div style="font-size:12px;margin-top:4px">${esc(cap)}</div>` : ''}`;
+  }
+  const vid = texto.match(/^\[VIDEO:([^\]]+)\]([\s\S]*)$/);
+  if (vid) {
+    const cap = vid[2].trim();
+    return `<video controls style="max-width:240px;border-radius:8px;display:block">
+      <source src="${mUrl(vid[1])}">
+    </video>${cap ? `<div style="font-size:12px;margin-top:4px">${esc(cap)}</div>` : ''}`;
+  }
+  const sticker = texto.match(/^\[STICKER:([^\]]+)\]$/);
+  if (sticker) {
+    return `<img src="${mUrl(sticker[1])}" loading="lazy"
+      style="width:90px;height:90px;object-fit:contain;display:block">`;
+  }
+  const arquivo = texto.match(/^\[ARQUIVO:([^:]+):([^\]]+)\]([\s\S]*)$/);
+  if (arquivo) {
+    const cap = arquivo[3].trim();
+    return `<a href="${mUrl(arquivo[2])}" target="_blank"
+      style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,0,0,0.07);border-radius:8px;text-decoration:none;color:inherit;max-width:220px">
+      <i class="ti ti-file" style="font-size:22px;flex-shrink:0"></i>
+      <div style="min-width:0">
+        <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(arquivo[1])}</div>
+        <div style="font-size:10px;opacity:.6">Toque para abrir</div>
+      </div>
+    </a>${cap ? `<div style="font-size:12px;margin-top:4px">${esc(cap)}</div>` : ''}`;
+  }
+  return esc(texto);
+}
+
+/* ── ticks de status de entrega (apenas para mensagens enviadas) ── */
+function _statusTick(m) {
+  if (m.tipo !== 'enviada') return '';
+  const s = m.status_entrega;
+  if (s === 'lido')     return '<span class="msg-tick" style="color:#53bdeb;font-size:14px;margin-left:2px">✓✓</span>';
+  if (s === 'entregue') return '<span class="msg-tick" style="opacity:.45;font-size:14px;margin-left:2px">✓✓</span>';
+  if (s === 'falhou')   return '<span class="msg-tick" style="color:#ff3b30;font-size:11px;margin-left:2px">✗</span>';
+  return '<span class="msg-tick" style="opacity:.45;font-size:14px;margin-left:2px">✓</span>';
+}
+
 /* ── message bubble ── */
 function wppMsgBubble(m) {
   const isOut = m.tipo === 'enviada';
   const time  = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
-  return `<div class="msg-bubble ${isOut ? 'msg-out' : 'msg-in'}">
-    <div>${esc(m.mensagem)}</div>
-    <div class="msg-time">${time}</div>
+  const content = _renderMsgContent(m.mensagem || '');
+  const tick  = _statusTick(m);
+  return `<div class="msg-bubble ${isOut ? 'msg-out' : 'msg-in'}" data-id="${m.id||''}">
+    <div>${content}</div>
+    <div class="msg-time">${time}${tick}</div>
   </div>`;
+}
+
+/* ── atualiza bubble de status quando chega UPDATE via realtime ── */
+function _handleMsgUpdate(m) {
+  const bubble = document.querySelector(`.msg-bubble[data-id="${m.id}"]`);
+  if (!bubble) return;
+  const old = bubble.querySelector('.msg-tick');
+  const newTick = document.createElement('span');
+  newTick.outerHTML = ''; // placeholder
+  const timeEl = bubble.querySelector('.msg-time');
+  if (!timeEl) return;
+  if (old) old.remove();
+  timeEl.insertAdjacentHTML('beforeend', _statusTick(m));
 }
 
 /* ── send a message ── */
@@ -568,10 +650,14 @@ function startWppRealtime() {
 
   // Supabase Realtime (instantâneo quando a tabela tem replicação habilitada)
   const uid = currentUnitId();
-  _wppConvSub = sb.channel('eye-wpp-rt2')
+  _wppConvSub = sb.channel('eye-wpp-rt3')
     .on('postgres_changes', {
       event: 'INSERT', schema: 'public', table: 'whatsapp_mensagens',
       ...(uid ? { filter: `unidade_id=eq.${uid}` } : {})
     }, payload => _handleNewMsg(payload.new))
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'whatsapp_mensagens',
+      ...(uid ? { filter: `unidade_id=eq.${uid}` } : {})
+    }, payload => _handleMsgUpdate(payload.new))
     .subscribe();
 }
