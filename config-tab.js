@@ -100,58 +100,55 @@ function toggleKbCol(id,visible){
 
 /* ── WhatsApp connection management ── */
 async function _loadWppStatus() {
-  if (!currentUnitId()) return;
+  const uid = currentUnitId();
+  if (!uid) return;
   try {
-    const res = await fetch(`${WPP_SERVER}/status`);
+    const res  = await fetch(`${WPP_SERVER}/status?unidadeId=${uid}`);
     const data = await res.json();
-    _renderWppContent({ status: data.status, qr: data.qr || null });
+    _renderWppContent({ status: data.status, numero: data.numero || null });
   } catch(e) {
-    /* CORS ainda não ativo — fallback Supabase */
-    const uid = currentUnitId();
     const { data } = await sb.from('whatsapp_conexoes')
-      .select('status,qr_code').eq('unidade_id', uid).maybeSingle();
-    _renderWppContent(data ? { status: data.status, qr: data.qr_code } : { status: 'desconectado' });
+      .select('status, numero_display').eq('unidade_id', uid).maybeSingle();
+    _renderWppContent(data
+      ? { status: data.status, numero: data.numero_display }
+      : { status: 'desconectado' });
   }
 }
 
-function _renderWppContent({ status, qr }) {
+function _renderWppContent({ status, numero }) {
   const el = document.getElementById('cfg-wpp-content'); if (!el) return;
+
   if (status === 'conectado') {
     _stopWppPoll();
     el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 0">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0 4px">
         <div style="width:10px;height:10px;border-radius:50%;background:var(--grn)"></div>
-        <span style="font-size:14px;font-weight:600;color:var(--grn)">WhatsApp conectado</span>
+        <span style="font-size:14px;font-weight:600;color:var(--grn)">Conectado</span>
       </div>
+      ${numero ? `<p style="font-size:12px;color:var(--txt3);margin:2px 0 14px">Número: ${esc(numero)}</p>` : '<div style="margin-bottom:14px"></div>'}
       <button class="btn-s d" onclick="wppDesconectar()">
         <i class="ti ti-power"></i> Desconectar
       </button>`;
-  } else if (status === 'aguardando_qr' && qr) {
-    el.innerHTML = `
-      <div style="text-align:center;padding:10px 0 4px">
-        <p style="font-size:12.5px;color:var(--txt2);margin-bottom:12px">
-          Abra o WhatsApp → <b>Aparelhos conectados</b> → Conectar aparelho
-        </p>
-        <img src="${qr}" style="width:220px;height:220px;border-radius:14px;box-shadow:var(--shadow-md)">
-        <p style="font-size:11px;color:var(--txt3);margin-top:10px">
-          O QR Code expira em 60s — atualizando automaticamente…
-        </p>
-      </div>`;
-    _startWppPoll();
+
   } else if (status === 'reconectando') {
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;padding:12px 0">
         <i class="ti ti-loader-2" style="animation:spin 1s linear infinite;color:var(--amb);font-size:18px"></i>
-        <span style="font-size:13px;color:var(--amb)">Reconectando automaticamente…</span>
+        <span style="font-size:13px;color:var(--amb)">Reconectando…</span>
       </div>`;
     _startWppPoll();
+
   } else {
     _stopWppPoll();
-    const isErr = status === 'erro';
     el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0 14px">
-        <div style="width:10px;height:10px;border-radius:50%;background:${isErr?'var(--amb)':'var(--red)'}"></div>
-        <span style="font-size:13px;color:var(--txt2)">${isErr?'Servidor inacessível — verifique o Railway':'WhatsApp desconectado'}</span>
+      <div style="padding:6px 0 14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--red)"></div>
+          <span style="font-size:13px;color:var(--txt2)">Número: não conectado</span>
+        </div>
+        <p style="font-size:12px;color:var(--txt3);margin:0 0 14px;line-height:1.5">
+          Conecte o WhatsApp da sua loja para receber<br>e responder leads pelo eye.
+        </p>
       </div>
       <button class="btn-prim" style="width:auto;height:44px;padding:0 22px" onclick="wppConectar()">
         <i class="ti ti-brand-whatsapp" style="font-size:16px"></i> Conectar WhatsApp
@@ -172,24 +169,56 @@ async function wppConectar() {
   const uid = currentUnitId();
   if (!uid) { toast('Selecione uma unidade primeiro', 'err'); return; }
   const el = document.getElementById('cfg-wpp-content');
-  if (el) el.innerHTML = `
-    <div style="text-align:center;padding:24px;color:var(--txt2);font-size:13px">
-      <i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:24px;display:block;margin-bottom:10px;color:var(--ind)"></i>
-      Aguardando QR Code…
+  if (!el) return;
+  el.innerHTML = `
+    <div style="padding:14px;background:var(--bg2);border-radius:12px;border:1px solid var(--bdr)">
+      <p style="font-size:13px;font-weight:600;margin:0 0 4px;color:var(--txt1)">
+        <i class="ti ti-brand-whatsapp" style="color:#25D366"></i> Conectar via Zernio
+      </p>
+      <p style="font-size:12px;color:var(--txt2);margin:0 0 12px;line-height:1.5">
+        1. Conecte o número no painel <strong>zernio.com</strong><br>
+        2. Copie o <strong>Account ID</strong> e cole abaixo
+      </p>
+      <input class="finput" id="wpp-account-id" placeholder="Account ID do Zernio" style="margin-bottom:8px">
+      <input class="finput" id="wpp-numero-display" placeholder="Número (ex: +55 81 99999-9999)" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <button class="btn-prim" style="flex:1;height:40px" onclick="wppSalvarConta()">
+          <i class="ti ti-check"></i> Conectar
+        </button>
+        <button class="btn-s" onclick="_loadWppStatus()">Cancelar</button>
+      </div>
     </div>`;
-  /* GET é "simple request" — o browser sempre envia ao servidor mesmo sem CORS.
-     O servidor dispara conectarWhatsApp() e salva o QR no Supabase.
-     Polled via Supabase abaixo — não depende de ler a resposta do Railway. */
-  fetch(`${WPP_SERVER}/conectar/${uid}`).catch(() => {});
-  _startWppPoll();
+}
+
+async function wppSalvarConta() {
+  const uid       = currentUnitId();
+  const accountId = document.getElementById('wpp-account-id')?.value.trim();
+  const numero    = document.getElementById('wpp-numero-display')?.value.trim();
+  if (!accountId) { toast('Insira o Account ID do Zernio', 'err'); return; }
+  try {
+    const r = await fetch(`${WPP_SERVER}/conectar-unidade`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unidadeId: uid, accountId, numeroDisplay: numero })
+    });
+    const data = await r.json();
+    if (!data.ok) { toast(data.erro || 'Erro ao conectar', 'err'); return; }
+    toast('WhatsApp conectado via Zernio');
+    _loadWppStatus();
+  } catch(e) {
+    toast('Erro de conexão com o servidor', 'err');
+  }
 }
 
 async function wppDesconectar() {
   if (!confirm('Desconectar o WhatsApp desta unidade?')) return;
   try {
-    await fetch(`${WPP_SERVER}/desconectar`, { method: 'POST' });
     const uid = currentUnitId();
-    if (uid) await sb.from('whatsapp_conexoes').upsert({ unidade_id:uid, status:'desconectado', qr_code:null, atualizado_em:new Date().toISOString() }, { onConflict:'unidade_id' });
+    await fetch(`${WPP_SERVER}/desconectar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unidadeId: uid })
+    });
     _stopWppPoll();
     _renderWppContent({ status: 'desconectado' });
     toast('WhatsApp desconectado');
