@@ -18,19 +18,17 @@
 <!-- ══════════════════════════════════════════════════════════ LOGIN -->
 <div class="screen" id="s-login">
   <div class="login-card">
-    <div class="login-eye-wrap">
-      <svg class="login-eye-svg" viewBox="0 0 72 48" width="72" height="48">
+    <div class="login-logo">
+      <svg viewBox="0 0 72 48" width="64" height="43" style="margin-bottom:4px">
         <defs><clipPath id="lec"><path d="M2,24 Q18,2 36,2 Q54,2 70,24 Q54,46 36,46 Q18,46 2,24 Z"/></clipPath></defs>
         <path d="M2,24 Q18,2 36,2 Q54,2 70,24 Q54,46 36,46 Q18,46 2,24 Z" fill="white" stroke="rgba(0,0,0,.1)" stroke-width="1"/>
-        <circle clip-path="url(#lec)" cx="36" cy="24" r="14" fill="#007AFF"/>
+        <circle clip-path="url(#lec)" cx="36" cy="24" r="14" fill="#2D5BFF"/>
         <circle clip-path="url(#lec)" cx="36" cy="24" r="7" fill="#07070f"/>
         <circle clip-path="url(#lec)" cx="41" cy="19" r="2.4" fill="white" opacity="0.8"/>
       </svg>
-    </div>
-    <div class="login-logo">
-      <div>
-        <div class="lname ff">Eye</div>
-        <div class="lsub">Carros Online · CRM</div>
+      <div style="text-align:center">
+        <div class="lname ff" style="font-size:28px;letter-spacing:-1px;color:#111827">EYE</div>
+        <div class="lsub" style="font-size:11px;color:#9CA3AF;letter-spacing:.3px;margin-top:2px">by MINT</div>
       </div>
     </div>
     <label class="form-label" for="li-user">Login</label>
@@ -65,20 +63,23 @@
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="top-brand" onclick="goTab('inicio')" style="cursor:pointer" title="Voltar para home">
-      <svg id="eye-logo" viewBox="0 0 36 24" width="34" height="23" style="flex:none;cursor:pointer;margin-right:1px">
+      <svg id="eye-logo" viewBox="0 0 36 24" width="32" height="21" style="flex:none;cursor:pointer">
         <defs>
           <clipPath id="eye-clip">
             <path d="M1,12 Q9,1 18,1 Q27,1 35,12 Q27,23 18,23 Q9,23 1,12 Z"/>
           </clipPath>
         </defs>
         <path d="M1,12 Q9,1 18,1 Q27,1 35,12 Q27,23 18,23 Q9,23 1,12 Z" fill="white" stroke="rgba(0,0,0,.13)" stroke-width="0.8"/>
-        <circle clip-path="url(#eye-clip)" cx="18" cy="12" r="7" fill="#007AFF"/>
+        <circle clip-path="url(#eye-clip)" cx="18" cy="12" r="7" fill="#2D5BFF"/>
         <circle id="eye-pupil" clip-path="url(#eye-clip)" cx="18" cy="12" r="3.5" fill="#07070f"/>
         <circle clip-path="url(#eye-clip)" cx="20.5" cy="10" r="1.2" fill="white" opacity="0.8"/>
       </svg>
-      <span class="tb-name ff">Eye</span>
+      <div style="display:flex;flex-direction:column;line-height:1.1">
+        <span class="tb-name ff" style="font-size:15px;font-weight:800;letter-spacing:-.4px">EYE</span>
+        <span class="tb-by" style="font-size:9px;font-weight:500;color:var(--txt3);letter-spacing:.2px">by MINT</span>
+      </div>
       <span class="top-role-badge" id="top-role-badge"></span>
-      <span id="top-crumb" style="font-size:12px;color:var(--txt3);font-weight:500;display:none"></span>
+      <span id="top-crumb" style="font-size:12px;color:var(--txt3);font-weight:400;display:none"></span>
     </div>
     <div id="unit-selector-wrap" style="display:none;align-items:center"></div>
     <div class="top-right">
