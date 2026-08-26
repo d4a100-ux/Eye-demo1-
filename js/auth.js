@@ -500,10 +500,10 @@ function navGroups() {
   };
   const mk = id => ({ id, ...ALL[id] });
   const groups = [
-    { label:'Atendimento',  ids:['inicio','conv','crm','tarefas','cal','retrab'],  roles:null },
-    { label:'Comercial',    ids:['base','negoc'],                                  roles:['sdr','gerencia','master'] },
-    { label:'Inteligência', ids:['bi','ativos','conf'],                            roles:['gerencia','master'] },
-    { label:'Administração',ids:CU.role==='master'?['users','config']:['users'],   roles:['gerencia','master'] },
+    { label:'Atendimento',  ids:['inicio','conv','crm','tarefas','cal','retrab'],       roles:null },
+    { label:'Comercial',    ids:['base'],                                               roles:['sdr','gerencia','master'] },
+    { label:'Gestão',       ids:['negoc','bi','ativos','conf'],                         roles:['gerencia','master'] },
+    { label:'Administração',ids:CU.role==='master'?['users','config']:['users'],        roles:['gerencia','master'] },
   ];
   return groups
     .filter(g => !g.roles || g.roles.includes(CU.role))
