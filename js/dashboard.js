@@ -1,37 +1,21 @@
 function _renderFunnelSVG(funnel) {
-  const W = 640, H = 130, PAD_BOT = 52, SVG_H = H + PAD_BOT;
-  const n = funnel.length;
-  const segW = W / n;
-  const maxN = Math.max(...funnel.map(f => f.n), 1);
-  const MIN_H = 16, MAX_H = H - 10;
-  const colors = ['#2D5BFF','#6B8FFF','#FF9F0A','#22C55E'];
-
-  const hs = funnel.map(f => Math.round(MIN_H + (f.n / maxN) * (MAX_H - MIN_H)));
-
-  const defs = funnel.map((f, i) => {
-    const c = colors[i] || '#5B6EFF';
-    return `<linearGradient id="fg${i}" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="${c}" stop-opacity=".92"/>
-      <stop offset="100%" stop-color="${c}" stop-opacity=".72"/>
-    </linearGradient>`;
-  }).join('');
-
-  const segs = funnel.map((f, i) => {
-    const x = i * segW;
-    const h1 = hs[i];
-    const h2 = i < n - 1 ? hs[i + 1] : Math.round(hs[i] * 0.62);
-    const y1t = (H - h1) / 2, y1b = y1t + h1;
-    const y2t = (H - h2) / 2, y2b = y2t + h2;
-    const cx = x + segW / 2;
-    const pct = i === 0 ? 100 : (funnel[0].n > 0 ? Math.round(f.n / funnel[0].n * 100) : 0);
-    const txtY = H / 2 + 4;
-    return `<path d="M${x},${y1t} L${x+segW},${y2t} L${x+segW},${y2b} L${x},${y1b}Z" fill="url(#fg${i})"/>
-      <text x="${cx}" y="${txtY}" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="rgba(255,255,255,.95)" letter-spacing=".2">${pct}%</text>
-      <text x="${cx}" y="${H + 22}" text-anchor="middle" font-family="Inter,sans-serif" font-size="26" font-weight="800" fill="#1C1C1E" letter-spacing="-1">${f.n}</text>
-      <text x="${cx}" y="${H + 42}" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="#8E8E93" letter-spacing=".4">${f.l.toUpperCase()}</text>`;
-  }).join('');
-
-  return `<div class="funnel-svg-wrap"><svg viewBox="0 0 ${W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%"><defs>${defs}</defs>${segs}</svg></div>`;
+  const total = funnel[0]?.n || 0;
+  const steps = funnel.map((f, i) => {
+    const prev = i > 0 ? funnel[i-1].n : f.n;
+    const pct = total > 0 ? Math.round(f.n / total * 100) : 0;
+    const conv = i > 0 && prev > 0 ? Math.round(f.n / prev * 100) : null;
+    const isSold = i === funnel.length - 1;
+    const isBottle = conv !== null && conv < 15;
+    return { ...f, pct, conv, isSold, isBottle };
+  });
+  return `<div class="funnel-text">
+    ${steps.map((s, i) => `<div class="ft-step">
+        <div class="ft-n${s.isSold ? ' ft-sold' : s.isBottle ? ' ft-bottle' : ''}">${s.n}</div>
+        <div class="ft-lbl">${s.l}</div>
+        ${s.conv !== null ? `<div class="ft-pct${s.isSold ? ' ft-ok' : s.isBottle ? ' ft-warn' : ''}">${s.conv}%</div>` : ''}
+        ${i < steps.length - 1 ? `<div class="ft-arrow">›</div>` : ''}
+      </div>`).join('')}
+  </div>`;
 }
 
 async function _mstQuickFetch() {
