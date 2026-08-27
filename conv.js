@@ -162,6 +162,12 @@ async function renderConv() {
           <p style="font-size:13px;color:var(--txt3)">Selecione uma conversa</p>
         </div>
       </div>
+      <div class="conv-context" id="conv-context">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;padding:20px">
+          <i class="ti ti-user-circle" style="font-size:32px;color:var(--txt3);opacity:.3"></i>
+          <p style="font-size:12px;color:var(--txt3);text-align:center">Selecione uma conversa</p>
+        </div>
+      </div>
     </div>`;
   await loadWppConvs();
   startWppRealtime();
@@ -444,6 +450,59 @@ async function openWppConv(numero) {
 
   const msgsEl = document.getElementById('conv-msgs');
   if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  /* populate context panel */
+  const rawTel = numero.replace(/\D/g,'');
+  const shortTel = rawTel.slice(-11);
+  let leadQ = sb.from('eye_appts').select('*').ilike('tel', `%${shortTel}%`).order('criado_em',{ascending:false}).limit(1);
+  if (uid) leadQ = leadQ.eq('unidade_id', uid);
+  const { data: leadData } = await leadQ;
+  _updateConvContext(numero, conv, leadData?.[0] || null);
+}
+
+function _updateConvContext(numero, conv, lead) {
+  const el = document.getElementById('conv-context');
+  if (!el) return;
+  const nome  = conv?.nome || numero;
+  const color = convColor(numero);
+  const initls = convInitials(nome, numero);
+
+  const header = `<div class="cx-lead-card">
+    <div class="cx-av" style="background:${color}">${initls}</div>
+    <div class="cx-name">${esc(nome)}</div>
+    <div class="cx-phone" style="color:var(--txt3);font-size:11px;margin-top:2px">${numero}</div>
+  </div>`;
+
+  if (!lead) {
+    el.innerHTML = header + `
+      <div class="cx-sec">
+        <div class="cx-sec-title">CRM</div>
+        <div style="font-size:12px;color:var(--txt3);padding:8px 0 12px">Sem lead cadastrado</div>
+        <button class="btn-s p" style="width:100%;justify-content:center" onclick="criarLeadDaWpp('${numero}','${esc(nome)}')">
+          <i class="ti ti-user-plus"></i>Criar lead
+        </button>
+      </div>`;
+    return;
+  }
+
+  const st    = fmtStatus(lead.status);
+  const em    = lead.em || lead.criado_em;
+  const emFmt = em ? new Date(em).toLocaleDateString('pt-BR') : '—';
+
+  el.innerHTML = header + `
+    <div class="cx-sec">
+      <div class="cx-sec-title">Lead</div>
+      ${lead.modelo ? `<div class="cx-row"><span class="cx-row-l">Veículo</span><span class="cx-row-v">${esc(lead.modelo)}</span></div>` : ''}
+      ${lead.orig   ? `<div class="cx-row"><span class="cx-row-l">Origem</span><span class="cx-row-v">${esc(lead.orig)}</span></div>` : ''}
+      ${lead.vnd    ? `<div class="cx-row"><span class="cx-row-l">Vendedor</span><span class="cx-row-v">${esc(lead.vnd)}</span></div>` : ''}
+      <div class="cx-row"><span class="cx-row-l">Status</span><span class="cx-row-v"><span class="tag ${st.cls}">${st.l}</span></span></div>
+      <div class="cx-row"><span class="cx-row-l">Atualizado</span><span class="cx-row-v">${emFmt}</span></div>
+    </div>
+    <div class="cx-sec">
+      <button class="btn-s" style="width:100%;justify-content:center" onclick="openNeg('${lead.id}')">
+        <i class="ti ti-eye"></i>Ver lead
+      </button>
+    </div>`;
 }
 
 /* ── preview da última mensagem na lista (converte tags em texto legível) ── */
