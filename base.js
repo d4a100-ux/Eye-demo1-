@@ -30,10 +30,10 @@ async function renderBase() {
     </div>
 
     <div class="kpi-grid" style="margin-bottom:16px">
-      <div class="kpi-c"><div class="kpi-top"><div class="kl">Total histórico</div><div class="kpi-icon">📋</div></div><div class="kv">${total}</div></div>
-      <div class="kpi-c"><div class="kpi-top"><div class="kl">Conversões</div><div class="kpi-icon">✅</div></div><div class="kv" style="color:var(--grn)">${vendas}</div></div>
-      <div class="kpi-c"><div class="kpi-top"><div class="kl">Taxa histórica</div><div class="kpi-icon">📈</div></div><div class="kv" style="color:${taxa>=8?'var(--grn)':taxa>=4?'var(--amb)':'var(--red)'}">${taxa}%</div></div>
-      <div class="kpi-c"><div class="kpi-top"><div class="kl">Leads frios</div><div class="kpi-icon">❄️</div></div><div class="kv" style="color:var(--txt2)">${frios}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Total histórico</div><i class="ti ti-database kpi-icon" style="font-size:16px"></i></div><div class="kv">${total}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Conversões</div><i class="ti ti-check kpi-icon" style="font-size:16px"></i></div><div class="kv" style="color:var(--grn)">${vendas}</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Taxa histórica</div><i class="ti ti-trending-up kpi-icon" style="font-size:16px"></i></div><div class="kv" style="color:${taxa>=8?'var(--grn)':taxa>=4?'var(--amb)':'var(--red)'}">${taxa}%</div></div>
+      <div class="kpi-c"><div class="kpi-top"><div class="kl">Leads frios</div><i class="ti ti-snowflake kpi-icon" style="font-size:16px"></i></div><div class="kv" style="color:var(--txt2)">${frios}</div></div>
     </div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
@@ -82,7 +82,67 @@ function _filterBase() {
     el.innerHTML = `<div class="empty-st"><i class="ti ti-database-off"></i><p>Nenhum lead encontrado<br>com esses filtros.</p></div>`;
     return;
   }
-  el.innerHTML = `<div style="font-size:11px;color:var(--txt3);margin-bottom:10px;font-weight:500">${appts.length} lead${appts.length!==1?'s':''} encontrado${appts.length!==1?'s':''}</div><div class="appt-list">${appts.map(baseCard).join('')}</div>`;
+  el.innerHTML = `<div style="font-size:11px;color:var(--txt3);margin-bottom:10px;font-weight:500">${appts.length} lead${appts.length!==1?'s':''} encontrado${appts.length!==1?'s':''}</div>
+    <div style="overflow-x:auto;background:#FFFFFF;border:1px solid var(--bdr);border-radius:var(--radius-lg);overflow:hidden">
+    <table class="base-table">
+      <thead><tr>
+        <th>Cliente</th>
+        <th>Contato</th>
+        <th>Veículo</th>
+        <th>Origem</th>
+        <th>Responsável</th>
+        <th>Status</th>
+        <th>Última interação</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${appts.map(baseRow).join('')}</tbody>
+    </table>
+    </div>`;
+}
+
+function _fmtRelDate(d) {
+  if (!d) return '—';
+  const dt = typeof d === 'string' ? new Date(d) : d;
+  const diff = Date.now() - dt;
+  const dias = Math.floor(diff / 86400000);
+  if (dias === 0) {
+    const h = Math.floor(diff / 3600000);
+    return h > 0 ? h + 'h atrás' : 'Agora';
+  }
+  if (dias === 1) return 'Ontem';
+  if (dias < 7) return dias + ' dias atrás';
+  return dt.toLocaleDateString('pt-BR', {day:'2-digit', month:'short'});
+}
+
+function baseRow(a) {
+  const st    = fmtStatus(a.status);
+  const tel55 = a.tel ? '55' + a.tel.replace(/\D/g,'') : '';
+  const emFmt = _fmtRelDate(a.em || a.criado_em);
+  const canReativar = ['lead_frio','perdido','descartado'].includes(a.status);
+  return `<tr onclick="openNeg('${a.id}')">
+    <td>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:${userColor(a.vnd)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex:none">${initials(a.vnd)}</div>
+        <span style="font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px">${esc(a.cli||'—')}</span>
+      </div>
+    </td>
+    <td>${a.tel||'—'}</td>
+    <td>${esc(a.modelo||'—')}</td>
+    <td>${esc(a.orig||'—')}</td>
+    <td>
+      <div style="font-size:12px;font-weight:500;color:var(--txt)">${esc(a.vnd||'—')}</div>
+      ${isMgr()&&a.criado_por?`<div style="font-size:10px;color:var(--txt3)">${esc((_usersCache||[]).find(u=>u.login===a.criado_por)?.nome||a.criado_por)}</div>`:''}
+    </td>
+    <td><span class="tag ${st.cls}">${st.l}</span></td>
+    <td style="white-space:nowrap">${emFmt}</td>
+    <td onclick="event.stopPropagation()">
+      <div class="bt-actions">
+        ${tel55?`<a href="https://wa.me/${tel55}" target="_blank" class="btn-s" onclick="event.stopPropagation()"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i></a>`:''}
+        ${canReativar?`<button class="btn-s p" onclick="reativarLead('${a.id}')"><i class="ti ti-refresh"></i></button>`:''}
+        ${canDelete()?`<button class="btn-s d" onclick="delAppt('${a.id}')"><i class="ti ti-trash"></i></button>`:''}
+      </div>
+    </td>
+  </tr>`;
 }
 
 function baseCard(a) {
