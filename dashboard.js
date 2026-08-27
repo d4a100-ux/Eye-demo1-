@@ -1,37 +1,21 @@
 function _renderFunnelSVG(funnel) {
-  const W = 640, H = 130, PAD_BOT = 52, SVG_H = H + PAD_BOT;
-  const n = funnel.length;
-  const segW = W / n;
-  const maxN = Math.max(...funnel.map(f => f.n), 1);
-  const MIN_H = 16, MAX_H = H - 10;
-  const colors = ['#5B6EFF','#8B9DFF','#FF9F0A','#34C759'];
-
-  const hs = funnel.map(f => Math.round(MIN_H + (f.n / maxN) * (MAX_H - MIN_H)));
-
-  const defs = funnel.map((f, i) => {
-    const c = colors[i] || '#5B6EFF';
-    return `<linearGradient id="fg${i}" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="${c}" stop-opacity=".92"/>
-      <stop offset="100%" stop-color="${c}" stop-opacity=".72"/>
-    </linearGradient>`;
-  }).join('');
-
-  const segs = funnel.map((f, i) => {
-    const x = i * segW;
-    const h1 = hs[i];
-    const h2 = i < n - 1 ? hs[i + 1] : Math.round(hs[i] * 0.62);
-    const y1t = (H - h1) / 2, y1b = y1t + h1;
-    const y2t = (H - h2) / 2, y2b = y2t + h2;
-    const cx = x + segW / 2;
-    const pct = i === 0 ? 100 : (funnel[0].n > 0 ? Math.round(f.n / funnel[0].n * 100) : 0);
-    const txtY = H / 2 + 4;
-    return `<path d="M${x},${y1t} L${x+segW},${y2t} L${x+segW},${y2b} L${x},${y1b}Z" fill="url(#fg${i})"/>
-      <text x="${cx}" y="${txtY}" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="rgba(255,255,255,.95)" letter-spacing=".2">${pct}%</text>
-      <text x="${cx}" y="${H + 22}" text-anchor="middle" font-family="Inter,sans-serif" font-size="26" font-weight="800" fill="#1C1C1E" letter-spacing="-1">${f.n}</text>
-      <text x="${cx}" y="${H + 42}" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="600" fill="#8E8E93" letter-spacing=".4">${f.l.toUpperCase()}</text>`;
-  }).join('');
-
-  return `<div class="funnel-svg-wrap"><svg viewBox="0 0 ${W} ${SVG_H}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%"><defs>${defs}</defs>${segs}</svg></div>`;
+  const total = funnel[0]?.n || 0;
+  const steps = funnel.map((f, i) => {
+    const prev = i > 0 ? funnel[i-1].n : f.n;
+    const pct = total > 0 ? Math.round(f.n / total * 100) : 0;
+    const conv = i > 0 && prev > 0 ? Math.round(f.n / prev * 100) : null;
+    const isSold = i === funnel.length - 1;
+    const isBottle = conv !== null && conv < 15;
+    return { ...f, pct, conv, isSold, isBottle };
+  });
+  return `<div class="funnel-text">
+    ${steps.map((s, i) => `<div class="ft-step">
+        <div class="ft-n${s.isSold ? ' ft-sold' : s.isBottle ? ' ft-bottle' : ''}">${s.n}</div>
+        <div class="ft-lbl">${s.l}</div>
+        ${s.conv !== null ? `<div class="ft-pct${s.isSold ? ' ft-ok' : s.isBottle ? ' ft-warn' : ''}">${s.conv}%</div>` : ''}
+        ${i < steps.length - 1 ? `<div class="ft-arrow">›</div>` : ''}
+      </div>`).join('')}
+  </div>`;
 }
 
 async function _mstQuickFetch() {
@@ -69,6 +53,7 @@ async function renderInicio() {
   const hotLeads      =myAppts.filter(a=>['pendente','em_atendimento','sem_resposta'].includes(a.status)&&a.em&&Math.floor((Date.now()-new Date(a.em))/86400000)>=1);
   const confirmedToday=myAppts.filter(a=>a.status==='passado_vendedor'&&a.data===today);
   const realizedToday =myAppts.filter(a=>a.status==='venda_concluida'&&a.data===today);
+  const leadsHoje     =myAppts.filter(a=>(a.criado_em||'').startsWith(today));
 
   const meta=parseInt(localStorage.getItem('eye_meta')||'10');
   const pct=Math.min(100,Math.round(realizedMonth.length/meta*100));
@@ -101,34 +86,94 @@ async function renderInicio() {
   const h=now.getHours(), grt=h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
   const DAYS=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const MONTHS=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const potFmt=potential>=1000?`R$ ${(potential/1000).toFixed(0)}k`:`R$ ${Math.round(potential)}`;
 
-  // Módulos disponíveis por role
-  const allMods = [
-    { id:'crm',    icon:'ti-layout-kanban',  label:'CRM',           sub:'Pipeline de leads',    color:'#007AFF', roles:null },
-    { id:'tarefas',icon:'ti-checkbox',       label:'Tarefas',        sub:'Follow-ups e alertas', color:'#5856D6', roles:null },
-    { id:'agenda', icon:'ti-calendar',       label:'Agenda',         sub:'Agendamentos',         color:'#2DD4A7', roles:null },
-    { id:'conv',   icon:'ti-message-2',      label:'Conversas',      sub:'Histórico de leads',   color:'#FF9F0A', roles:null },
-    { id:'negoc',  icon:'ti-handshake',      label:'Pipeline',       sub:'Leads em negociação',  color:'#5856D6', roles:['gerencia','master'] },
-    { id:'bi',     icon:'ti-chart-bar',      label:'BI',             sub:'Relatórios e dados',   color:'#FF3B30', roles:['gerencia','master'] },
-    { id:'ativos',  icon:'ti-car',             label:'Ativos',       sub:'Gestão de veículos',  color:'#FF9F0A', roles:['gerencia','master'] },
-    { id:'retrab',  icon:'ti-refresh',         label:'Retrabalho',   sub:'Leads para reconquistar',color:'#FF3B30', roles:null },
-    { id:'conf',    icon:'ti-clipboard-list',  label:'Conferência',  sub:'Dashboard diário',    color:'#5856D6', roles:['gerencia','master'] },
-  ];
-  const mods = allMods.filter(m => !m.roles || m.roles.includes(CU.role));
+  // Saúde da operação
+  const criticos = hotLeads.filter(a => {
+    const dias = Math.floor((Date.now() - new Date(a.em||a.criado_em||0)) / 86400000);
+    return dias >= 2;
+  }).length;
+  const healthScore = hotLeads.length === 0 ? 'boa'
+    : hotLeads.length <= 5 && criticos === 0 ? 'atenção'
+    : criticos > 10 || hotLeads.length > 20 ? 'crítica' : 'atenção';
+  const healthCfg = {
+    boa:     { dot:'var(--grn)', label:'Operação saudável' },
+    atenção: { dot:'var(--amb)', label:'Atenção necessária' },
+    crítica: { dot:'var(--red)', label:'Atenção crítica' }
+  }[healthScore];
+
+  // KPI sub-textos
+  const agRate  = myAppts.length > 0 ? Math.round(myAppts.filter(a=>['agendado','passado_vendedor','em_negociacao','ficha_enviada','credito_aprovado','venda_concluida'].includes(a.status)).length / myAppts.length * 100) : 0;
+  const convRate = myAppts.length > 0 ? (realizedMonth.length / myAppts.length * 100).toFixed(1) : '0.0';
 
   el.innerHTML=`
-    <div class="dash-greeting">
-      <div class="dg-title">${grt}, ${CU.nome} 👋</div>
-      <div class="dg-sub">${DAYS[now.getDay()]}, ${now.getDate()} de ${MONTHS[now.getMonth()]}</div>
+    <div class="dash-greeting" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <div class="dg-title">${grt}, ${CU.nome}</div>
+        <div class="dg-sub">${DAYS[now.getDay()]}, ${now.getDate()} de ${MONTHS[now.getMonth()]}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 14px;background:#FFFFFF;border:1px solid var(--bdr);border-radius:20px;font-size:12px;font-weight:600;color:var(--txt2);white-space:nowrap">
+        <span style="width:7px;height:7px;border-radius:50%;background:${healthCfg.dot};display:inline-block;flex:none"></span>
+        ${healthCfg.label}
+      </div>
     </div>
 
-    <div class="kpi-grid" style="margin-top:8px">
-      <div class="kpi-c"><div class="kpi-top"><div class="kl">Total de leads</div><div class="kpi-icon">📋</div></div><div class="kv">${myAppts.length}</div></div>
-      <div class="kpi-c"><div class="kpi-top"><div class="kl">Agendamentos hoje</div><div class="kpi-icon">📅</div></div><div class="kv">${todayAppts.length}</div></div>
-      <div class="kpi-c"><div class="kpi-top"><div class="kl">Vendas no mês</div><div class="kpi-icon">✅</div></div><div class="kv">${realizedMonth.length}</div></div>
-      <div class="kpi-c"><div class="kpi-top"><div class="kl">Leads parados</div><div class="kpi-icon">⚠️</div></div><div class="kv${hotLeads.length>0?' alert':''}">${hotLeads.length}</div></div>
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kpi-c" style="cursor:pointer" onclick="goTab('crm')">
+        <div class="kpi-top">
+          <div class="kl">Total de leads</div>
+          <i class="ti ti-users kpi-icon" style="font-size:16px"></i>
+        </div>
+        <div class="kv">${myAppts.length}</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:6px">${agRate}% agendados</div>
+      </div>
+      <div class="kpi-c" style="cursor:pointer" onclick="goTab('cal')">
+        <div class="kpi-top">
+          <div class="kl">Agendamentos hoje</div>
+          <i class="ti ti-calendar-event kpi-icon" style="font-size:16px"></i>
+        </div>
+        <div class="kv">${todayAppts.length}</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:6px">${confirmedToday.length} com vendedor</div>
+      </div>
+      <div class="kpi-c" style="cursor:pointer" onclick="goTab('crm')">
+        <div class="kpi-top">
+          <div class="kl">Vendas no mês</div>
+          <i class="ti ti-trophy kpi-icon" style="font-size:16px"></i>
+        </div>
+        <div class="kv ${realizedMonth.length>0?'success':''}">${realizedMonth.length}</div>
+        <div style="font-size:11px;color:var(--txt3);margin-top:6px">${convRate}% conversão</div>
+      </div>
+      <div class="kpi-c" style="cursor:pointer" onclick="goTab('crm')">
+        <div class="kpi-top">
+          <div class="kl">Precisam de atenção</div>
+          <i class="ti ti-alert-triangle kpi-icon" style="font-size:16px;color:${hotLeads.length>0?'var(--amb)':'var(--txt3)'}"></i>
+        </div>
+        <div class="kv${hotLeads.length>0?' alert':''}">${hotLeads.length}</div>
+        <div style="font-size:11px;color:${criticos>0?'var(--red)':'var(--txt3)'};margin-top:6px">${criticos>0?`${criticos} críticos`:'Nenhum crítico'}</div>
+      </div>
     </div>
+
+    <div class="dash-box" style="margin-bottom:16px">
+      <div class="dash-box-title">Hoje · ${now.getDate()} de ${MONTHS[now.getMonth()]}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr)">
+        <div style="padding:14px 16px;border-right:1px solid var(--bdr);cursor:pointer" onclick="goTab('crm')">
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);margin-bottom:6px">Leads recebidos</div>
+          <div style="font-size:24px;font-weight:700;color:var(--txt);letter-spacing:-1px;line-height:1">${leadsHoje.length}</div>
+        </div>
+        <div style="padding:14px 16px;border-right:1px solid var(--bdr);cursor:pointer" onclick="goTab('cal')">
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);margin-bottom:6px">Agendamentos</div>
+          <div style="font-size:24px;font-weight:700;color:var(--txt);letter-spacing:-1px;line-height:1">${todayAppts.length}</div>
+        </div>
+        <div style="padding:14px 16px;border-right:1px solid var(--bdr)">
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);margin-bottom:6px">Vendas</div>
+          <div style="font-size:24px;font-weight:700;letter-spacing:-1px;line-height:1;color:${realizedToday.length>0?'var(--grn)':'var(--txt)'}">${realizedToday.length}</div>
+        </div>
+        <div style="padding:14px 16px;cursor:pointer" onclick="goTab('crm')">
+          <div style="font-size:11px;font-weight:500;color:var(--txt3);margin-bottom:6px">Precisam de atenção</div>
+          <div style="font-size:24px;font-weight:700;letter-spacing:-1px;line-height:1;color:${hotLeads.length>0?'var(--amb)':'var(--txt)'}">${hotLeads.length}</div>
+        </div>
+      </div>
+    </div>
+
     ${CU.role === 'master' ? (() => {
       const hora = now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       const tL   = mstCards.reduce((s,c)=>s+c.leads,   0);
@@ -137,104 +182,142 @@ async function renderInicio() {
       const tA   = mstCards.reduce((s,c)=>s+c.alertas, 0);
       const tAg  = mstCards.reduce((s,c)=>s+c.agendados,0);
       const taxa = tL>0 ? Math.round(tV/tL*100) : 0;
-      const trendV = tL>tO ? `<span style="color:var(--grn);font-size:10px"> ↑ +${tL-tO}</span>` : tL<tO ? `<span style="color:var(--red);font-size:10px"> ↓ -${tO-tL}</span>` : '';
-      const medals = ['🥇','🥈','🥉'];
+      const diff = tL - tO;
+      const trendV = diff > 0 ? `<span style="color:var(--grn);font-size:10px;font-weight:600">↑ +${diff} vs ontem</span>`
+                   : diff < 0 ? `<span style="color:var(--red);font-size:10px;font-weight:600">↓ ${diff} vs ontem</span>` : '';
       return `<div class="dash-row">
         <div class="dash-box">
           <div class="dash-box-title" style="display:flex;align-items:center;justify-content:space-between">
-            Snapshot
-            <button onclick="_mstDigest()" style="border:none;background:rgba(255,159,10,.12);color:var(--amb);border-radius:8px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">☕ Digest</button>
+            Prioridades de hoje
+            <button onclick="_mstDigest()" style="border:1px solid var(--bdr);background:#FFFFFF;color:var(--amb);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px">
+              <i class="ti ti-sparkles" style="font-size:12px"></i> EYE Digest
+            </button>
           </div>
-          <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Todas as unidades · ${hora}</div>
-          <div class="alert-item"><div class="alert-dot" style="background:var(--ind)"></div><div class="alert-txt">Leads hoje</div><div class="alert-count">${tL}${trendV}</div></div>
-          <div class="alert-item"><div class="alert-dot" style="background:var(--amb)"></div><div class="alert-txt">Agendamentos hoje</div><div class="alert-count">${tAg}</div></div>
-          <div class="alert-item"><div class="alert-dot" style="background:var(--grn)"></div><div class="alert-txt">Conversões hoje</div><div class="alert-count" style="color:${taxa>=8?'var(--grn)':taxa>=4?'var(--amb)':'var(--red)'}">${tV} (${taxa}%)</div></div>
-          <div class="alert-item"><div class="alert-dot" style="background:var(--red)"></div><div class="alert-txt">Alertas ativos >2h</div><div class="alert-count" style="color:${tA>3?'var(--red)':tA>0?'var(--amb)':'var(--grn)'}">${tA}</div></div>
+          <div style="font-size:11px;color:var(--txt3);margin-bottom:12px">Todas as unidades · atualizado às ${hora}</div>
+          <div class="alert-item">
+            <div class="alert-dot" style="background:var(--ind)"></div>
+            <div class="alert-txt">Leads hoje</div>
+            <div class="alert-count">${tL} ${trendV}</div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-dot" style="background:var(--amb)"></div>
+            <div class="alert-txt">Agendamentos hoje</div>
+            <div class="alert-count">${tAg}</div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-dot" style="background:var(--grn)"></div>
+            <div class="alert-txt">Conversões · ${taxa}%</div>
+            <div class="alert-count" style="color:${taxa>=8?'var(--grn)':taxa>=4?'var(--amb)':'var(--red)'}">${tV}</div>
+          </div>
+          <div class="alert-item" style="border:none">
+            <div class="alert-dot" style="background:${tA>3?'var(--red)':tA>0?'var(--amb)':'var(--grn)'}"></div>
+            <div class="alert-txt">Precisam de atenção</div>
+            <div class="alert-count" style="color:${tA>3?'var(--red)':tA>0?'var(--amb)':'var(--grn)'}">${tA}</div>
+          </div>
         </div>
         <div class="dash-box">
-          <div class="dash-box-title">Ranking de unidades</div>
-          ${mstCards.length ? mstCards.map((u,i) => `
-            <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="switchUnit('${u.id}')" title="Ir para ${esc(u.nome)}">
-              <span style="font-size:15px;flex:none;width:22px;text-align:center">${medals[i]||`<span style='font-size:11px;color:var(--txt3)'>#${i+1}</span>`}</span>
+          <div class="dash-box-title">Performance por unidade</div>
+          ${mstCards.length ? mstCards.map((u,i) => {
+            const pNum = ['#','#','#'][i] || '#';
+            return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="switchUnit('${u.id}')" title="Ir para ${esc(u.nome)}">
+              <span style="font-size:11px;font-weight:700;color:var(--txt3);width:18px;flex:none">#${i+1}</span>
               <div style="flex:1;min-width:0">
-                <div style="font-size:13px;font-weight:600;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.nome)}</div>
-                <div style="font-size:11px;color:var(--txt3)">${u.leads} leads · ${u.vendas} conv. · ${u.agendados} ag.</div>
+                <div style="font-size:13px;font-weight:600;color:var(--txt)">${esc(u.nome)}</div>
+                <div style="font-size:11px;color:var(--txt3);margin-top:2px">${u.leads} leads · ${u.agendados} ag. · ${u.vendas} vendas</div>
               </div>
-              <span style="font-size:11px;font-weight:700;flex:none;color:${u.alertas>3?'var(--red)':u.alertas>0?'var(--amb)':'var(--grn)'}">${u.alertas>0?`⚠ ${u.alertas}`:'✓'}</span>
-            </div>`).join('')
+              <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;flex:none;background:${u.alertas>3?'var(--redg)':u.alertas>0?'var(--ambg)':'var(--grng)'};color:${u.alertas>3?'var(--red)':u.alertas>0?'var(--amb)':'var(--grn)'}">${u.alertas>0?u.alertas+' alertas':'OK'}</span>
+            </div>`;
+          }).join('')
           : `<div class="alert-empty">Nenhuma unidade encontrada</div>`}
         </div>
       </div>`;
     })() : `<div class="dash-row">
       <div class="dash-box">
         <div class="dash-box-title" style="display:flex;align-items:center;justify-content:space-between">
-          Minhas Tarefas
+          Minhas tarefas
           <button onclick="goTab('tarefas')" style="border:none;background:transparent;color:var(--ind);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;padding:0">Ver todas →</button>
         </div>
         ${myTasks.vencidas.length||myTasks.hoje.length||myTasks.futuras.length?`
           ${myTasks.vencidas.slice(0,2).map(t=>`
             <div class="alert-item" onclick="goTab('tarefas')" style="cursor:pointer">
               <div class="alert-dot" style="background:var(--red)"></div>
-              <div class="alert-txt" style="color:var(--red);font-weight:600"><i class="ti ${TASK_ICONS[t.tipo]||'ti-checkbox'}" style="font-size:11px;margin-right:2px"></i>${esc(t.descricao||TASK_LABELS[t.tipo]||'Tarefa')}</div>
+              <div class="alert-txt" style="color:var(--red);font-weight:600"><i class="ti ${TASK_ICONS[t.tipo]||'ti-circle-check'}" style="font-size:11px;margin-right:3px"></i>${esc(t.descricao||TASK_LABELS[t.tipo]||'Tarefa')}</div>
               <div class="alert-count" style="color:var(--red);font-size:10px">${fmtDate(t.vencimento)}</div>
             </div>`).join('')}
           ${myTasks.vencidas.length>2?`<div class="alert-item"><div class="alert-dot" style="background:var(--red)"></div><div class="alert-txt" style="color:var(--red)">+${myTasks.vencidas.length-2} vencida${myTasks.vencidas.length-2!==1?'s':''}</div></div>`:''}
           ${myTasks.hoje.slice(0,2).map(t=>`
             <div class="alert-item" onclick="goTab('tarefas')" style="cursor:pointer">
               <div class="alert-dot" style="background:var(--amb)"></div>
-              <div class="alert-txt"><i class="ti ${TASK_ICONS[t.tipo]||'ti-checkbox'}" style="font-size:11px;margin-right:2px"></i>${esc(t.descricao||TASK_LABELS[t.tipo]||'Tarefa')}</div>
+              <div class="alert-txt"><i class="ti ${TASK_ICONS[t.tipo]||'ti-circle-check'}" style="font-size:11px;margin-right:3px"></i>${esc(t.descricao||TASK_LABELS[t.tipo]||'Tarefa')}</div>
               <div class="alert-count" style="color:var(--amb)">Hoje${t.hora?' · '+t.hora:''}</div>
             </div>`).join('')}
           ${myTasks.hoje.length>2?`<div class="alert-item"><div class="alert-dot" style="background:var(--amb)"></div><div class="alert-txt" style="color:var(--amb)">+${myTasks.hoje.length-2} para hoje</div></div>`:''}
-          ${myTasks.futuras.length?`<div class="alert-item"><div class="alert-dot" style="background:var(--ind)"></div><div class="alert-txt">${myTasks.futuras.length} próxima${myTasks.futuras.length!==1?'s':''}</div><div class="alert-count" style="color:var(--txt3)">futuras</div></div>`:''}
-        `:`<div class="alert-empty">✅ Nenhuma tarefa pendente</div>`}
+          ${myTasks.futuras.length?`<div class="alert-item" style="border:none"><div class="alert-dot" style="background:var(--ind)"></div><div class="alert-txt">${myTasks.futuras.length} próxima${myTasks.futuras.length!==1?'s':''}</div><div class="alert-count" style="color:var(--txt3)">futuras</div></div>`:''}
+        `:`<div style="text-align:center;padding:20px 0">
+            <i class="ti ti-circle-check" style="font-size:24px;color:var(--grn);display:block;margin-bottom:8px"></i>
+            <div style="font-size:13px;font-weight:600;color:var(--txt)">Tudo em dia</div>
+            <div style="font-size:11px;color:var(--txt3);margin-top:3px">Nenhuma tarefa pendente</div>
+          </div>`}
       </div>
       <div class="dash-box">
-        <div class="dash-box-title">Meta pessoal do mês</div>
-        <div class="meta-header"><span>Realizadas: <b>${realizedMonth.length}</b></span><input class="meta-input" type="number" id="meta-input" value="${meta}" min="1" onchange="saveMeta(this.value)"></div>
-        <div class="meta-bar-bg"><div class="meta-bar-fill" style="--w:${pct}%;width:${pct}%"></div></div>
-        <div class="meta-label">${pct}% da meta · ${Math.max(0,meta-realizedMonth.length)} restantes</div>
+        <div class="dash-box-title">Meta do mês</div>
+        <div class="meta-header"><span style="font-size:13px;color:var(--txt2)">Realizadas: <b style="color:var(--txt)">${realizedMonth.length}</b></span><input class="meta-input" type="number" id="meta-input" value="${meta}" min="1" onchange="saveMeta(this.value)"></div>
+        <div class="meta-bar-bg" style="margin-bottom:8px"><div class="meta-bar-fill" style="--w:${pct}%;width:${pct}%;background:${pct>=100?'var(--grn)':pct>=60?'var(--ind)':'var(--amb)'}"></div></div>
+        <div class="meta-label" style="display:flex;justify-content:space-between">
+          <span>${pct}% da meta</span>
+          <span>${Math.max(0,meta-realizedMonth.length)} restantes</span>
+        </div>
+        ${pct<100&&meta>0?`<div style="margin-top:10px;padding:10px 12px;background:${pct<30?'var(--redg)':'var(--ambg)'};border-radius:var(--rs);font-size:12px;color:${pct<30?'var(--red)':'var(--amb)'};font-weight:500">
+          Ritmo esperado: ${Math.round(meta * (now.getDate() / new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()))} vendas até hoje
+        </div>`:''}
       </div>
     </div>`}
-    <div class="dash-box">
-      <div class="dash-box-title">Funil do mês</div>
+
+    <div class="dash-box" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="dash-box-title" style="margin:0">Funil do mês</div>
+        ${funnel[1].n>0&&funnel[2].n<funnel[1].n*0.1?`<div style="font-size:11px;color:var(--red);font-weight:600;display:flex;align-items:center;gap:4px"><i class="ti ti-alert-circle"></i>Gargalo: Agendado → Vendedor</div>`:''}
+      </div>
       ${_renderFunnelSVG(funnel)}
     </div>
-    ${ranking.length?`<div class="dash-box">
-      <div class="dash-box-title">Ranking de vendedores</div>
-      <div style="display:flex;flex-direction:column;gap:7px">
+
+    ${ranking.length?`<div class="dash-box" style="margin-bottom:16px">
+      <div class="dash-box-title">Equipe de vendas</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
         ${ranking.map((v,i)=>{
-          const barW=ranking[0].vendidos>0?Math.round(v.vendidos/ranking[0].vendidos*100):0;
-          const medals=['🥇','🥈','🥉'];
-          return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg2);border-radius:var(--radius-lg);transition:.2s" onmouseover="this.style.background='rgba(91,110,255,.06)'" onmouseout="this.style.background='var(--bg2)'">
-            <div style="font-size:15px;width:22px;text-align:center;flex:none">${medals[i]||('<span style="font-size:11px;color:var(--txt3);font-weight:600">#'+(i+1)+'</span>')}</div>
-            <div style="width:32px;height:32px;border-radius:var(--rs);background:${userColor(v.nome)};display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-weight:700;font-size:10px;color:#fff;flex:none">${initials(v.nome)}</div>
+          const medals=['','',''];
+          const podium = i<3?['color:var(--amb)','color:var(--txt3)','color:var(--amb)'][i]:'color:var(--txt3)';
+          return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg);border:1px solid var(--bdr);border-radius:var(--radius-md);transition:.15s" onmouseover="this.style.background='var(--eye-primary-soft)'" onmouseout="this.style.background='var(--bg)'">
+            <div style="font-size:11px;font-weight:700;${podium};width:18px;flex:none;text-align:center">${i+1}</div>
+            <div style="width:30px;height:30px;border-radius:var(--rs);background:${userColor(v.nome)};display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-weight:700;font-size:10px;color:#fff;flex:none">${initials(v.nome)}</div>
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:600;color:var(--txt)">${esc(v.nome)}</div>
-              <div style="height:4px;background:var(--bdr);border-radius:4px;margin-top:5px;overflow:hidden">
-                <div style="height:100%;width:${barW}%;background:var(--grn);border-radius:4px;transition:.5s cubic-bezier(.34,1.56,.64,1)"></div>
-              </div>
+              <div style="font-size:11px;color:var(--txt3);margin-top:2px">${v.total} leads · ${v.realizados} agendados</div>
             </div>
             <div style="text-align:right;flex:none">
-              <div style="font-size:18px;font-weight:800;color:var(--grn);letter-spacing:-.5px;line-height:1">${v.vendidos}</div>
+              <div style="font-size:16px;font-weight:800;color:${v.vendidos>0?'var(--grn)':'var(--txt3)'};line-height:1">${v.vendidos} <span style="font-size:11px;font-weight:400">venda${v.vendidos!==1?'s':''}</span></div>
               <div style="font-size:10px;color:var(--txt3);margin-top:2px">${v.conv}% conv.</div>
             </div>
           </div>`;
         }).join('')}
       </div>
     </div>`:''}
+
     <div class="dash-box">
-      <div class="dash-box-title">Hoje · ${todayAppts.length} agendamento${todayAppts.length!==1?'s':''}</div>
+      <div class="dash-box-title">Agendamentos de hoje · ${todayAppts.length}</div>
       ${todayAppts.length?`<div class="today-list">
         ${todayAppts.sort((a,b)=>(a.hora||'')>(b.hora||'')?1:-1).map(a=>{
           const sm=fmtStatus(a.status);
           return `<div class="today-item" onclick="openNeg('${a.id}')">
             <div class="ti-av" style="background:${userColor(a.vnd)}">${initials(a.vnd)}</div>
-            <div class="ti-info"><div class="ti-name">${a.cli}</div><div class="ti-sub">${a.hora||'—'} · ${a.vnd}</div></div>
+            <div class="ti-info"><div class="ti-name">${esc(a.cli)}</div><div class="ti-sub">${a.hora||'—'} · ${esc(a.vnd)}</div></div>
             <span class="tag ${sm.cls}">${sm.l}</span>
           </div>`;
         }).join('')}
-      </div>`:`<div class="alert-empty" style="padding:16px 0">Nenhum agendamento para hoje</div>`}
+      </div>`:`<div style="text-align:center;padding:20px 0">
+          <i class="ti ti-calendar-off" style="font-size:24px;color:var(--txt3);display:block;margin-bottom:8px"></i>
+          <div style="font-size:13px;color:var(--txt3)">Nenhum agendamento hoje</div>
+        </div>`}
     </div>`;
 }
 
@@ -469,6 +552,14 @@ function closeTomorrowNotif() {
   clearTimeout(el._t); el.classList.remove('show'); el.classList.add('hide');
 }
 
+function _fmtTimeAgo(ms) {
+  const d = Math.floor(ms / 86400000);
+  if (d >= 1) return d + (d === 1 ? ' dia' : ' dias');
+  const h = Math.floor(ms / 3600000);
+  if (h >= 1) return h + 'h';
+  return Math.round(ms / 60000) + 'min';
+}
+
 // ─── DASHBOARD DE CONFERÊNCIA DIÁRIA (item 3) ─────────────────────────────────
 let _confRefreshTimer = null;
 
@@ -519,13 +610,14 @@ async function renderConf() {
     <div class="dash-box" style="margin-top:20px">
       <div class="dash-box-title">🚨 Leads parados (${stopped2h.length})</div>
       ${stopped2h.length ? stopped2h.slice(0,10).map(a=>{
-        const h=Math.round((Date.now()-new Date(a.em))/3600000);
+        const elapsed=Date.now()-new Date(a.em);
         const sm=fmtStatus(a.status);
+        const h=Math.floor(elapsed/3600000);
         const col=h>=24?'var(--red)':h>=4?'var(--red)':'var(--amb)';
         return `<div class="alert-item" onclick="openNeg('${a.id}')" style="cursor:pointer">
           <div class="alert-dot" style="background:${col}"></div>
           <div class="alert-txt">${esc(a.cli)} · ${esc(a.vnd||'—')} · <span class="tag ${sm.cls}" style="font-size:10px">${sm.l}</span></div>
-          <div class="alert-count" style="color:${col}">${h}h</div>
+          <div class="alert-count" style="color:${col}">${_fmtTimeAgo(elapsed)}</div>
         </div>`;
       }).join('')+(stopped2h.length>10?`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:6px">e mais ${stopped2h.length-10}</div>`:'')
       :`<div class="alert-empty">✅ Nenhum lead parado acima de 2h</div>`}
@@ -541,11 +633,11 @@ async function renderConf() {
       <div class="dash-box">
         <div class="dash-box-title">⏱ Sem contato (${noContact.length})</div>
         ${noContact.length?noContact.slice(0,6).map(a=>{
-          const m=Math.round((Date.now()-new Date(a.em))/60000);
+          const elapsed2=Date.now()-new Date(a.em);
           return `<div class="alert-item" onclick="openNeg('${a.id}')" style="cursor:pointer">
             <div class="alert-dot" style="background:var(--red)"></div>
             <div class="alert-txt">${esc(a.cli)} · ${esc(a.orig||'—')}</div>
-            <div class="alert-count" style="color:var(--red)">${m}min</div>
+            <div class="alert-count" style="color:var(--red)">${_fmtTimeAgo(elapsed2)}</div>
           </div>`;
         }).join(''):`<div class="alert-empty">✅ Todos respondidos</div>`}
       </div>
